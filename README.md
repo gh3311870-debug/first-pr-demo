@@ -13,3 +13,7 @@ and opening a pull request without touching real production code.
 2. Make a change on a new branch.
 3. Open a pull request.
 4. Review and merge it.
+
+## License
+
+This project has no license yet — add one if you plan to use this code elsewhere.
