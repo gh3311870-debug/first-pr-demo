@@ -40,6 +40,20 @@
     100% { opacity: 0; }
   }
 
+  #critVignette {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    background: radial-gradient(ellipse at center, rgba(140,0,0,0) 45%, rgba(140,0,0,0.5) 100%);
+  }
+  #critVignette.active {
+    animation: critPulse 1100ms ease-in-out infinite;
+  }
+  @keyframes critPulse {
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 0.65; }
+  }
+
   #crosshair {
     position: absolute;
     top: 50%;
@@ -333,6 +347,7 @@
 
 <div id="hud">
   <div id="damageVignette"></div>
+  <div id="critVignette"></div>
   <div id="crosshair"></div>
   <div id="muzzleFlash"></div>
   <div id="topBar">
@@ -392,14 +407,23 @@
   var HEADSHOT_MULT = 3;
   var ZOMBIE_FALL_DURATION = 0.55;
   var GORE_LINGER = 0.35;
-  var BLOOD_POOL_POOL_SIZE = 20;
-  var GIB_POOL_SIZE = 30;
-  var BRUTE_HP_MULT = 3;
-  var BRUTE_SPEED_MULT = 0.68;
-  var BRUTE_DAMAGE_MULT = 1.9;
-  var BRUTE_SCALE = 1.4;
-  var BRUTE_SCORE = 75;
+  var BLOOD_POOL_POOL_SIZE = 26;
+  var GIB_POOL_SIZE = 34;
   var COMBO_WINDOW = 1.3;
+  var BLEED_INTERVAL = 1.1;
+  var DISMEMBER_CHANCE = 0.45;
+
+  // Per-type stat multipliers and body proportions, applied on top of the base zombie stats.
+  var ZOMBIE_TYPES = {
+    walker: { hpMult: 1, speedMult: 1, dmgMult: 1, scale: 1, score: 25, minWave: 1, bodyWidthMult: 1, legLenMult: 1, ranged: false },
+    runner: { hpMult: 0.55, speedMult: 1.9, dmgMult: 0.8, scale: 0.92, score: 30, minWave: 1, bodyWidthMult: 0.8, legLenMult: 1.12, ranged: false },
+    spitter: { hpMult: 0.8, speedMult: 0.85, dmgMult: 1, scale: 1.05, score: 35, minWave: 2, bodyWidthMult: 1.35, legLenMult: 0.92, ranged: true },
+    brute: { hpMult: 3, speedMult: 0.68, dmgMult: 1.9, scale: 1.4, score: 75, minWave: 3, bodyWidthMult: 1.25, legLenMult: 1, ranged: false }
+  };
+  var SPITTER_RANGE = 11;
+  var SPITTER_COOLDOWN = 2.6;
+  var SPIT_SPEED = 9;
+  var SPIT_DAMAGE = 10;
 
   // ---------- Sound (synthesized, no audio files) ----------
   var audioCtx = null;
@@ -462,6 +486,8 @@
   function sfxHeadshot() { playTone(900, 200, 0.12, "square", 0.18); playNoiseBurst(0.15, 700, 0.18); }
   function sfxSquelch() { playNoiseBurst(0.12, 500, 0.16); playTone(140, 40, 0.14, "sawtooth", 0.1); }
   function sfxCombo() { playTone(700, 1100, 0.14, "sine", 0.18); }
+  function sfxSpit() { playTone(320, 180, 0.16, "sawtooth", 0.14); playNoiseBurst(0.1, 1400, 0.1); }
+  function sfxSplat() { playNoiseBurst(0.16, 400, 0.16); playTone(120, 40, 0.16, "sawtooth", 0.1); }
 
   // ---------- Scene setup ----------
   var scene = new THREE.Scene();
@@ -598,8 +624,67 @@
   // ---------- Zombies: shambling humanoids ----------
   var zombies = []; // { group, hp, maxHp, parts, speed, attackCooldown, dead, punch, groanTimer }
   var zombieHitMeshes = [];
-  var skinTones = [0x5a7a4a, 0x6a8a52, 0x4f6e46, 0x74905a];
-  var shirtTones = [0x3f3a35, 0x50433a, 0x35362f, 0x463a2c];
+
+  function hexToCss(hex) { return "#" + ("000000" + hex.toString(16)).slice(-6); }
+
+  // Mottled, decayed skin with dark bruises and old wound streaks.
+  function makeSkinTexture(baseHex) {
+    return makeCanvasTexture(64, function (ctx, size) {
+      ctx.fillStyle = hexToCss(baseHex);
+      ctx.fillRect(0, 0, size, size);
+      for (var i = 0; i < 22; i++) {
+        ctx.fillStyle = "rgba(0,0,0," + (0.05 + Math.random() * 0.14) + ")";
+        ctx.beginPath();
+        ctx.arc(Math.random() * size, Math.random() * size, 2 + Math.random() * 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      for (var j = 0; j < 5; j++) {
+        ctx.strokeStyle = "rgba(110,10,10," + (0.35 + Math.random() * 0.35) + ")";
+        ctx.lineWidth = 1 + Math.random() * 1.5;
+        var sx = Math.random() * size, sy = Math.random() * size;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx + (Math.random() * 12 - 6), sy + Math.random() * 14 + 3);
+        ctx.stroke();
+      }
+    });
+  }
+
+  // Torn, blood-stained clothing.
+  function makeShirtTexture(baseHex) {
+    return makeCanvasTexture(64, function (ctx, size) {
+      ctx.fillStyle = hexToCss(baseHex);
+      ctx.fillRect(0, 0, size, size);
+      for (var i = 0; i < 5; i++) {
+        var cx = Math.random() * size, cy = Math.random() * size;
+        ctx.fillStyle = "rgba(0,0,0,0.4)";
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        for (var k = 0; k < 5; k++) ctx.lineTo(cx + (Math.random() * 16 - 8), cy + (Math.random() * 16 - 8));
+        ctx.closePath();
+        ctx.fill();
+      }
+      for (var b = 0; b < 4; b++) {
+        var bx = Math.random() * size, by = Math.random() * size, r = 4 + Math.random() * 11;
+        var grad = ctx.createRadialGradient(bx, by, 0, bx, by, r);
+        grad.addColorStop(0, "rgba(100,10,10,0.85)");
+        grad.addColorStop(1, "rgba(100,10,10,0)");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(bx, by, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+  }
+
+  var TYPE_SKIN_COLOR = { walker: 0x5a7a4a, runner: 0x8a9a63, spitter: 0x93a83c, brute: 0x6e2a24 };
+  var TYPE_SHIRT_COLOR = { walker: 0x3f3a35, runner: 0x33413a, spitter: 0x4a4a2a, brute: 0x2c1512 };
+  var skinTexByType = {};
+  var shirtTexByType = {};
+  Object.keys(ZOMBIE_TYPES).forEach(function (t) {
+    skinTexByType[t] = makeSkinTexture(TYPE_SKIN_COLOR[t]);
+    shirtTexByType[t] = makeShirtTexture(TYPE_SHIRT_COLOR[t]);
+  });
 
   function randomEdgeSpawn() {
     var margin = 1.5;
@@ -612,27 +697,28 @@
     return new THREE.Vector3(x, 0, z);
   }
 
-  function createZombie(isBrute) {
-    var skinHex = isBrute ? 0x6e2a24 : skinTones[Math.floor(Math.random() * skinTones.length)];
-    var shirtHex = isBrute ? 0x2c1512 : shirtTones[Math.floor(Math.random() * shirtTones.length)];
+  function createZombie(type) {
+    var cfg = ZOMBIE_TYPES[type];
+    var wMult = cfg.bodyWidthMult;
+    var lMult = cfg.legLenMult;
 
     var group = new THREE.Group();
-    var skinMat = new THREE.MeshStandardMaterial({ color: skinHex, roughness: 0.9 });
-    var shirtMat = new THREE.MeshStandardMaterial({ color: shirtHex, roughness: 0.85 });
+    var skinMat = new THREE.MeshStandardMaterial({ map: skinTexByType[type], roughness: 0.9 });
+    var shirtMat = new THREE.MeshStandardMaterial({ map: shirtTexByType[type], roughness: 0.85 });
     var pantsMat = new THREE.MeshStandardMaterial({ color: 0x2b2c26, roughness: 0.85 });
 
     var head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), skinMat);
     head.position.y = 1.5;
-    head.rotation.x = 0.25; // hanging head
+    head.rotation.x = type === "runner" ? 0.05 : 0.25; // runners hold their head up, hunting for prey
 
-    var torso = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.72, 0.32), shirtMat);
+    var torso = new THREE.Mesh(new THREE.BoxGeometry(0.6 * wMult, 0.72, 0.32 * wMult), shirtMat);
     torso.position.y = 0.98;
-    torso.rotation.x = 0.12; // hunched
+    torso.rotation.x = type === "runner" ? -0.05 : 0.12; // hunched, except runners lean forward to sprint
 
-    var hips = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.34, 0.3), pantsMat);
+    var hips = new THREE.Mesh(new THREE.BoxGeometry(0.48 * wMult, 0.34, 0.3 * wMult), pantsMat);
     hips.position.y = 0.46;
 
-    var legGeo = new THREE.BoxGeometry(0.2, 0.85, 0.24);
+    var legGeo = new THREE.BoxGeometry(0.2, 0.85 * lMult, 0.24);
     var legL = new THREE.Mesh(legGeo, pantsMat);
     legL.position.set(-0.15, -0.05, 0);
     var legR = new THREE.Mesh(legGeo, pantsMat);
@@ -641,13 +727,23 @@
     // arms reach forward, classic zombie pose
     var armGeo = new THREE.BoxGeometry(0.17, 0.62, 0.19);
     var armL = new THREE.Mesh(armGeo, skinMat);
-    armL.position.set(-0.4, 1.02, -0.18);
+    armL.position.set(-0.4 * wMult, 1.02, -0.18);
     armL.rotation.x = -1.15;
     var armR = new THREE.Mesh(armGeo, skinMat);
-    armR.position.set(0.4, 1.02, -0.18);
+    armR.position.set(0.4 * wMult, 1.02, -0.18);
     armR.rotation.x = -1.15;
 
-    [head, torso, hips, legL, legR, armL, armR].forEach(function (part) {
+    var parts = [head, torso, hips, legL, legR, armL, armR];
+
+    if (type === "spitter") {
+      // distended, bloated belly sac used to lob projectiles
+      var belly = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 10), skinMat);
+      belly.scale.set(1, 0.85, 0.9);
+      belly.position.set(0, 0.78, 0.12);
+      parts.push(belly);
+    }
+
+    parts.forEach(function (part) {
       part.castShadow = true;
       part.receiveShadow = true;
       group.add(part);
@@ -655,9 +751,9 @@
       zombieHitMeshes.push(part);
     });
 
-    if (isBrute) group.scale.setScalar(BRUTE_SCALE);
+    group.scale.setScalar(cfg.scale);
 
-    group.userData.parts = [head, torso, hips, legL, legR, armL, armR];
+    group.userData.parts = parts;
     group.userData.head = head;
     return group;
   }
@@ -669,28 +765,42 @@
   var comboCount = 0;
   var comboTimer = 0;
 
-  function bruteChanceForWave(n) {
-    if (n < 3) return 0;
-    return Math.min(0.35, (n - 2) * 0.08);
+  function pickZombieType(n) {
+    var options = [{ type: "walker", w: 45 }];
+    if (n >= ZOMBIE_TYPES.runner.minWave) options.push({ type: "runner", w: Math.min(30, 12 + n * 3) });
+    if (n >= ZOMBIE_TYPES.spitter.minWave) options.push({ type: "spitter", w: Math.min(28, 10 + (n - 1) * 3) });
+    if (n >= ZOMBIE_TYPES.brute.minWave) options.push({ type: "brute", w: Math.min(30, 8 + (n - 2) * 4) });
+    var total = options.reduce(function (s, o) { return s + o.w; }, 0);
+    var r = Math.random() * total;
+    for (var i = 0; i < options.length; i++) {
+      r -= options[i].w;
+      if (r <= 0) return options[i].type;
+    }
+    return "walker";
   }
 
-  function spawnZombie(speedMult, forceBrute) {
-    var isBrute = forceBrute || Math.random() < bruteChanceForWave(wave);
-    var group = createZombie(isBrute);
+  function spawnZombie(speedMult, forceType) {
+    var type = forceType || pickZombieType(wave);
+    var cfg = ZOMBIE_TYPES[type];
+    var group = createZombie(type);
     group.position.copy(randomEdgeSpawn());
     group.rotation.y = Math.random() * Math.PI * 2;
     scene.add(group);
     var z = {
       group: group,
-      hp: isBrute ? ZOMBIE_HP * BRUTE_HP_MULT : ZOMBIE_HP,
-      speed: ZOMBIE_BASE_SPEED * speedMult * (isBrute ? BRUTE_SPEED_MULT : 1) * (0.85 + Math.random() * 0.3),
+      type: type,
+      cfg: cfg,
+      hp: Math.round(ZOMBIE_HP * cfg.hpMult),
+      maxHp: Math.round(ZOMBIE_HP * cfg.hpMult),
+      speed: ZOMBIE_BASE_SPEED * speedMult * cfg.speedMult * (0.85 + Math.random() * 0.3),
       attackCooldown: 0,
-      attackDamage: isBrute ? Math.round(ZOMBIE_ATTACK_DAMAGE * BRUTE_DAMAGE_MULT) : ZOMBIE_ATTACK_DAMAGE,
+      attackDamage: Math.round(ZOMBIE_ATTACK_DAMAGE * cfg.dmgMult),
       dead: false,
       punch: 0,
       groanTimer: 2 + Math.random() * 4,
+      bleedTimer: 0,
       bobPhase: Math.random() * Math.PI * 2,
-      isBrute: isBrute,
+      isBrute: type === "brute",
       headMesh: group.userData.head,
       fallElapsed: 0
     };
@@ -749,15 +859,19 @@
     zombiesKilled++;
     zombiesAliveInWave--;
 
-    var points = (z.isBrute ? BRUTE_SCORE : 25) + (headshot ? 15 : 0);
+    var points = z.cfg.score + (headshot ? 15 : 0);
     score += points;
     scoreLabel.textContent = "Score: " + score;
     sfxZombieDie();
+    sfxSplat();
 
     var deathPos = z.group.position.clone();
     deathPos.y = 0.02;
-    spawnBloodPool(deathPos, z.isBrute ? 1.6 : 1);
-    spawnGibs(z.group.position.clone().setY(z.isBrute ? 1.1 : 0.9), z.isBrute);
+    spawnBloodPool(deathPos, z.cfg.scale * 1.15);
+    spawnGibs(z.group.position.clone().setY(0.9 * z.cfg.scale), z.cfg.scale);
+    if (headshot || Math.random() < DISMEMBER_CHANCE) {
+      spawnHeadGib(z.group.position.clone().setY(1.5 * z.cfg.scale), z.cfg.scale, TYPE_SKIN_COLOR[z.type]);
+    }
 
     comboCount++;
     comboTimer = COMBO_WINDOW;
@@ -981,6 +1095,107 @@
     }
   }
 
+  // ---------- Muzzle smoke ----------
+  var SMOKE_POOL_SIZE = 18;
+  var smokeGeo = new THREE.SphereGeometry(0.05, 6, 6);
+  var smokePool = [];
+  for (var smi = 0; smi < SMOKE_POOL_SIZE; smi++) {
+    var smokeMat = new THREE.MeshBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0 });
+    var smokeMesh = new THREE.Mesh(smokeGeo, smokeMat);
+    smokeMesh.visible = false;
+    vfxGroup.add(smokeMesh);
+    smokePool.push({ mesh: smokeMesh, vel: new THREE.Vector3(), life: 0, maxLife: 1, active: false });
+  }
+  var nextSmokeIndex = 0;
+
+  function spawnMuzzleSmoke(position) {
+    for (var n = 0; n < 3; n++) {
+      var p = smokePool[nextSmokeIndex];
+      nextSmokeIndex = (nextSmokeIndex + 1) % SMOKE_POOL_SIZE;
+      p.active = true;
+      p.mesh.visible = true;
+      p.mesh.position.copy(position);
+      p.mesh.position.x += (Math.random() - 0.5) * 0.05;
+      p.mesh.position.y += (Math.random() - 0.5) * 0.05;
+      p.mesh.scale.setScalar(0.6 + Math.random() * 0.4);
+      p.mesh.material.opacity = 0.4;
+      p.vel.set((Math.random() - 0.5) * 0.4, 0.7 + Math.random() * 0.4, (Math.random() - 0.5) * 0.4);
+      p.life = 0.45 + Math.random() * 0.25;
+      p.maxLife = p.life;
+    }
+  }
+
+  function updateSmoke(dt) {
+    for (var qi = 0; qi < smokePool.length; qi++) {
+      var p = smokePool[qi];
+      if (!p.active) continue;
+      p.life -= dt;
+      if (p.life <= 0) {
+        p.active = false;
+        p.mesh.visible = false;
+        continue;
+      }
+      p.mesh.position.addScaledVector(p.vel, dt);
+      p.mesh.scale.multiplyScalar(1 + dt * 1.6);
+      p.mesh.material.opacity = Math.max(0, (p.life / p.maxLife) * 0.4);
+    }
+  }
+
+  // ---------- Shell casings ----------
+  var CASING_POOL_SIZE = 10;
+  var casingGeo = new THREE.BoxGeometry(0.018, 0.05, 0.018);
+  var casingPool = [];
+  for (var cai = 0; cai < CASING_POOL_SIZE; cai++) {
+    var casingMat = new THREE.MeshStandardMaterial({ color: 0xc9a23c, roughness: 0.35, metalness: 0.7, transparent: true });
+    var casingMesh = new THREE.Mesh(casingGeo, casingMat);
+    casingMesh.visible = false;
+    scene.add(casingMesh);
+    casingPool.push({ mesh: casingMesh, vel: new THREE.Vector3(), spin: new THREE.Vector3(), life: 0, active: false, settled: false });
+  }
+  var nextCasingIndex = 0;
+
+  function spawnCasing() {
+    var worldPos = new THREE.Vector3();
+    gunGroup.getWorldPosition(worldPos);
+    var right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+    var up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+    var p = casingPool[nextCasingIndex];
+    nextCasingIndex = (nextCasingIndex + 1) % CASING_POOL_SIZE;
+    p.active = true;
+    p.settled = false;
+    p.mesh.visible = true;
+    p.mesh.position.copy(worldPos);
+    p.mesh.material.opacity = 1;
+    p.vel.copy(right).multiplyScalar(1.4 + Math.random() * 1.2).addScaledVector(up, 1.1 + Math.random() * 0.6);
+    p.spin.set((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20);
+    p.life = 1.4;
+  }
+
+  function updateCasings(dt) {
+    for (var qi = 0; qi < casingPool.length; qi++) {
+      var p = casingPool[qi];
+      if (!p.active) continue;
+      p.life -= dt;
+      if (p.life <= 0) {
+        p.active = false;
+        p.mesh.visible = false;
+        continue;
+      }
+      if (!p.settled) {
+        p.vel.y -= 14 * dt;
+        p.mesh.position.addScaledVector(p.vel, dt);
+        p.mesh.rotation.x += p.spin.x * dt;
+        p.mesh.rotation.y += p.spin.y * dt;
+        p.mesh.rotation.z += p.spin.z * dt;
+        if (p.mesh.position.y <= 0.02) {
+          p.mesh.position.y = 0.02;
+          p.settled = true;
+        }
+      }
+      if (p.life < 0.4) p.mesh.material.opacity = p.life / 0.4;
+    }
+  }
+
   // ---------- Gore: blood pools + gibs ----------
   var bloodTexture = makeCanvasTexture(64, function (ctx, size) {
     ctx.clearRect(0, 0, size, size);
@@ -1037,15 +1252,15 @@
   }
   var nextGibIndex = 0;
 
-  function spawnGibs(position, isBrute) {
-    var count = isBrute ? 10 : 6;
+  function spawnGibs(position, scale) {
+    var count = Math.round(6 * scale);
     for (var n = 0; n < count; n++) {
       var g = gibPool[nextGibIndex];
       nextGibIndex = (nextGibIndex + 1) % GIB_POOL_SIZE;
       g.active = true;
       g.mesh.visible = true;
       g.mesh.position.copy(position);
-      var scl = (isBrute ? 1.4 : 1) * (0.6 + Math.random() * 0.8);
+      var scl = scale * (0.6 + Math.random() * 0.8);
       g.mesh.scale.setScalar(scl);
       g.mesh.material.opacity = 1;
       var speed = 2 + Math.random() * 3.5;
@@ -1088,6 +1303,100 @@
     }
   }
 
+  // Dismemberment: an occasional detached head flies off on kill (rare, one-off meshes).
+  var headGibGeo = new THREE.SphereGeometry(0.22, 10, 10);
+  var activeHeadGibs = [];
+
+  function spawnHeadGib(position, scale, skinHex) {
+    var mat = new THREE.MeshStandardMaterial({ color: skinHex, roughness: 0.9, transparent: true });
+    var mesh = new THREE.Mesh(headGibGeo, mat);
+    mesh.scale.setScalar(scale);
+    mesh.position.copy(position);
+    mesh.castShadow = true;
+    scene.add(mesh);
+    var speed = 3 + Math.random() * 2.5;
+    var theta = Math.random() * Math.PI * 2;
+    activeHeadGibs.push({
+      mesh: mesh,
+      vel: new THREE.Vector3(Math.cos(theta) * speed, 4.5 + Math.random() * 2, Math.sin(theta) * speed),
+      spin: new THREE.Vector3((Math.random() - 0.5) * 14, (Math.random() - 0.5) * 14, (Math.random() - 0.5) * 14),
+      life: 1.2,
+      maxLife: 1.2,
+      settled: false
+    });
+  }
+
+  function updateHeadGibs(dt) {
+    for (var i = activeHeadGibs.length - 1; i >= 0; i--) {
+      var g = activeHeadGibs[i];
+      g.life -= dt;
+      if (g.life <= 0) {
+        scene.remove(g.mesh);
+        g.mesh.material.dispose();
+        activeHeadGibs.splice(i, 1);
+        continue;
+      }
+      if (!g.settled) {
+        g.vel.y -= 12 * dt;
+        g.mesh.position.addScaledVector(g.vel, dt);
+        g.mesh.rotation.x += g.spin.x * dt;
+        g.mesh.rotation.y += g.spin.y * dt;
+        g.mesh.rotation.z += g.spin.z * dt;
+        if (g.mesh.position.y <= 0.1) {
+          g.mesh.position.y = 0.1;
+          g.settled = true;
+          spawnBloodPool(g.mesh.position.clone().setY(0.02), 0.6);
+        }
+      }
+      if (g.life < 0.3) g.mesh.material.opacity = g.life / 0.3;
+    }
+  }
+
+  // ---------- Ranged attacks (spitter acid globs) ----------
+  var SPIT_POOL_SIZE = 12;
+  var spitGeo = new THREE.SphereGeometry(0.09, 8, 8);
+  var spitPool = [];
+  for (var si = 0; si < SPIT_POOL_SIZE; si++) {
+    var spitMat = new THREE.MeshBasicMaterial({ color: 0x9fe23a, transparent: true });
+    var spitMesh = new THREE.Mesh(spitGeo, spitMat);
+    spitMesh.visible = false;
+    scene.add(spitMesh);
+    spitPool.push({ mesh: spitMesh, vel: new THREE.Vector3(), life: 0, active: false });
+  }
+  var nextSpitIndex = 0;
+
+  function spawnSpit(fromPos, targetPos) {
+    var p = spitPool[nextSpitIndex];
+    nextSpitIndex = (nextSpitIndex + 1) % SPIT_POOL_SIZE;
+    p.active = true;
+    p.mesh.visible = true;
+    p.mesh.material.opacity = 1;
+    p.mesh.position.copy(fromPos);
+    p.vel.copy(targetPos).sub(fromPos).normalize().multiplyScalar(SPIT_SPEED);
+    p.life = 2.5;
+  }
+
+  function updateSpits(dt) {
+    for (var i = 0; i < spitPool.length; i++) {
+      var p = spitPool[i];
+      if (!p.active) continue;
+      p.life -= dt;
+      p.mesh.position.addScaledVector(p.vel, dt);
+      var distToPlayer = p.mesh.position.distanceTo(player.pos);
+      if (distToPlayer < 0.8) {
+        damagePlayer(SPIT_DAMAGE);
+        spawnImpactBurst(p.mesh.position.clone(), 0x9fe23a, 10);
+        p.active = false;
+        p.mesh.visible = false;
+        continue;
+      }
+      if (p.life <= 0 || p.mesh.position.y < -1) {
+        p.active = false;
+        p.mesh.visible = false;
+      }
+    }
+  }
+
   function updateVfx(dt) {
     for (var ti = tracers.length - 1; ti >= 0; ti--) {
       var tr = tracers[ti];
@@ -1116,6 +1425,9 @@
     }
 
     updateGibs(dt);
+    updateHeadGibs(dt);
+    updateSmoke(dt);
+    updateCasings(dt);
 
     zombies.forEach(function (z) {
       if (z.dead) return;
@@ -1143,6 +1455,7 @@
   var waveLabel = document.getElementById("waveLabel");
   var healthBarInner = document.getElementById("healthBarInner");
   var damageVignetteEl = document.getElementById("damageVignette");
+  var critVignetteEl = document.getElementById("critVignette");
   var hudEl = document.getElementById("hud");
 
   function showScorePop(amount) {
@@ -1165,6 +1478,11 @@
     triggerShake();
     triggerRecoil();
     sfxShoot();
+
+    var muzzleWorldPos = new THREE.Vector3();
+    gunGroup.getWorldPosition(muzzleWorldPos);
+    spawnMuzzleSmoke(muzzleWorldPos);
+    spawnCasing();
 
     var muzzleOrigin = camera.position.clone();
     raycaster.setFromCamera({ x: 0, y: 0 }, camera);
@@ -1200,7 +1518,7 @@
             showBigPop("HEADSHOT", "#ff3b3b");
             sfxHeadshot();
           }
-          showScorePop((z.isBrute ? BRUTE_SCORE : 25) + (isHeadshot ? 15 : 0));
+          showScorePop(z.cfg.score + (isHeadshot ? 15 : 0));
           killZombie(z, isHeadshot);
         } else {
           showScorePop(5);
@@ -1237,6 +1555,7 @@
     damageVignetteEl.classList.remove("hit");
     void damageVignetteEl.offsetWidth;
     damageVignetteEl.classList.add("hit");
+    critVignetteEl.classList.toggle("active", player.health > 0 && player.health <= 30);
     sfxPlayerHurt();
     if (player.health <= 0) endGame();
   }
@@ -1272,6 +1591,7 @@
     scoreLabel.textContent = "Score: 0";
     healthBarInner.style.width = "100%";
     healthBarInner.style.background = "linear-gradient(90deg, #6fd94a, #9bff5e)";
+    critVignetteEl.classList.remove("active");
     endScreen.style.display = "none";
     startWave(1);
   });
@@ -1298,10 +1618,28 @@
         if (distToPlayer < 18) sfxGroan();
       }
 
+      if (z.hp < z.maxHp * 0.6) {
+        z.bleedTimer -= dt;
+        if (z.bleedTimer <= 0) {
+          z.bleedTimer = BLEED_INTERVAL;
+          spawnBloodPool(g.position.clone().setY(0.02), 0.4 * z.cfg.scale);
+        }
+      }
+
       var toPlayer = new THREE.Vector3(player.pos.x - g.position.x, 0, player.pos.z - g.position.z);
       var dist = toPlayer.length();
 
-      if (dist > ZOMBIE_ATTACK_RANGE) {
+      if (z.cfg.ranged && dist <= SPITTER_RANGE && dist > ZOMBIE_ATTACK_RANGE) {
+        // spitters hold their distance and lob acid instead of closing in
+        g.rotation.y = Math.atan2(toPlayer.x, toPlayer.z);
+        z.attackCooldown -= dt;
+        if (z.attackCooldown <= 0) {
+          z.attackCooldown = SPITTER_COOLDOWN;
+          spawnSpit(g.position.clone().setY(0.9 * z.cfg.scale), player.pos);
+          sfxSpit();
+          z.punch = ZOMBIE_PUNCH_DURATION * 0.5;
+        }
+      } else if (dist > ZOMBIE_ATTACK_RANGE) {
         toPlayer.normalize();
         g.position.x += toPlayer.x * z.speed * dt;
         g.position.z += toPlayer.z * z.speed * dt;
@@ -1324,6 +1662,7 @@
     dt = Math.min(dt, 0.05);
 
     updateVfx(dt);
+    updateSpits(dt);
     if (shakeTime > 0) shakeTime = Math.max(0, shakeTime - dt);
     if (fireCooldownTimer > 0) {
       fireCooldownTimer = Math.max(0, fireCooldownTimer - dt);
