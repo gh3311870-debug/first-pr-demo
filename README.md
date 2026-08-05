@@ -35,6 +35,20 @@ python3 -m http.server 8000
 
 Then visit `http://localhost:8000/index.html`.
 
+## Range Shooter demo
+
+`fps.html` is a mobile-friendly first-person shooting range, also built with
+Three.js. Move around a small arena and shoot targets before the 60-second
+timer runs out:
+
+- Left on-screen joystick: walk
+- Drag on the right side of the screen: look around
+- Red SHOOT button: fire at whatever's under the crosshair
+- Top bar: live score and time remaining
+
+Serve it the same way as the builder demo and visit
+`http://localhost:8000/fps.html`.
+
 ### Playing on your phone via GitHub Pages
 
 To play without running a local server, enable GitHub Pages for this repo:
@@ -42,9 +56,10 @@ To play without running a local server, enable GitHub Pages for this repo:
 1. Go to the repo's **Settings > Pages**.
 2. Under "Build and deployment", set **Source** to "Deploy from a branch".
 3. Pick branch `main`, folder `/ (root)`, then **Save**.
-4. After a minute, the game will be live at
-   `https://gh3311870-debug.github.io/first-pr-demo/index.html` — open that on
-   your phone.
+4. After a minute, both demos will be live at
+   `https://gh3311870-debug.github.io/first-pr-demo/index.html` (builder) and
+   `https://gh3311870-debug.github.io/first-pr-demo/fps.html` (shooter) —
+   open either on your phone.
 
 ## License
 
