@@ -86,6 +86,16 @@ every side — survive as many waves as you can:
 - Up-arrow button: jump (with sound)
 - Green SHOOT button: fire at whatever's under the crosshair, with recoil,
   muzzle flash, tracers, impact particles, and sound effects
+- Circular &#8635; button: cycle weapons — **Pistol** (balanced), **Shotgun**
+  (six-pellet spread, devastating up close), **SMG** (fast, low-damage
+  full-auto-feel tapping), **Sniper** (slow, huge single-target damage and
+  extra range), and **Laser** (a glowing energy rifle that evaporates
+  zombies in a burst of light instead of leaving a corpse). Each has a
+  distinct viewmodel, recoil, screen shake, and sound.
+- Purple &#9889; button: unleash a **Lightning** ability — a heavy-damage
+  chained bolt that zaps every zombie within range of you at once, on an
+  ~11-second cooldown (shown on the button). Great for breaking up a crowd
+  that's closed in around you.
 - Top bar: live score, current wave, and a health bar
 - Zombies groan, shamble toward you, and attack (damaging your health) when
   they get close; each wave brings more, slightly faster zombies. The run
