@@ -55,6 +55,24 @@ feel.
 Serve it the same way as the builder demo and visit
 `http://localhost:8000/fps.html`.
 
+## Skyblast demo
+
+`powers.html` is a mobile-friendly superpower flight game, also built with
+Three.js. Fly freely through a starry sky arena and blast glowing target orbs
+before the 60-second timer runs out:
+
+- Left on-screen joystick: fly forward/back and strafe left/right
+- Drag on the right side of the screen: aim — flight direction follows
+  wherever you're looking, including up and down
+- Gold BOOST button (hold): temporary speed burst with a particle trail
+- Blue BLAST button: fire a glowing energy projectile at the crosshair
+- Top bar: live score and time remaining
+
+Serve it the same way as the other demos and visit
+`http://localhost:8000/powers.html`.
+
+All three demos link to each other via the nav chips in the top-right corner.
+
 ### Playing on your phone via GitHub Pages
 
 To play without running a local server, enable GitHub Pages for this repo:
@@ -62,10 +80,11 @@ To play without running a local server, enable GitHub Pages for this repo:
 1. Go to the repo's **Settings > Pages**.
 2. Under "Build and deployment", set **Source** to "Deploy from a branch".
 3. Pick branch `main`, folder `/ (root)`, then **Save**.
-4. After a minute, both demos will be live at
-   `https://gh3311870-debug.github.io/first-pr-demo/index.html` (builder) and
-   `https://gh3311870-debug.github.io/first-pr-demo/fps.html` (shooter) —
-   open either on your phone.
+4. After a minute, all three demos will be live at
+   `https://gh3311870-debug.github.io/first-pr-demo/index.html` (builder),
+   `https://gh3311870-debug.github.io/first-pr-demo/fps.html` (shooter), and
+   `https://gh3311870-debug.github.io/first-pr-demo/powers.html` (flight) —
+   open any of them on your phone.
 
 ## License
 
