@@ -35,6 +35,17 @@ python3 -m http.server 8000
 
 Then visit `http://localhost:8000/index.html`.
 
+### Playing on your phone via GitHub Pages
+
+To play without running a local server, enable GitHub Pages for this repo:
+
+1. Go to the repo's **Settings > Pages**.
+2. Under "Build and deployment", set **Source** to "Deploy from a branch".
+3. Pick branch `main`, folder `/ (root)`, then **Save**.
+4. After a minute, the game will be live at
+   `https://gh3311870-debug.github.io/first-pr-demo/index.html` — open that on
+   your phone.
+
 ## License
 
 This project has no license yet — add one if you plan to use this code elsewhere.
