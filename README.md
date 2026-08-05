@@ -43,7 +43,13 @@ timer runs out:
 
 - Left on-screen joystick: walk
 - Drag on the right side of the screen: look around
-- Red SHOOT button: fire at whatever's under the crosshair
+- Up-arrow button: jump
+- Red SHOOT button: fire at whatever's under the crosshair (with recoil, muzzle
+  flash, tracers, and impact particles)
+
+Targets are humanoid silhouettes standing in a shadowed, textured arena, and
+the player has gravity, jumping, and a walking head-bob for a more grounded
+feel.
 - Top bar: live score and time remaining
 
 Serve it the same way as the builder demo and visit

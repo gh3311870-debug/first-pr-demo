@@ -139,6 +139,26 @@
     justify-content: center;
     pointer-events: auto;
     touch-action: none;
+    transition: opacity 80ms linear;
+  }
+
+  #jumpBtn {
+    position: absolute;
+    left: 150px;
+    bottom: 40px;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.18);
+    border: 2px solid rgba(255,255,255,0.55);
+    color: #fff;
+    font-size: 22px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    touch-action: none;
   }
 
   #topBar {
@@ -231,11 +251,12 @@
     <div id="scoreLabel">Score: 0</div>
     <div id="timeLabel">Time: 60</div>
   </div>
-  <div id="hint">Left pad: move &middot; Right side: look &middot; Red button: shoot</div>
+  <div id="hint">Left pad: move &middot; Right side: look &middot; &uarr;: jump &middot; Red button: shoot</div>
   <a id="backLink" href="index.html">&larr; Builder demo</a>
 
   <div id="joystick"><div id="joystickKnob"></div></div>
   <div id="lookPad"></div>
+  <div id="jumpBtn">&#8593;</div>
   <div id="shootBtn">SHOOT</div>
 </div>
 
@@ -252,7 +273,8 @@
   "use strict";
 
   // ---------- Config ----------
-  var GRAVITY = -20;
+  var GRAVITY = -18;
+  var JUMP_SPEED = 6.5;
   var MOVE_SPEED = 5;
   var PLAYER_HEIGHT = 1.7;
   var ARENA_HALF = 22;
@@ -260,6 +282,9 @@
   var ROUND_SECONDS = 60;
   var SHOOT_RANGE = 60;
   var TARGET_PUNCH_DURATION = 0.18;
+  var FIRE_COOLDOWN = 0.28;
+  var BOB_FREQUENCY = 9;
+  var BOB_AMOUNT = 0.045;
 
   // ---------- Scene setup ----------
   var scene = new THREE.Scene();
@@ -267,34 +292,112 @@
   scene.fog = new THREE.Fog(0x8fb8d8, 25, 70);
 
   var camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 200);
+  scene.add(camera);
 
   var renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   document.body.appendChild(renderer.domElement);
 
-  var hemi = new THREE.HemisphereLight(0xffffff, 0x445566, 1.0);
+  var hemi = new THREE.HemisphereLight(0xffffff, 0x445566, 0.8);
   scene.add(hemi);
-  var sun = new THREE.DirectionalLight(0xffffff, 0.7);
+  var sun = new THREE.DirectionalLight(0xffffff, 1.1);
   sun.position.set(20, 40, 15);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.camera.left = -ARENA_HALF - 5;
+  sun.shadow.camera.right = ARENA_HALF + 5;
+  sun.shadow.camera.top = ARENA_HALF + 5;
+  sun.shadow.camera.bottom = -ARENA_HALF - 5;
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 100;
+  sun.shadow.bias = -0.002;
   scene.add(sun);
+
+  // ---------- Procedural textures (no external assets) ----------
+  function makeCanvasTexture(size, draw) {
+    var canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    draw(canvas.getContext("2d"), size);
+    var tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  var groundTexture = makeCanvasTexture(256, function (ctx, size) {
+    ctx.fillStyle = "#5f8a45";
+    ctx.fillRect(0, 0, size, size);
+    ctx.strokeStyle = "rgba(0,0,0,0.08)";
+    ctx.lineWidth = 2;
+    var cell = size / 8;
+    for (var i = 0; i <= 8; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * cell, 0);
+      ctx.lineTo(i * cell, size);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, i * cell);
+      ctx.lineTo(size, i * cell);
+      ctx.stroke();
+    }
+    for (var s = 0; s < 400; s++) {
+      ctx.fillStyle = "rgba(0,0,0,0.04)";
+      ctx.fillRect(Math.random() * size, Math.random() * size, 2, 2);
+    }
+  });
+  groundTexture.repeat.set(ARENA_HALF / 2, ARENA_HALF / 2);
+
+  var wallTexture = makeCanvasTexture(128, function (ctx, size) {
+    ctx.fillStyle = "#5a6472";
+    ctx.fillRect(0, 0, size, size);
+    ctx.strokeStyle = "rgba(0,0,0,0.15)";
+    ctx.lineWidth = 3;
+    for (var i = 0; i <= 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(0, i * (size / 4));
+      ctx.lineTo(size, i * (size / 4));
+      ctx.stroke();
+    }
+  });
+  wallTexture.repeat.set(4, 1.5);
+
+  var crateTexture = makeCanvasTexture(128, function (ctx, size) {
+    ctx.fillStyle = "#9b6b3c";
+    ctx.fillRect(0, 0, size, size);
+    ctx.strokeStyle = "rgba(0,0,0,0.25)";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(6, 6, size - 12, size - 12);
+    ctx.beginPath();
+    ctx.moveTo(6, 6);
+    ctx.lineTo(size - 6, size - 6);
+    ctx.moveTo(size - 6, 6);
+    ctx.lineTo(6, size - 6);
+    ctx.stroke();
+  });
 
   // ---------- Arena ----------
   var groundGeo = new THREE.PlaneGeometry(ARENA_HALF * 2, ARENA_HALF * 2);
-  var groundMat = new THREE.MeshLambertMaterial({ color: 0x6b8f4e });
+  var groundMat = new THREE.MeshStandardMaterial({ map: groundTexture, roughness: 0.95, metalness: 0 });
   var ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
   scene.add(ground);
 
   var obstacles = [ground];
 
-  var wallMat = new THREE.MeshLambertMaterial({ color: 0x555f6b });
+  var wallMat = new THREE.MeshStandardMaterial({ map: wallTexture, roughness: 0.85, metalness: 0.05 });
   var wallHeight = 6;
   var wallThickness = 1;
   function addWall(x, z, w, d) {
     var geo = new THREE.BoxGeometry(w, wallHeight, d);
     var mesh = new THREE.Mesh(geo, wallMat);
     mesh.position.set(x, wallHeight / 2, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
     scene.add(mesh);
     obstacles.push(mesh);
   }
@@ -304,38 +407,80 @@
   addWall(ARENA_HALF, 0, wallThickness, ARENA_HALF * 2 + wallThickness);
 
   // a few crate obstacles for visual interest
-  var crateMat = new THREE.MeshLambertMaterial({ color: 0x9b6b3c });
+  var crateMat = new THREE.MeshStandardMaterial({ map: crateTexture, roughness: 0.8, metalness: 0 });
   [[-8, -4], [6, 5], [-3, 10], [10, -9]].forEach(function (p) {
     var crate = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), crateMat);
     crate.position.set(p[0], 1, p[1]);
+    crate.castShadow = true;
+    crate.receiveShadow = true;
     scene.add(crate);
     obstacles.push(crate);
   });
 
-  // ---------- Targets ----------
-  var targetGeo = new THREE.SphereGeometry(0.6, 16, 16);
-  var targetMatIdle = new THREE.MeshLambertMaterial({ color: 0xe0392b });
+  // ---------- Targets: humanoid silhouettes ----------
   var targets = [];
+  var targetHitMeshes = [];
+  var shirtColors = [0xc0392b, 0x2e6da4, 0x27ae60, 0xb8860b, 0x8e44ad, 0xd35400];
 
   function randomTargetPosition() {
     var margin = 3;
     var x = (Math.random() * 2 - 1) * (ARENA_HALF - margin);
     var z = (Math.random() * 2 - 1) * (ARENA_HALF - margin);
-    var y = 1 + Math.random() * 2.2;
-    return new THREE.Vector3(x, y, z);
+    return new THREE.Vector3(x, 0, z);
+  }
+
+  function createHumanTarget(colorHex) {
+    var group = new THREE.Group();
+
+    var skinMat = new THREE.MeshStandardMaterial({ color: 0xd8a878, roughness: 0.8 });
+    var shirtMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.7 });
+    var pantsMat = new THREE.MeshStandardMaterial({ color: 0x33383f, roughness: 0.7 });
+
+    var head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 14), skinMat);
+    head.position.y = 1.6;
+
+    var torso = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.75, 0.32), shirtMat);
+    torso.position.y = 1.02;
+
+    var hips = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 0.3), pantsMat);
+    hips.position.y = 0.47;
+
+    var legGeo = new THREE.BoxGeometry(0.2, 0.85, 0.24);
+    var legL = new THREE.Mesh(legGeo, pantsMat);
+    legL.position.set(-0.15, -0.06, 0);
+    var legR = new THREE.Mesh(legGeo, pantsMat);
+    legR.position.set(0.15, -0.06, 0);
+
+    var armGeo = new THREE.BoxGeometry(0.18, 0.68, 0.2);
+    var armL = new THREE.Mesh(armGeo, shirtMat);
+    armL.position.set(-0.42, 1.05, 0);
+    var armR = new THREE.Mesh(armGeo, shirtMat);
+    armR.position.set(0.42, 1.05, 0);
+
+    [head, torso, hips, legL, legR, armL, armR].forEach(function (part) {
+      part.castShadow = true;
+      part.receiveShadow = true;
+      group.add(part);
+      part.userData.rootTarget = group;
+      targetHitMeshes.push(part);
+    });
+
+    group.userData.punch = 0;
+    group.userData.parts = [head, torso, hips, legL, legR, armL, armR];
+    return group;
   }
 
   function spawnTarget() {
-    var mesh = new THREE.Mesh(targetGeo, targetMatIdle.clone());
-    mesh.position.copy(randomTargetPosition());
-    mesh.userData.punch = 0;
-    scene.add(mesh);
-    targets.push(mesh);
+    var color = shirtColors[targets.length % shirtColors.length];
+    var group = createHumanTarget(color);
+    group.position.copy(randomTargetPosition());
+    scene.add(group);
+    targets.push(group);
   }
 
-  function respawnTarget(mesh) {
-    mesh.position.copy(randomTargetPosition());
-    mesh.visible = true;
+  function respawnTarget(group) {
+    group.position.copy(randomTargetPosition());
+    group.visible = true;
   }
 
   for (var i = 0; i < TARGET_COUNT; i++) spawnTarget();
@@ -343,10 +488,13 @@
   // ---------- Player physics ----------
   var player = {
     pos: new THREE.Vector3(0, PLAYER_HEIGHT, 12),
-    vel: new THREE.Vector3(0, 0, 0),
+    vy: 0,
+    grounded: true,
     yaw: 0,
     pitch: -0.05
   };
+  var wantJump = false;
+  var bobPhase = 0;
 
   function clampToArena(pos) {
     var margin = 0.8;
@@ -457,6 +605,40 @@
     lookStart("mouse", e.clientX, e.clientY);
   });
 
+  // ---------- Gun viewmodel ----------
+  var gunGroup = new THREE.Group();
+  var gunBasePos = new THREE.Vector3(0.1, -0.27, -1.1);
+  var gunBaseRotX = 0.02;
+  gunGroup.position.copy(gunBasePos);
+  gunGroup.rotation.x = gunBaseRotX;
+  gunGroup.rotation.y = -0.12;
+  camera.add(gunGroup);
+
+  var gunMetalMat = new THREE.MeshStandardMaterial({ color: 0x2b2e33, roughness: 0.4, metalness: 0.6 });
+  var gunGripMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.8, metalness: 0.1 });
+
+  var gunBody = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.06, 0.22), gunMetalMat);
+  gunBody.position.set(0, 0, 0);
+  gunGroup.add(gunBody);
+
+  var gunBarrel = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.024, 0.12), gunMetalMat);
+  gunBarrel.position.set(0, 0.01, -0.17);
+  gunGroup.add(gunBarrel);
+
+  var gunGrip = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.11, 0.048), gunGripMat);
+  gunGrip.position.set(0, -0.07, 0.06);
+  gunGrip.rotation.x = 0.25;
+  gunGroup.add(gunGrip);
+
+  var gunSight = new THREE.Mesh(new THREE.BoxGeometry(0.011, 0.016, 0.016), gunMetalMat);
+  gunSight.position.set(0, 0.043, -0.05);
+  gunGroup.add(gunSight);
+
+  var recoilKick = 0;
+  function triggerRecoil() {
+    recoilKick = 1;
+  }
+
   // ---------- VFX: tracers, impact particles, screen shake ----------
   var vfxGroup = new THREE.Group();
   scene.add(vfxGroup);
@@ -532,14 +714,14 @@
       part.mesh.material.opacity = Math.max(0, part.life / part.maxLife);
     }
 
-    targets.forEach(function (mesh) {
-      if (mesh.userData.punch > 0) {
-        mesh.userData.punch -= dt;
-        var k = Math.max(0, mesh.userData.punch / TARGET_PUNCH_DURATION);
-        mesh.scale.setScalar(1 + k * 0.9);
-        mesh.material.emissive.setScalar(k);
-      } else if (mesh.scale.x !== 1) {
-        mesh.scale.setScalar(1);
+    targets.forEach(function (group) {
+      if (group.userData.punch > 0) {
+        group.userData.punch -= dt;
+        var k = Math.max(0, group.userData.punch / TARGET_PUNCH_DURATION);
+        group.scale.setScalar(1 + k * 0.9);
+        group.userData.parts.forEach(function (part) { part.material.emissive.setScalar(k); });
+      } else if (group.scale.x !== 1) {
+        group.scale.setScalar(1);
       }
     });
   }
@@ -569,27 +751,31 @@
     setTimeout(function () { hudEl.removeChild(el); }, 650);
   }
 
+  var fireCooldownTimer = 0;
+
   function shoot() {
-    if (gameOver) return;
+    if (gameOver || fireCooldownTimer > 0) return;
+    fireCooldownTimer = FIRE_COOLDOWN;
     shotsFired++;
 
     muzzleFlashEl.classList.remove("flash");
     void muzzleFlashEl.offsetWidth; // restart animation
     muzzleFlashEl.classList.add("flash");
     triggerShake();
+    triggerRecoil();
 
     var muzzleOrigin = camera.position.clone();
     raycaster.setFromCamera({ x: 0, y: 0 }, camera);
     raycaster.far = SHOOT_RANGE;
 
-    var targetHits = raycaster.intersectObjects(targets);
+    var targetHits = raycaster.intersectObjects(targetHitMeshes);
     var obstacleHits = raycaster.intersectObjects(obstacles);
     var targetDist = targetHits.length > 0 ? targetHits[0].distance : Infinity;
     var obstacleDist = obstacleHits.length > 0 ? obstacleHits[0].distance : Infinity;
 
     if (targetHits.length > 0 && targetDist < obstacleDist) {
       var hit = targetHits[0];
-      var hitMesh = hit.object;
+      var hitGroup = hit.object.userData.rootTarget;
       shotsHit++;
       score += 10;
       scoreLabel.textContent = "Score: " + score;
@@ -600,9 +786,9 @@
 
       spawnTracer(muzzleOrigin, hit.point);
       spawnImpactBurst(hit.point, 0xff6644, 14);
-      hitMesh.userData.punch = TARGET_PUNCH_DURATION;
+      hitGroup.userData.punch = TARGET_PUNCH_DURATION;
       setTimeout(function () {
-        respawnTarget(hitMesh);
+        respawnTarget(hitGroup);
       }, TARGET_PUNCH_DURATION * 1000);
     } else if (obstacleHits.length > 0) {
       var oHit = obstacleHits[0];
@@ -617,6 +803,10 @@
   var shootBtn = document.getElementById("shootBtn");
   shootBtn.addEventListener("touchstart", function (e) { e.preventDefault(); shoot(); }, { passive: false });
   shootBtn.addEventListener("mousedown", function (e) { e.preventDefault(); shoot(); });
+
+  var jumpBtn = document.getElementById("jumpBtn");
+  jumpBtn.addEventListener("touchstart", function (e) { e.preventDefault(); wantJump = true; }, { passive: false });
+  jumpBtn.addEventListener("mousedown", function (e) { e.preventDefault(); wantJump = true; });
 
   // ---------- Timer / game state ----------
   var timeLeft = ROUND_SECONDS;
@@ -661,6 +851,13 @@
 
     updateVfx(dt);
     if (shakeTime > 0) shakeTime = Math.max(0, shakeTime - dt);
+    if (fireCooldownTimer > 0) {
+      fireCooldownTimer = Math.max(0, fireCooldownTimer - dt);
+      shootBtn.style.opacity = fireCooldownTimer > 0 ? "0.45" : "1";
+    }
+    recoilKick = Math.max(0, recoilKick - dt * 7);
+    gunGroup.position.z = gunBasePos.z + recoilKick * 0.12;
+    gunGroup.rotation.x = gunBaseRotX - recoilKick * 0.22;
 
     if (gameOver) return;
 
@@ -673,16 +870,38 @@
     player.pos.z += moveDir.z * MOVE_SPEED * dt;
     clampToArena(player.pos);
 
-    // gentle bob-free flat movement; keep eye height fixed
-    player.pos.y = PLAYER_HEIGHT;
+    // gravity + jump
+    if (wantJump && player.grounded) {
+      player.vy = JUMP_SPEED;
+      player.grounded = false;
+    }
+    wantJump = false;
+    player.vy += GRAVITY * dt;
+    player.pos.y += player.vy * dt;
+    if (player.pos.y <= PLAYER_HEIGHT) {
+      player.pos.y = PLAYER_HEIGHT;
+      player.vy = 0;
+      player.grounded = true;
+    }
 
-    // slow target bobbing for visual life
+    // head bob while walking on the ground
+    var moveSpeed = moveDir.length();
+    if (player.grounded && moveSpeed > 0.05) {
+      bobPhase += dt * BOB_FREQUENCY;
+    } else {
+      bobPhase = 0;
+    }
+    var bobOffset = player.grounded ? Math.sin(bobPhase) * BOB_AMOUNT * moveSpeed : 0;
+
+    // idle sway for target life-likeness
     var t = clock.elapsedTime;
-    targets.forEach(function (mesh, idx) {
-      mesh.position.y += Math.sin(t * 2 + idx) * 0.002;
+    targets.forEach(function (group, idx) {
+      if (group.userData.punch <= 0) {
+        group.rotation.y = Math.sin(t * 1.2 + idx) * 0.1;
+      }
     });
 
-    camera.position.copy(player.pos);
+    camera.position.set(player.pos.x, player.pos.y + bobOffset, player.pos.z);
     camera.rotation.order = "YXZ";
     camera.rotation.y = player.yaw;
     camera.rotation.x = player.pitch;
