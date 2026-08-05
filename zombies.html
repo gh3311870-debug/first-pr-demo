@@ -231,6 +231,36 @@
     touch-action: none;
   }
 
+  #switchWeaponBtn {
+    position: absolute;
+    right: 30px;
+    bottom: 246px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(80, 80, 90, 0.55);
+    border: 2px solid rgba(255,255,255,0.6);
+    color: #fff;
+    font-size: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    touch-action: none;
+  }
+
+  #weaponLabel {
+    position: absolute;
+    right: 18px;
+    bottom: 312px;
+    width: 84px;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+  }
+
   #topBar {
     position: absolute;
     top: 12px;
@@ -357,7 +387,7 @@
     </div>
     <div id="healthBarOuter"><div id="healthBarInner"></div></div>
   </div>
-  <div id="hint">Left pad: move &middot; Right side: look &middot; &uarr;: jump &middot; Green button: shoot</div>
+  <div id="hint">Left pad: move &middot; Right side: look &middot; &uarr;: jump &middot; Green button: shoot &middot; &#8635;: switch weapon</div>
   <div id="gameNav">
     <a class="navLink" href="index.html">Builder</a>
     <a class="navLink" href="fps.html">Range</a>
@@ -368,6 +398,8 @@
   <div id="joystick"><div id="joystickKnob"></div></div>
   <div id="lookPad"></div>
   <div id="jumpBtn">&#8593;</div>
+  <div id="weaponLabel">Pistol</div>
+  <div id="switchWeaponBtn">&#8635;</div>
   <div id="shootBtn">SHOOT</div>
 </div>
 
@@ -390,9 +422,7 @@
   var MOVE_SPEED = 5;
   var PLAYER_HEIGHT = 1.7;
   var ARENA_HALF = 22;
-  var SHOOT_RANGE = 60;
   var ZOMBIE_PUNCH_DURATION = 0.18;
-  var FIRE_COOLDOWN = 0.28;
   var BOB_FREQUENCY = 9;
   var BOB_AMOUNT = 0.045;
   var PLAYER_MAX_HEALTH = 100;
@@ -413,6 +443,16 @@
   var BLEED_INTERVAL = 0.9;
   var DISMEMBER_CHANCE = 0.5;
   var WALL_SPLATTER_RANGE = 4;
+
+  // ---------- Weapons ----------
+  // sfxShoot/sfxShotgun/sfxSMG/sfxSniper are function declarations defined below —
+  // hoisted, so referencing them here at array-init time is safe.
+  var WEAPONS = [
+    { name: "Pistol", visual: "pistol", cooldown: 0.28, damage: 15, pellets: 1, spread: 0, range: 60, recoil: 1, shakeMult: 1, sfx: function () { return sfxShoot(); } },
+    { name: "Shotgun", visual: "shotgun", cooldown: 0.8, damage: 9, pellets: 6, spread: 0.09, range: 22, recoil: 1.9, shakeMult: 1.8, sfx: function () { return sfxShotgun(); } },
+    { name: "SMG", visual: "smg", cooldown: 0.09, damage: 7, pellets: 1, spread: 0.028, range: 55, recoil: 0.5, shakeMult: 0.55, sfx: function () { return sfxSMG(); } },
+    { name: "Sniper", visual: "sniper", cooldown: 1.05, damage: 55, pellets: 1, spread: 0, range: 90, recoil: 2.4, shakeMult: 2.2, sfx: function () { return sfxSniper(); } }
+  ];
 
   // Per-type stat multipliers and body proportions, applied on top of the base zombie stats.
   var ZOMBIE_TYPES = {
@@ -477,6 +517,10 @@
   }
 
   function sfxShoot() { playNoiseBurst(0.07, 2200, 0.22); playTone(160, 70, 0.09, "square", 0.14); }
+  function sfxShotgun() { playNoiseBurst(0.16, 1400, 0.3); playTone(110, 45, 0.16, "square", 0.2); }
+  function sfxSMG() { playNoiseBurst(0.045, 2600, 0.16); playTone(220, 90, 0.05, "square", 0.1); }
+  function sfxSniper() { playNoiseBurst(0.1, 3200, 0.28); playTone(90, 30, 0.22, "sawtooth", 0.22); }
+  function sfxSwitchWeapon() { playTone(500, 800, 0.06, "square", 0.1); }
   function sfxHit() { playTone(500, 220, 0.09, "sawtooth", 0.15); }
   function sfxZombieDie() { playTone(300, 60, 0.3, "sawtooth", 0.16); playNoiseBurst(0.2, 900, 0.15); }
   function sfxPlayerHurt() { playTone(180, 90, 0.18, "square", 0.2); }
@@ -1126,9 +1170,53 @@
   gunSight.position.set(0, 0.043, -0.05);
   gunGroup.add(gunSight);
 
+  // Weapon-specific attachments, toggled visible per equipped weapon.
+  var woodMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.8, metalness: 0 });
+
+  var smgMag = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.1, 0.04), gunGripMat);
+  smgMag.position.set(0, -0.1, 0.04);
+  smgMag.rotation.x = -0.15;
+  smgMag.visible = false;
+  gunGroup.add(smgMag);
+
+  var shotgunBarrel = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.3), gunMetalMat);
+  shotgunBarrel.position.set(0, 0.012, -0.23);
+  shotgunBarrel.visible = false;
+  gunGroup.add(shotgunBarrel);
+
+  var shotgunPump = new THREE.Mesh(new THREE.BoxGeometry(0.058, 0.032, 0.12), woodMat);
+  shotgunPump.position.set(0, -0.018, -0.16);
+  shotgunPump.visible = false;
+  gunGroup.add(shotgunPump);
+
+  var sniperBarrel = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.018, 0.36), gunMetalMat);
+  sniperBarrel.position.set(0, 0.012, -0.3);
+  sniperBarrel.visible = false;
+  gunGroup.add(sniperBarrel);
+
+  var sniperScope = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.026, 0.12), gunMetalMat);
+  sniperScope.position.set(0, 0.052, -0.06);
+  sniperScope.visible = false;
+  gunGroup.add(sniperScope);
+
+  var sniperStock = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.05, 0.14), woodMat);
+  sniperStock.position.set(0, -0.02, 0.13);
+  sniperStock.visible = false;
+  gunGroup.add(sniperStock);
+
+  function updateGunVisual(visual) {
+    gunBarrel.visible = visual === "pistol" || visual === "smg";
+    smgMag.visible = visual === "smg";
+    shotgunBarrel.visible = visual === "shotgun";
+    shotgunPump.visible = visual === "shotgun";
+    sniperBarrel.visible = visual === "sniper";
+    sniperScope.visible = visual === "sniper";
+    sniperStock.visible = visual === "sniper";
+  }
+
   var recoilKick = 0;
-  function triggerRecoil() {
-    recoilKick = 1;
+  function triggerRecoil(mult) {
+    recoilKick = mult || 1;
   }
 
   // ---------- VFX: tracers, impact particles, screen shake ----------
@@ -1537,10 +1625,12 @@
   }
 
   var shakeTime = 0;
+  var shakeMagMult = 1;
   var SHAKE_DURATION = 0.14;
   var SHAKE_MAGNITUDE = 0.03;
-  function triggerShake() {
+  function triggerShake(mult) {
     shakeTime = SHAKE_DURATION;
+    shakeMagMult = mult || 1;
   }
 
   // ---------- Shooting ----------
@@ -1564,26 +1654,16 @@
   }
 
   var fireCooldownTimer = 0;
+  var currentWeaponIndex = 0;
+  var weaponLabelEl = document.getElementById("weaponLabel");
 
-  function shoot() {
-    if (gameOver || fireCooldownTimer > 0) return;
-    fireCooldownTimer = FIRE_COOLDOWN;
-
-    muzzleFlashEl.classList.remove("flash");
-    void muzzleFlashEl.offsetWidth; // restart animation
-    muzzleFlashEl.classList.add("flash");
-    triggerShake();
-    triggerRecoil();
-    sfxShoot();
-
-    var muzzleWorldPos = new THREE.Vector3();
-    gunGroup.getWorldPosition(muzzleWorldPos);
-    spawnMuzzleSmoke(muzzleWorldPos);
-    spawnCasing();
-
+  // Fires a single ray in the given direction, applying weapon damage to whatever it hits.
+  // Returns whether it struck a zombie, so shoot() can decide on shared hit feedback.
+  function fireRay(direction, damage) {
+    var weapon = WEAPONS[currentWeaponIndex];
     var muzzleOrigin = camera.position.clone();
-    raycaster.setFromCamera({ x: 0, y: 0 }, camera);
-    raycaster.far = SHOOT_RANGE;
+    raycaster.set(camera.position, direction);
+    raycaster.far = weapon.range;
 
     var zombieHits = raycaster.intersectObjects(zombieHitMeshes);
     var obstacleHits = raycaster.intersectObjects(obstacles);
@@ -1599,13 +1679,8 @@
       }
       var isHeadshot = z && !z.dead && hit.object === z.headMesh;
 
-      crosshairEl.classList.remove("hit");
-      void crosshairEl.offsetWidth;
-      crosshairEl.classList.add("hit");
       spawnTracer(muzzleOrigin, hit.point);
       spawnImpactBurst(hit.point, isHeadshot ? 0xcc1c1c : 0x9c1f1f, isHeadshot ? 20 : 12);
-      sfxHit();
-      sfxSquelch();
 
       // blood spray on any wall/crate close behind the zombie (through-and-through)
       if (obstacleHits.length > 0 && obstacleDist - zombieDist < WALL_SPLATTER_RANGE) {
@@ -1614,7 +1689,7 @@
       }
 
       if (z && !z.dead) {
-        z.hp -= isHeadshot ? ZOMBIE_DAMAGE_PER_HIT * HEADSHOT_MULT : ZOMBIE_DAMAGE_PER_HIT;
+        z.hp -= isHeadshot ? damage * HEADSHOT_MULT : damage;
         z.punch = ZOMBIE_PUNCH_DURATION;
         if (z.hp <= 0) {
           if (isHeadshot) {
@@ -1629,14 +1704,66 @@
           scoreLabel.textContent = "Score: " + score;
         }
       }
+      return true;
     } else if (obstacleHits.length > 0) {
       var oHit = obstacleHits[0];
       spawnTracer(muzzleOrigin, oHit.point);
       spawnImpactBurst(oHit.point, 0xcccccc, 8);
     } else {
-      var farPoint = raycaster.ray.at(SHOOT_RANGE, new THREE.Vector3());
+      var farPoint = raycaster.ray.at(weapon.range, new THREE.Vector3());
       spawnTracer(muzzleOrigin, farPoint);
     }
+    return false;
+  }
+
+  function shoot() {
+    if (gameOver || fireCooldownTimer > 0) return;
+    var weapon = WEAPONS[currentWeaponIndex];
+    fireCooldownTimer = weapon.cooldown;
+
+    muzzleFlashEl.classList.remove("flash");
+    void muzzleFlashEl.offsetWidth; // restart animation
+    muzzleFlashEl.classList.add("flash");
+    triggerShake(weapon.shakeMult);
+    triggerRecoil(weapon.recoil);
+    weapon.sfx();
+
+    var muzzleWorldPos = new THREE.Vector3();
+    gunGroup.getWorldPosition(muzzleWorldPos);
+    spawnMuzzleSmoke(muzzleWorldPos);
+    spawnCasing();
+
+    var forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    var right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+    var up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+
+    var anyHit = false;
+    for (var p = 0; p < weapon.pellets; p++) {
+      var dir = forward.clone();
+      if (weapon.spread > 0) {
+        dir.addScaledVector(right, (Math.random() - 0.5) * 2 * weapon.spread);
+        dir.addScaledVector(up, (Math.random() - 0.5) * 2 * weapon.spread);
+        dir.normalize();
+      }
+      if (fireRay(dir, weapon.damage)) anyHit = true;
+    }
+
+    if (anyHit) {
+      crosshairEl.classList.remove("hit");
+      void crosshairEl.offsetWidth;
+      crosshairEl.classList.add("hit");
+      sfxHit();
+      sfxSquelch();
+    }
+  }
+
+  function switchWeapon() {
+    currentWeaponIndex = (currentWeaponIndex + 1) % WEAPONS.length;
+    var weapon = WEAPONS[currentWeaponIndex];
+    weaponLabelEl.textContent = weapon.name;
+    updateGunVisual(weapon.visual);
+    fireCooldownTimer = Math.min(fireCooldownTimer, 0.15);
+    sfxSwitchWeapon();
   }
 
   var shootBtn = document.getElementById("shootBtn");
@@ -1646,6 +1773,10 @@
   var jumpBtn = document.getElementById("jumpBtn");
   jumpBtn.addEventListener("touchstart", function (e) { e.preventDefault(); wantJump = true; sfxJump(); }, { passive: false });
   jumpBtn.addEventListener("mousedown", function (e) { e.preventDefault(); wantJump = true; sfxJump(); });
+
+  var switchWeaponBtn = document.getElementById("switchWeaponBtn");
+  switchWeaponBtn.addEventListener("touchstart", function (e) { e.preventDefault(); switchWeapon(); }, { passive: false });
+  switchWeaponBtn.addEventListener("mousedown", function (e) { e.preventDefault(); switchWeapon(); });
 
   // ---------- Player damage ----------
   function damagePlayer(amount) {
@@ -1687,6 +1818,9 @@
     zombiesAliveInWave = 0;
     comboCount = 0;
     comboTimer = 0;
+    currentWeaponIndex = 0;
+    weaponLabelEl.textContent = WEAPONS[0].name;
+    updateGunVisual(WEAPONS[0].visual);
     player.health = PLAYER_MAX_HEALTH;
     player.pos.set(0, PLAYER_HEIGHT, 0);
     player.vy = 0;
@@ -1822,7 +1956,7 @@
     camera.rotation.x = player.pitch;
 
     if (shakeTime > 0) {
-      var shakeAmt = (shakeTime / SHAKE_DURATION) * SHAKE_MAGNITUDE;
+      var shakeAmt = (shakeTime / SHAKE_DURATION) * SHAKE_MAGNITUDE * shakeMagMult;
       camera.rotation.y += (Math.random() - 0.5) * shakeAmt;
       camera.rotation.x += (Math.random() - 0.5) * shakeAmt;
     }

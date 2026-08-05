@@ -86,6 +86,11 @@ every side — survive as many waves as you can:
 - Up-arrow button: jump (with sound)
 - Green SHOOT button: fire at whatever's under the crosshair, with recoil,
   muzzle flash, tracers, impact particles, and sound effects
+- Circular &#8635; button: cycle weapons — **Pistol** (balanced), **Shotgun**
+  (six-pellet spread, devastating up close), **SMG** (fast, low-damage
+  full-auto-feel tapping), and **Sniper** (slow, huge single-target damage
+  and extra range). Each has a distinct viewmodel, recoil, screen shake, and
+  sound.
 - Top bar: live score, current wave, and a health bar
 - Zombies groan, shamble toward you, and attack (damaging your health) when
   they get close; each wave brings more, slightly faster zombies. The run
