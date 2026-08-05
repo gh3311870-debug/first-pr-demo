@@ -44,7 +44,7 @@
   #crosshair.hit {
     animation: crosshairPop 180ms ease-out;
   }
-  #crosshair.hit::before, #crosshair.hit::after { background: #7cf7ff; }
+  #crosshair.hit::before, #crosshair.hit::after { background: #5aa0a8; }
   @keyframes crosshairPop {
     0% { transform: translate(-50%, -50%) scale(1.8); }
     100% { transform: translate(-50%, -50%) scale(1); }
@@ -59,7 +59,7 @@
     margin-left: -130px;
     margin-top: -130px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(140,230,255,0.55) 0%, rgba(90,180,255,0.25) 35%, rgba(90,180,255,0) 70%);
+    background: radial-gradient(circle, rgba(150,200,205,0.45) 0%, rgba(110,160,170,0.2) 35%, rgba(110,160,170,0) 70%);
     opacity: 0;
   }
   #muzzleFlash.flash {
@@ -75,7 +75,7 @@
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    color: #7cf7ff;
+    color: #5aa0a8;
     font-size: 22px;
     font-weight: 700;
     text-shadow: 0 1px 4px rgba(0,0,0,0.9);
@@ -299,6 +299,61 @@
   var FIRE_COOLDOWN = 0.22;
   var TARGET_PUNCH_DURATION = 0.18;
 
+  // ---------- Sound (synthesized, no audio files) ----------
+  var audioCtx = null;
+  function ensureAudio() {
+    if (!audioCtx) {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      audioCtx = new Ctx();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+
+  function playTone(freq, freqEnd, duration, type, volume) {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var t0 = ctx.currentTime;
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(1, freqEnd), t0 + duration);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(volume, t0 + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.02);
+  }
+
+  function playNoiseBurst(duration, filterFreq, volume) {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+    var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    var data = buffer.getChannelData(0);
+    for (var i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    var noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    var filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = filterFreq;
+    var gain = ctx.createGain();
+    gain.gain.value = volume;
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start();
+  }
+
+  function sfxBlast() { playTone(760, 180, 0.11, "sawtooth", 0.16); }
+  function sfxHit() { playNoiseBurst(0.1, 1400, 0.22); playTone(500, 900, 0.08, "sine", 0.12); }
+  function sfxBoost() { playTone(220, 520, 0.28, "triangle", 0.14); }
+  function sfxRoundEnd() { playTone(520, 260, 0.5, "sine", 0.15); }
+
   // ---------- Scene setup ----------
   var scene = new THREE.Scene();
   var horizonColor = 0xcfe6ff;
@@ -330,9 +385,9 @@
 
   var skyTexture = makeCanvasTexture(2, 256, function (ctx, w, h) {
     var grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, "#2f6fd6");
-    grad.addColorStop(0.55, "#7fb3ea");
-    grad.addColorStop(1, "#eaf4ff");
+    grad.addColorStop(0, "#4d76a8");
+    grad.addColorStop(0.55, "#93aec4");
+    grad.addColorStop(1, "#e9edf0");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
   });
@@ -384,7 +439,7 @@
     clouds.push({ sprite: cloud, driftSpeed: 0.3 + Math.random() * 0.4 });
   }
 
-  var ringMat = new THREE.MeshStandardMaterial({ color: 0x3ca0ff, emissive: 0x1a4a8a, roughness: 0.4, metalness: 0.3 });
+  var ringMat = new THREE.MeshStandardMaterial({ color: 0x5a7fa0, emissive: 0x142d47, roughness: 0.5, metalness: 0.25 });
   var rings = [];
   for (var ri = 0; ri < 6; ri++) {
     var ringGeo = new THREE.TorusGeometry(4 + Math.random() * 2, 0.3, 8, 24);
@@ -406,7 +461,7 @@
 
   // ---------- Targets: energy crystal drones (core + rotating shell) ----------
   var targets = [];
-  var orbColors = [0x3ca0ff, 0xff5566, 0x7cf7ff, 0xffcc33, 0x9d5cff];
+  var orbColors = [0x4a78ad, 0xa85a52, 0x5a9ba0, 0xb8924a, 0x7a6690];
 
   function randomTargetPosition() {
     var r = 12 + Math.random() * (ARENA_RADIUS - 14);
@@ -419,13 +474,13 @@
     var color = orbColors[targets.length % orbColors.length];
     var group = new THREE.Group();
 
-    var coreMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.9, roughness: 0.2 });
+    var coreMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.45, roughness: 0.4 });
     var core = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 14), coreMat);
     group.add(core);
 
     var shellMat = new THREE.MeshStandardMaterial({
-      color: color, emissive: color, emissiveIntensity: 0.35, roughness: 0.3,
-      wireframe: true, transparent: true, opacity: 0.85
+      color: color, emissive: color, emissiveIntensity: 0.18, roughness: 0.4,
+      wireframe: true, transparent: true, opacity: 0.75
     });
     var shell = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 1), shellMat);
     group.add(shell);
@@ -441,7 +496,7 @@
       shards.push(shard);
     }
 
-    var light = new THREE.PointLight(color, 1.1, 7);
+    var light = new THREE.PointLight(color, 0.6, 7);
     group.add(light);
 
     group.position.copy(randomTargetPosition());
@@ -450,8 +505,8 @@
     group.userData.shell = shell;
     group.userData.shards = shards;
     group.userData.light = light;
-    group.userData.baseCoreEmissive = 0.9;
-    group.userData.baseShellEmissive = 0.35;
+    group.userData.baseCoreEmissive = 0.45;
+    group.userData.baseShellEmissive = 0.18;
     scene.add(group);
     targets.push(group);
   }
@@ -587,10 +642,10 @@
   // ---------- Boost ----------
   var boosting = false;
   var boostBtn = document.getElementById("boostBtn");
-  boostBtn.addEventListener("touchstart", function (e) { e.preventDefault(); boosting = true; boostBtn.classList.add("active"); }, { passive: false });
+  boostBtn.addEventListener("touchstart", function (e) { e.preventDefault(); boosting = true; boostBtn.classList.add("active"); sfxBoost(); }, { passive: false });
   boostBtn.addEventListener("touchend", function (e) { e.preventDefault(); boosting = false; boostBtn.classList.remove("active"); }, { passive: false });
   boostBtn.addEventListener("touchcancel", function () { boosting = false; boostBtn.classList.remove("active"); });
-  boostBtn.addEventListener("mousedown", function (e) { e.preventDefault(); boosting = true; boostBtn.classList.add("active"); });
+  boostBtn.addEventListener("mousedown", function (e) { e.preventDefault(); boosting = true; boostBtn.classList.add("active"); sfxBoost(); });
   boostBtn.addEventListener("mouseup", function () { boosting = false; boostBtn.classList.remove("active"); });
 
   // ---------- Power hands viewmodel ----------
@@ -598,7 +653,7 @@
   camera.add(handGroup);
 
   var handMat = new THREE.MeshStandardMaterial({ color: 0x2a3550, roughness: 0.6, metalness: 0.2 });
-  var energyMat = new THREE.MeshBasicMaterial({ color: 0x7cf7ff, transparent: true, opacity: 0.9 });
+  var energyMat = new THREE.MeshBasicMaterial({ color: 0x5aa0a8, transparent: true, opacity: 0.85 });
 
   function makeHand(sideSign) {
     var hand = new THREE.Group();
@@ -606,7 +661,7 @@
     hand.add(fist);
     var glow = new THREE.Mesh(new THREE.SphereGeometry(0.038, 10, 10), energyMat.clone());
     hand.add(glow);
-    var light = new THREE.PointLight(0x7cf7ff, 1.0, 3);
+    var light = new THREE.PointLight(0x5aa0a8, 0.6, 3);
     hand.add(light);
     hand.position.set(sideSign * 0.2, -0.42, -0.95);
     hand.userData.glow = glow;
@@ -729,10 +784,10 @@
   var BLAST_POOL_SIZE = 12;
   var blastPool = [];
   var blastGeo = new THREE.SphereGeometry(0.22, 10, 10);
-  var blastMat = new THREE.MeshBasicMaterial({ color: 0x7cf7ff, transparent: true, opacity: 0.95 });
+  var blastMat = new THREE.MeshBasicMaterial({ color: 0x5aa0a8, transparent: true, opacity: 0.9 });
   for (var bi = 0; bi < BLAST_POOL_SIZE; bi++) {
     var blastMesh = new THREE.Mesh(blastGeo, blastMat.clone());
-    var glow = new THREE.PointLight(0x7cf7ff, 0, 6);
+    var glow = new THREE.PointLight(0x5aa0a8, 0, 6);
     blastMesh.add(glow);
     blastMesh.visible = false;
     scene.add(blastMesh);
@@ -802,6 +857,7 @@
     void crosshairEl.offsetWidth;
     crosshairEl.classList.add("hit");
     showScorePop();
+    sfxHit();
     var hitColor = target.userData.core.material.color.getHex();
     spawnImpactBurst(point, hitColor, 26);
     spawnShockwave(point, hitColor);
@@ -821,6 +877,7 @@
     muzzleFlashEl.classList.add("flash");
     triggerShake();
     triggerHandPunch();
+    sfxBlast();
 
     var dir = new THREE.Vector3();
     camera.getWorldDirection(dir);
@@ -853,6 +910,7 @@
     document.getElementById("finalScore").textContent = "Final score: " + score;
     document.getElementById("finalAccuracy").textContent = "Accuracy: " + accuracy + "% (" + shotsHit + "/" + shotsFired + ")";
     endScreen.style.display = "flex";
+    sfxRoundEnd();
   }
 
   document.getElementById("restartBtn").addEventListener("click", function () {
@@ -901,13 +959,13 @@
         group.scale.setScalar(1 + k * 1.1);
         group.userData.core.material.emissiveIntensity = group.userData.baseCoreEmissive + k * 2;
         group.userData.shell.material.emissiveIntensity = group.userData.baseShellEmissive + k * 2;
-        group.userData.light.intensity = 1.1 + k * 3;
+        group.userData.light.intensity = 0.6 + k * 2;
       } else {
         group.scale.setScalar(1);
-        var pulse = Math.sin(t * 3 + idx) * 0.15;
+        var pulse = Math.sin(t * 3 + idx) * 0.1;
         group.userData.core.material.emissiveIntensity = group.userData.baseCoreEmissive + pulse;
         group.userData.shell.material.emissiveIntensity = group.userData.baseShellEmissive + pulse;
-        group.userData.light.intensity = 1.1 + pulse;
+        group.userData.light.intensity = 0.6 + pulse;
         group.position.y += Math.sin(t * 1.5 + idx) * 0.003;
       }
     });

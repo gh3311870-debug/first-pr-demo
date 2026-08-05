@@ -22,7 +22,8 @@ built with Three.js. It runs entirely in the browser with touch controls:
 - Left on-screen joystick: walk
 - Drag on the right side of the screen: look around
 - Jump button: jump
-- Place / Break buttons: build or remove blocks in front of you
+- Place / Break buttons: build or remove blocks in front of you (with sound
+  effects)
 - Top bar: pick which block type to place
 
 To try it locally, serve the repo over HTTP (opening the file directly won't
@@ -43,14 +44,14 @@ timer runs out:
 
 - Left on-screen joystick: walk
 - Drag on the right side of the screen: look around
-- Up-arrow button: jump
-- Red SHOOT button: fire at whatever's under the crosshair (with recoil, muzzle
-  flash, tracers, and impact particles)
+- Up-arrow button: jump (with sound)
+- Red SHOOT button: fire at whatever's under the crosshair, with recoil,
+  muzzle flash, tracers, impact particles, and sound effects
+- Top bar: live score and time remaining
 
 Targets are humanoid silhouettes standing in a shadowed, textured arena, and
 the player has gravity, jumping, and a walking head-bob for a more grounded
 feel.
-- Top bar: live score and time remaining
 
 Serve it the same way as the builder demo and visit
 `http://localhost:8000/fps.html`.
@@ -58,14 +59,17 @@ Serve it the same way as the builder demo and visit
 ## Skyblast demo
 
 `powers.html` is a mobile-friendly superpower flight game, also built with
-Three.js. Fly freely through a starry sky arena and blast glowing target orbs
-before the 60-second timer runs out:
+Three.js. Fly freely through an open sky arena — complete with a gradient
+sky, sun glow, and drifting clouds — and blast glowing "energy crystal"
+target drones before the 60-second timer runs out:
 
 - Left on-screen joystick: fly forward/back and strafe left/right
 - Drag on the right side of the screen: aim — flight direction follows
   wherever you're looking, including up and down
-- Gold BOOST button (hold): temporary speed burst with a particle trail
-- Blue BLAST button: fire a glowing energy projectile at the crosshair
+- Gold BOOST button (hold): temporary speed burst with a particle trail and
+  sound
+- Blue BLAST button: fire a glowing energy projectile at the crosshair from
+  your glowing power hands, with sound effects and a shockwave on impact
 - Top bar: live score and time remaining
 
 Serve it the same way as the other demos and visit

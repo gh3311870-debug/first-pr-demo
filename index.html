@@ -205,6 +205,60 @@
   var PLAYER_RADIUS = 0.3;
   var REACH = 6;
 
+  // ---------- Sound (synthesized, no audio files) ----------
+  var audioCtx = null;
+  function ensureAudio() {
+    if (!audioCtx) {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      audioCtx = new Ctx();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+
+  function playTone(freq, freqEnd, duration, type, volume) {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var t0 = ctx.currentTime;
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(1, freqEnd), t0 + duration);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(volume, t0 + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.02);
+  }
+
+  function playNoiseBurst(duration, filterFreq, volume) {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+    var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    var data = buffer.getChannelData(0);
+    for (var i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    var noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    var filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = filterFreq;
+    var gain = ctx.createGain();
+    gain.gain.value = volume;
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start();
+  }
+
+  function sfxPlace() { playTone(220, 160, 0.06, "square", 0.14); }
+  function sfxBreak() { playNoiseBurst(0.1, 900, 0.22); }
+  function sfxJump() { playTone(260, 480, 0.16, "sine", 0.16); }
+
   var BLOCK_TYPES = [
     { name: "grass", color: 0x5fb84c },
     { name: "dirt",  color: 0x8b5a2b },
@@ -474,9 +528,9 @@
   // ---------- Jump / place / break buttons ----------
   var wantJump = false;
   document.getElementById("jumpBtn").addEventListener("touchstart", function (e) {
-    e.preventDefault(); wantJump = true;
+    e.preventDefault(); wantJump = true; sfxJump();
   }, { passive: false });
-  document.getElementById("jumpBtn").addEventListener("mousedown", function () { wantJump = true; });
+  document.getElementById("jumpBtn").addEventListener("mousedown", function () { wantJump = true; sfxJump(); });
 
   function raycastTarget() {
     var dir = new THREE.Vector3();
@@ -507,6 +561,7 @@
     if (world[k] !== undefined) {
       delete world[k];
       removeBlockMesh(target.hit.x, target.hit.y, target.hit.z);
+      sfxBreak();
     }
   }
   function doPlace() {
@@ -519,6 +574,7 @@
     if (dist < 1.0) return; // don't place inside player
     world[k] = selectedBlockIndex;
     addBlockMesh(p.x, p.y, p.z, selectedBlockIndex);
+    sfxPlace();
   }
 
   document.getElementById("breakBtn").addEventListener("touchstart", function (e) { e.preventDefault(); doBreak(); }, { passive: false });
