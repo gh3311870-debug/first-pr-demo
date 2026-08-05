@@ -118,6 +118,12 @@ every side — survive as many waves as you can:
   crates too.
 - More shooting feedback: drifting muzzle smoke, ejected shell casings, and
   a pulsing red vignette when your health drops critically low.
+- Filmic tone mapping and brighter moonlight/fill lighting for a punchier,
+  higher-contrast look. Every shot casts real dynamic light — a warm flash
+  from ballistic weapons, a cyan flash from the Laser and Lightning — that
+  lights up nearby walls and zombies instead of just being a flat overlay.
+  Bullet tracers are bright glowing beams rather than thin lines, and
+  bullet/spark impacts on walls and crates now throw actual glowing sparks.
 
 Serve it the same way as the other demos and visit
 `http://localhost:8000/zombies.html`.
