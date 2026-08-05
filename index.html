@@ -98,7 +98,7 @@
 
   #blockBar {
     position: absolute;
-    top: 12px;
+    top: 56px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
@@ -120,7 +120,7 @@
 
   #hint {
     position: absolute;
-    top: 60px;
+    top: 104px;
     left: 50%;
     transform: translateX(-50%);
     color: #fff;
@@ -130,18 +130,26 @@
     max-width: 80%;
   }
 
-  #backLink {
+  #gameNav {
     position: absolute;
     top: 12px;
     right: 12px;
+    display: flex;
+    gap: 6px;
+    pointer-events: auto;
+  }
+  .navLink, .navCurrent {
     color: #fff;
     text-decoration: none;
-    font-size: 13px;
+    font-size: 12px;
     background: rgba(0,0,0,0.35);
     border: 1px solid rgba(255,255,255,0.4);
     border-radius: 6px;
-    padding: 4px 8px;
-    pointer-events: auto;
+    padding: 4px 7px;
+  }
+  .navCurrent {
+    background: rgba(255,255,255,0.28);
+    font-weight: 700;
   }
 
   #loading {
@@ -167,7 +175,11 @@
 
   <div id="blockBar"></div>
   <div id="hint">Left pad: move &middot; Right side: look &middot; Tap buttons to build/break</div>
-  <a id="backLink" href="fps.html">Range Shooter &rarr;</a>
+  <div id="gameNav">
+    <span class="navCurrent">Builder</span>
+    <a class="navLink" href="fps.html">Range</a>
+    <a class="navLink" href="powers.html">Powers</a>
+  </div>
 
   <div id="joystick"><div id="joystickKnob"></div></div>
   <div id="lookPad"></div>
