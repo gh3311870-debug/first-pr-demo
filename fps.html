@@ -298,6 +298,61 @@
   var BOB_FREQUENCY = 9;
   var BOB_AMOUNT = 0.045;
 
+  // ---------- Sound (synthesized, no audio files) ----------
+  var audioCtx = null;
+  function ensureAudio() {
+    if (!audioCtx) {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      audioCtx = new Ctx();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+
+  function playTone(freq, freqEnd, duration, type, volume) {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var t0 = ctx.currentTime;
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(1, freqEnd), t0 + duration);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(volume, t0 + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.02);
+  }
+
+  function playNoiseBurst(duration, filterFreq, volume) {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+    var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    var data = buffer.getChannelData(0);
+    for (var i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    var noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    var filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = filterFreq;
+    var gain = ctx.createGain();
+    gain.gain.value = volume;
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start();
+  }
+
+  function sfxShoot() { playNoiseBurst(0.07, 2200, 0.22); playTone(160, 70, 0.09, "square", 0.14); }
+  function sfxHit() { playTone(700, 1100, 0.07, "sine", 0.16); }
+  function sfxJump() { playTone(260, 480, 0.16, "sine", 0.16); }
+  function sfxRoundEnd() { playTone(520, 260, 0.5, "sine", 0.15); }
+
   // ---------- Scene setup ----------
   var scene = new THREE.Scene();
   scene.background = new THREE.Color(0x8fb8d8);
@@ -775,6 +830,7 @@
     muzzleFlashEl.classList.add("flash");
     triggerShake();
     triggerRecoil();
+    sfxShoot();
 
     var muzzleOrigin = camera.position.clone();
     raycaster.setFromCamera({ x: 0, y: 0 }, camera);
@@ -795,6 +851,7 @@
       void crosshairEl.offsetWidth;
       crosshairEl.classList.add("hit");
       showScorePop();
+      sfxHit();
 
       spawnTracer(muzzleOrigin, hit.point);
       spawnImpactBurst(hit.point, 0xff6644, 14);
@@ -817,8 +874,8 @@
   shootBtn.addEventListener("mousedown", function (e) { e.preventDefault(); shoot(); });
 
   var jumpBtn = document.getElementById("jumpBtn");
-  jumpBtn.addEventListener("touchstart", function (e) { e.preventDefault(); wantJump = true; }, { passive: false });
-  jumpBtn.addEventListener("mousedown", function (e) { e.preventDefault(); wantJump = true; });
+  jumpBtn.addEventListener("touchstart", function (e) { e.preventDefault(); wantJump = true; sfxJump(); }, { passive: false });
+  jumpBtn.addEventListener("mousedown", function (e) { e.preventDefault(); wantJump = true; sfxJump(); });
 
   // ---------- Timer / game state ----------
   var timeLeft = ROUND_SECONDS;
@@ -841,6 +898,7 @@
     document.getElementById("finalScore").textContent = "Final score: " + score;
     document.getElementById("finalAccuracy").textContent = "Accuracy: " + accuracy + "% (" + shotsHit + "/" + shotsFired + ")";
     endScreen.style.display = "flex";
+    sfxRoundEnd();
   }
 
   document.getElementById("restartBtn").addEventListener("click", function () {
