@@ -406,12 +406,13 @@
   var WAVE_ANNOUNCE_DELAY = 1400;
   var HEADSHOT_MULT = 3;
   var ZOMBIE_FALL_DURATION = 0.55;
-  var GORE_LINGER = 0.35;
-  var BLOOD_POOL_POOL_SIZE = 26;
-  var GIB_POOL_SIZE = 34;
+  var GORE_LINGER = 6;
+  var BLOOD_POOL_POOL_SIZE = 42;
+  var GIB_POOL_SIZE = 48;
   var COMBO_WINDOW = 1.3;
-  var BLEED_INTERVAL = 1.1;
-  var DISMEMBER_CHANCE = 0.45;
+  var BLEED_INTERVAL = 0.9;
+  var DISMEMBER_CHANCE = 0.5;
+  var WALL_SPLATTER_RANGE = 4;
 
   // Per-type stat multipliers and body proportions, applied on top of the base zombie stats.
   var ZOMBIE_TYPES = {
@@ -582,6 +583,43 @@
     ctx.stroke();
   });
 
+  var brickTexture = makeCanvasTexture(128, function (ctx, size) {
+    ctx.fillStyle = "#5f2f2a";
+    ctx.fillRect(0, 0, size, size);
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    ctx.lineWidth = 2;
+    var rows = 8, cols = 4;
+    for (var r = 0; r <= rows; r++) {
+      ctx.beginPath();
+      ctx.moveTo(0, r * (size / rows));
+      ctx.lineTo(size, r * (size / rows));
+      ctx.stroke();
+    }
+    for (var r2 = 0; r2 < rows; r2++) {
+      var offset = (r2 % 2) * (size / cols / 2);
+      for (var c = 0; c <= cols; c++) {
+        ctx.beginPath();
+        ctx.moveTo(offset + c * (size / cols), r2 * (size / rows));
+        ctx.lineTo(offset + c * (size / cols), (r2 + 1) * (size / rows));
+        ctx.stroke();
+      }
+    }
+    for (var s = 0; s < 60; s++) {
+      ctx.fillStyle = "rgba(0,0,0," + (0.03 + Math.random() * 0.06) + ")";
+      ctx.fillRect(Math.random() * size, Math.random() * size, 3, 3);
+    }
+  });
+  brickTexture.repeat.set(2, 1);
+
+  var stoneTexture = makeCanvasTexture(64, function (ctx, size) {
+    ctx.fillStyle = "#6b6b68";
+    ctx.fillRect(0, 0, size, size);
+    for (var i = 0; i < 30; i++) {
+      ctx.fillStyle = "rgba(0,0,0," + (0.04 + Math.random() * 0.1) + ")";
+      ctx.fillRect(Math.random() * size, Math.random() * size, 2, 2);
+    }
+  });
+
   // ---------- Arena ----------
   var groundGeo = new THREE.PlaneGeometry(ARENA_HALF * 2, ARENA_HALF * 2);
   var groundMat = new THREE.MeshStandardMaterial({ map: groundTexture, roughness: 0.95, metalness: 0 });
@@ -609,16 +647,62 @@
   addWall(-ARENA_HALF, 0, wallThickness, ARENA_HALF * 2 + wallThickness);
   addWall(ARENA_HALF, 0, wallThickness, ARENA_HALF * 2 + wallThickness);
 
+  function addBox(x, z, w, d, h, mat, yBase) {
+    var geo = new THREE.BoxGeometry(w, h, d);
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, (yBase || 0) + h / 2, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+    obstacles.push(mesh);
+    return mesh;
+  }
+
   // a few crate obstacles for visual interest
   var crateMat = new THREE.MeshStandardMaterial({ map: crateTexture, roughness: 0.85, metalness: 0 });
-  var crateSpots = [[-8, -4], [6, 5], [-3, 10], [10, -9], [-12, 12], [13, 3]];
+  var crateSpots = [[-8, -4], [6, 5], [-3, 10], [10, -9], [2, -2], [-9, 3]];
   crateSpots.forEach(function (p) {
-    var crate = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), crateMat);
-    crate.position.set(p[0], 1, p[1]);
-    crate.castShadow = true;
-    crate.receiveShadow = true;
-    scene.add(crate);
-    obstacles.push(crate);
+    addBox(p[0], p[1], 2, 2, 2, crateMat);
+  });
+
+  // ---------- Ruined town layout: gutted buildings, graveyard, rubble ----------
+  var buildingMat = new THREE.MeshStandardMaterial({ map: brickTexture, roughness: 0.9, metalness: 0.02 });
+
+  function addBuildingShell(cx, cz, w, d, height) {
+    var t = 0.4;
+    var doorW = Math.min(2.2, w * 0.35);
+    var segW = (w - doorW) / 2;
+    addBox(cx, cz - d / 2, w, t, height, buildingMat); // back wall, solid
+    addBox(cx - (doorW / 2 + segW / 2), cz + d / 2, segW, t, height, buildingMat); // front-left, door gap between
+    addBox(cx + (doorW / 2 + segW / 2), cz + d / 2, segW, t, height, buildingMat); // front-right
+    addBox(cx - w / 2, cz, t, d, height, buildingMat); // left wall
+    addBox(cx + w / 2, cz, t, d, height, buildingMat); // right wall
+  }
+
+  addBuildingShell(-14, -13, 9, 8, 4.6);
+  addBuildingShell(13, 9, 8, 9, 4.6);
+  addBuildingShell(14, -14, 6, 6, 3.8);
+
+  // low barricade of stacked crates funneling movement near the plaza
+  var barricadeSpots = [[3, -13], [4, -13], [5, -13], [3, -12], [5, -12]];
+  barricadeSpots.forEach(function (p) {
+    addBox(p[0], p[1], 1.6, 1.6, 1.4, crateMat);
+  });
+
+  // small graveyard cluster of leaning tombstones
+  var stoneMat = new THREE.MeshStandardMaterial({ map: stoneTexture, roughness: 0.95 });
+  var graveyardSpots = [[-17, 14], [-15.5, 15.5], [-18, 17], [-14.5, 17.5], [-16.5, 19], [-19, 15]];
+  graveyardSpots.forEach(function (p) {
+    var mesh = addBox(p[0], p[1], 0.5, 0.15, 0.85, stoneMat);
+    mesh.rotation.y = Math.random() * Math.PI;
+    mesh.rotation.z = (Math.random() - 0.5) * 0.3;
+  });
+
+  // rubble pile near the plaza center for cover
+  var rubbleSpots = [[0, 5, 0.8], [0.9, 5.6, 0.5], [-0.7, 4.6, 0.6], [0.3, 6.2, 0.45]];
+  rubbleSpots.forEach(function (p) {
+    var mesh = addBox(p[0], p[1], p[2], p[2], p[2], crateMat);
+    mesh.rotation.y = Math.random() * Math.PI;
   });
 
   // ---------- Zombies: shambling humanoids ----------
@@ -1215,28 +1299,41 @@
     }
   });
 
+  // Generic blood decal: orients to any surface normal, so it works for both
+  // ground pools and wall/crate splatter from through-and-through shots.
   var bloodPoolGeo = new THREE.PlaneGeometry(1, 1);
-  var bloodPoolPool = [];
+  var bloodDecalPool = [];
   for (var bi = 0; bi < BLOOD_POOL_POOL_SIZE; bi++) {
-    var bMat = new THREE.MeshBasicMaterial({ map: bloodTexture, transparent: true, opacity: 0, depthWrite: false });
+    var bMat = new THREE.MeshBasicMaterial({ map: bloodTexture, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
     var bMesh = new THREE.Mesh(bloodPoolGeo, bMat);
-    bMesh.rotation.x = -Math.PI / 2;
     bMesh.visible = false;
     scene.add(bMesh);
-    bloodPoolPool.push(bMesh);
+    bloodDecalPool.push(bMesh);
   }
-  var nextBloodPoolIndex = 0;
+  var nextBloodDecalIndex = 0;
+  var DECAL_DEFAULT_NORMAL = new THREE.Vector3(0, 0, 1);
 
-  function spawnBloodPool(position, scale) {
-    var mesh = bloodPoolPool[nextBloodPoolIndex];
-    nextBloodPoolIndex = (nextBloodPoolIndex + 1) % BLOOD_POOL_POOL_SIZE;
-    mesh.position.copy(position);
-    mesh.rotation.z = Math.random() * Math.PI * 2;
+  function spawnBloodDecal(position, normal, scale) {
+    var mesh = bloodDecalPool[nextBloodDecalIndex];
+    nextBloodDecalIndex = (nextBloodDecalIndex + 1) % BLOOD_POOL_POOL_SIZE;
+    mesh.position.copy(position).addScaledVector(normal, 0.02);
+    mesh.quaternion.setFromUnitVectors(DECAL_DEFAULT_NORMAL, normal);
+    mesh.rotateZ(Math.random() * Math.PI * 2);
     var s = (1.1 + Math.random() * 0.9) * scale;
     mesh.scale.set(s, s, s);
     mesh.material.opacity = 0.85;
     mesh.visible = true;
     return mesh;
+  }
+
+  function spawnBloodPool(position, scale) {
+    return spawnBloodDecal(position, new THREE.Vector3(0, 1, 0), scale);
+  }
+
+  function worldNormal(hit) {
+    var n = hit.face.normal.clone();
+    var normalMatrix = new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld);
+    return n.applyMatrix3(normalMatrix).normalize();
   }
 
   var GIB_COLORS = [0x8a1414, 0x6b0f0f, 0xa32020];
@@ -1253,7 +1350,7 @@
   var nextGibIndex = 0;
 
   function spawnGibs(position, scale) {
-    var count = Math.round(6 * scale);
+    var count = Math.round(10 * scale);
     for (var n = 0; n < count; n++) {
       var g = gibPool[nextGibIndex];
       nextGibIndex = (nextGibIndex + 1) % GIB_POOL_SIZE;
@@ -1510,6 +1607,12 @@
       sfxHit();
       sfxSquelch();
 
+      // blood spray on any wall/crate close behind the zombie (through-and-through)
+      if (obstacleHits.length > 0 && obstacleDist - zombieDist < WALL_SPLATTER_RANGE) {
+        var wallHit = obstacleHits[0];
+        spawnBloodDecal(wallHit.point, worldNormal(wallHit), 0.7 + Math.random() * 0.4);
+      }
+
       if (z && !z.dead) {
         z.hp -= isHeadshot ? ZOMBIE_DAMAGE_PER_HIT * HEADSHOT_MULT : ZOMBIE_DAMAGE_PER_HIT;
         z.punch = ZOMBIE_PUNCH_DURATION;
@@ -1575,7 +1678,7 @@
 
   document.getElementById("restartBtn").addEventListener("click", function () {
     zombies.slice().forEach(function (z) { detachZombieHitbox(z); removeZombie(z); });
-    bloodPoolPool.forEach(function (mesh) { mesh.visible = false; mesh.material.opacity = 0; });
+    bloodDecalPool.forEach(function (mesh) { mesh.visible = false; mesh.material.opacity = 0; });
     gibPool.forEach(function (g) { g.active = false; g.mesh.visible = false; });
     score = 0;
     zombiesKilled = 0;
