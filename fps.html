@@ -861,8 +861,8 @@
 
     if (gameOver) return;
 
-    var forward = new THREE.Vector3(Math.sin(player.yaw), 0, -Math.cos(player.yaw)).multiplyScalar(-moveVec.y);
-    var right = new THREE.Vector3(Math.cos(player.yaw), 0, Math.sin(player.yaw)).multiplyScalar(moveVec.x);
+    var forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw)).multiplyScalar(-moveVec.y);
+    var right = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw)).multiplyScalar(moveVec.x);
     var moveDir = forward.add(right);
     if (moveDir.lengthSq() > 1) moveDir.normalize();
 
