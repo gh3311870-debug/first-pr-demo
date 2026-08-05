@@ -41,7 +41,51 @@
   }
   #crosshair::before { top: 50%; left: 0; right: 0; height: 2px; transform: translateY(-1px); }
   #crosshair::after { left: 50%; top: 0; bottom: 0; width: 2px; transform: translateX(-1px); }
+  #crosshair.hit {
+    animation: crosshairPop 180ms ease-out;
+  }
   #crosshair.hit::before, #crosshair.hit::after { background: #ff4d4d; }
+  @keyframes crosshairPop {
+    0% { transform: translate(-50%, -50%) scale(1.8); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+  }
+
+  #muzzleFlash {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 260px;
+    height: 260px;
+    margin-left: -130px;
+    margin-top: -130px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,235,150,0.55) 0%, rgba(255,180,60,0.25) 35%, rgba(255,180,60,0) 70%);
+    opacity: 0;
+  }
+  #muzzleFlash.flash {
+    animation: muzzleFlashAnim 100ms ease-out;
+  }
+  @keyframes muzzleFlashAnim {
+    0% { opacity: 1; transform: scale(0.7); }
+    100% { opacity: 0; transform: scale(1.15); }
+  }
+
+  .scorePop {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: #ffe066;
+    font-size: 22px;
+    font-weight: 700;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+    pointer-events: none;
+    animation: scorePopAnim 600ms ease-out forwards;
+  }
+  @keyframes scorePopAnim {
+    0% { opacity: 1; transform: translate(-50%, -50%) translateY(0); }
+    100% { opacity: 0; transform: translate(-50%, -90px) translateY(0); }
+  }
 
   #joystick {
     position: absolute;
@@ -182,6 +226,7 @@
 
 <div id="hud">
   <div id="crosshair"></div>
+  <div id="muzzleFlash"></div>
   <div id="topBar">
     <div id="scoreLabel">Score: 0</div>
     <div id="timeLabel">Time: 60</div>
@@ -214,6 +259,7 @@
   var TARGET_COUNT = 6;
   var ROUND_SECONDS = 60;
   var SHOOT_RANGE = 60;
+  var TARGET_PUNCH_DURATION = 0.18;
 
   // ---------- Scene setup ----------
   var scene = new THREE.Scene();
@@ -240,6 +286,8 @@
   ground.rotation.x = -Math.PI / 2;
   scene.add(ground);
 
+  var obstacles = [ground];
+
   var wallMat = new THREE.MeshLambertMaterial({ color: 0x555f6b });
   var wallHeight = 6;
   var wallThickness = 1;
@@ -248,6 +296,7 @@
     var mesh = new THREE.Mesh(geo, wallMat);
     mesh.position.set(x, wallHeight / 2, z);
     scene.add(mesh);
+    obstacles.push(mesh);
   }
   addWall(0, -ARENA_HALF, ARENA_HALF * 2 + wallThickness, wallThickness);
   addWall(0, ARENA_HALF, ARENA_HALF * 2 + wallThickness, wallThickness);
@@ -260,6 +309,7 @@
     var crate = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), crateMat);
     crate.position.set(p[0], 1, p[1]);
     scene.add(crate);
+    obstacles.push(crate);
   });
 
   // ---------- Targets ----------
@@ -278,12 +328,14 @@
   function spawnTarget() {
     var mesh = new THREE.Mesh(targetGeo, targetMatIdle.clone());
     mesh.position.copy(randomTargetPosition());
+    mesh.userData.punch = 0;
     scene.add(mesh);
     targets.push(mesh);
   }
 
   function respawnTarget(mesh) {
     mesh.position.copy(randomTargetPosition());
+    mesh.visible = true;
   }
 
   for (var i = 0; i < TARGET_COUNT; i++) spawnTarget();
@@ -405,28 +457,160 @@
     lookStart("mouse", e.clientX, e.clientY);
   });
 
+  // ---------- VFX: tracers, impact particles, screen shake ----------
+  var vfxGroup = new THREE.Group();
+  scene.add(vfxGroup);
+
+  var tracers = []; // { line, life, maxLife }
+  var tracerMat = new THREE.LineBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.9 });
+
+  function spawnTracer(from, to) {
+    var geo = new THREE.BufferGeometry().setFromPoints([from, to]);
+    var line = new THREE.Line(geo, tracerMat.clone());
+    vfxGroup.add(line);
+    tracers.push({ line: line, life: 0.08, maxLife: 0.08 });
+  }
+
+  var PARTICLE_POOL_SIZE = 40;
+  var particlePool = [];
+  var particleGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
+  for (var pi = 0; pi < PARTICLE_POOL_SIZE; pi++) {
+    var pMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1 });
+    var pMesh = new THREE.Mesh(particleGeo, pMat);
+    pMesh.visible = false;
+    vfxGroup.add(pMesh);
+    particlePool.push({ mesh: pMesh, vel: new THREE.Vector3(), life: 0, maxLife: 1, active: false });
+  }
+  var nextParticleIndex = 0;
+
+  function spawnImpactBurst(position, color, count) {
+    for (var n = 0; n < count; n++) {
+      var p = particlePool[nextParticleIndex];
+      nextParticleIndex = (nextParticleIndex + 1) % PARTICLE_POOL_SIZE;
+      p.active = true;
+      p.mesh.visible = true;
+      p.mesh.position.copy(position);
+      p.mesh.material.color.setHex(color);
+      p.mesh.material.opacity = 1;
+      var speed = 1.5 + Math.random() * 2.5;
+      var theta = Math.random() * Math.PI * 2;
+      var phi = Math.random() * Math.PI * 0.6;
+      p.vel.set(
+        Math.sin(phi) * Math.cos(theta) * speed,
+        Math.cos(phi) * speed + 1,
+        Math.sin(phi) * Math.sin(theta) * speed
+      );
+      p.life = 0.35 + Math.random() * 0.25;
+      p.maxLife = p.life;
+    }
+  }
+
+  function updateVfx(dt) {
+    for (var ti = tracers.length - 1; ti >= 0; ti--) {
+      var tr = tracers[ti];
+      tr.life -= dt;
+      tr.line.material.opacity = Math.max(0, tr.life / tr.maxLife) * 0.9;
+      if (tr.life <= 0) {
+        vfxGroup.remove(tr.line);
+        tr.line.geometry.dispose();
+        tr.line.material.dispose();
+        tracers.splice(ti, 1);
+      }
+    }
+
+    for (var qi = 0; qi < particlePool.length; qi++) {
+      var part = particlePool[qi];
+      if (!part.active) continue;
+      part.life -= dt;
+      if (part.life <= 0) {
+        part.active = false;
+        part.mesh.visible = false;
+        continue;
+      }
+      part.vel.y -= 9 * dt;
+      part.mesh.position.addScaledVector(part.vel, dt);
+      part.mesh.material.opacity = Math.max(0, part.life / part.maxLife);
+    }
+
+    targets.forEach(function (mesh) {
+      if (mesh.userData.punch > 0) {
+        mesh.userData.punch -= dt;
+        var k = Math.max(0, mesh.userData.punch / TARGET_PUNCH_DURATION);
+        mesh.scale.setScalar(1 + k * 0.9);
+        mesh.material.emissive.setScalar(k);
+      } else if (mesh.scale.x !== 1) {
+        mesh.scale.setScalar(1);
+      }
+    });
+  }
+
+  var shakeTime = 0;
+  var SHAKE_DURATION = 0.14;
+  var SHAKE_MAGNITUDE = 0.03;
+  function triggerShake() {
+    shakeTime = SHAKE_DURATION;
+  }
+
   // ---------- Shooting ----------
   var score = 0;
   var shotsFired = 0;
   var shotsHit = 0;
   var raycaster = new THREE.Raycaster();
   var crosshairEl = document.getElementById("crosshair");
+  var muzzleFlashEl = document.getElementById("muzzleFlash");
   var scoreLabel = document.getElementById("scoreLabel");
+  var hudEl = document.getElementById("hud");
+
+  function showScorePop() {
+    var el = document.createElement("div");
+    el.className = "scorePop";
+    el.textContent = "+10";
+    hudEl.appendChild(el);
+    setTimeout(function () { hudEl.removeChild(el); }, 650);
+  }
 
   function shoot() {
     if (gameOver) return;
     shotsFired++;
+
+    muzzleFlashEl.classList.remove("flash");
+    void muzzleFlashEl.offsetWidth; // restart animation
+    muzzleFlashEl.classList.add("flash");
+    triggerShake();
+
+    var muzzleOrigin = camera.position.clone();
     raycaster.setFromCamera({ x: 0, y: 0 }, camera);
     raycaster.far = SHOOT_RANGE;
-    var hits = raycaster.intersectObjects(targets);
-    if (hits.length > 0) {
-      var hitMesh = hits[0].object;
+
+    var targetHits = raycaster.intersectObjects(targets);
+    var obstacleHits = raycaster.intersectObjects(obstacles);
+    var targetDist = targetHits.length > 0 ? targetHits[0].distance : Infinity;
+    var obstacleDist = obstacleHits.length > 0 ? obstacleHits[0].distance : Infinity;
+
+    if (targetHits.length > 0 && targetDist < obstacleDist) {
+      var hit = targetHits[0];
+      var hitMesh = hit.object;
       shotsHit++;
       score += 10;
       scoreLabel.textContent = "Score: " + score;
+      crosshairEl.classList.remove("hit");
+      void crosshairEl.offsetWidth;
       crosshairEl.classList.add("hit");
-      setTimeout(function () { crosshairEl.classList.remove("hit"); }, 120);
-      respawnTarget(hitMesh);
+      showScorePop();
+
+      spawnTracer(muzzleOrigin, hit.point);
+      spawnImpactBurst(hit.point, 0xff6644, 14);
+      hitMesh.userData.punch = TARGET_PUNCH_DURATION;
+      setTimeout(function () {
+        respawnTarget(hitMesh);
+      }, TARGET_PUNCH_DURATION * 1000);
+    } else if (obstacleHits.length > 0) {
+      var oHit = obstacleHits[0];
+      spawnTracer(muzzleOrigin, oHit.point);
+      spawnImpactBurst(oHit.point, 0xcccccc, 8);
+    } else {
+      var farPoint = raycaster.ray.at(SHOOT_RANGE, new THREE.Vector3());
+      spawnTracer(muzzleOrigin, farPoint);
     }
   }
 
@@ -474,6 +658,10 @@
 
   function update(dt) {
     dt = Math.min(dt, 0.05);
+
+    updateVfx(dt);
+    if (shakeTime > 0) shakeTime = Math.max(0, shakeTime - dt);
+
     if (gameOver) return;
 
     var forward = new THREE.Vector3(Math.sin(player.yaw), 0, -Math.cos(player.yaw)).multiplyScalar(-moveVec.y);
@@ -498,6 +686,12 @@
     camera.rotation.order = "YXZ";
     camera.rotation.y = player.yaw;
     camera.rotation.x = player.pitch;
+
+    if (shakeTime > 0) {
+      var shakeAmt = (shakeTime / SHAKE_DURATION) * SHAKE_MAGNITUDE;
+      camera.rotation.y += (Math.random() - 0.5) * shakeAmt;
+      camera.rotation.x += (Math.random() - 0.5) * shakeAmt;
+    }
   }
 
   function animate() {
