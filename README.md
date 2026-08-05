@@ -93,11 +93,16 @@ every side — survive as many waves as you can:
 - Headshots (aim for the head) deal triple damage and score a bonus, with a
   "HEADSHOT" callout. Landing kills in quick succession triggers "DOUBLE
   KILL" / "TRIPLE KILL" combo callouts.
-- Starting wave 3, tougher crimson "Brute" zombies mix in — bigger, slower,
-  much more health, and they hit harder, but are worth more score.
-- Kills leave blood splatter pools on the ground and burst into flying gore
-  chunks, and zombies collapse in a ragdoll fall when killed instead of just
-  vanishing.
+- Four zombie types spawn as waves progress: shambling **Walkers**, fast
+  low-health **Runners** (from wave 1), acid-lobbing **Spitters** that keep
+  their distance and attack from range (from wave 2), and towering crimson
+  **Brutes** with much more health and a harder hit (from wave 3).
+  Wounded zombies bleed as they stagger toward you.
+- Kills leave blood splatter pools on the ground, burst into flying gore
+  chunks, and occasionally dismember (heads can fly off), with zombies
+  collapsing in a ragdoll fall instead of just vanishing.
+- More shooting feedback: drifting muzzle smoke, ejected shell casings, and
+  a pulsing red vignette when your health drops critically low.
 
 Serve it the same way as the other demos and visit
 `http://localhost:8000/zombies.html`.
