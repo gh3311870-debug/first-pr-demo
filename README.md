@@ -75,7 +75,26 @@ target drones before the 60-second timer runs out:
 Serve it the same way as the other demos and visit
 `http://localhost:8000/powers.html`.
 
-All three demos link to each other via the nav chips in the top-right corner.
+## Zombie Siege demo
+
+`zombies.html` is a mobile-friendly wave-based zombie shooter, also built
+with Three.js. Defend a moonlit arena as shambling zombies close in from
+every side — survive as many waves as you can:
+
+- Left on-screen joystick: walk
+- Drag on the right side of the screen: look around
+- Up-arrow button: jump (with sound)
+- Green SHOOT button: fire at whatever's under the crosshair, with recoil,
+  muzzle flash, tracers, impact particles, and sound effects
+- Top bar: live score, current wave, and a health bar
+- Zombies groan, shamble toward you, and attack (damaging your health) when
+  they get close; each wave brings more, slightly faster zombies. The run
+  ends when your health hits zero.
+
+Serve it the same way as the other demos and visit
+`http://localhost:8000/zombies.html`.
+
+All four demos link to each other via the nav chips in the top-right corner.
 
 ### Playing on your phone via GitHub Pages
 
@@ -84,11 +103,12 @@ To play without running a local server, enable GitHub Pages for this repo:
 1. Go to the repo's **Settings > Pages**.
 2. Under "Build and deployment", set **Source** to "Deploy from a branch".
 3. Pick branch `main`, folder `/ (root)`, then **Save**.
-4. After a minute, all three demos will be live at
+4. After a minute, all four demos will be live at
    `https://gh3311870-debug.github.io/first-pr-demo/index.html` (builder),
-   `https://gh3311870-debug.github.io/first-pr-demo/fps.html` (shooter), and
-   `https://gh3311870-debug.github.io/first-pr-demo/powers.html` (flight) —
-   open any of them on your phone.
+   `https://gh3311870-debug.github.io/first-pr-demo/fps.html` (shooter),
+   `https://gh3311870-debug.github.io/first-pr-demo/powers.html` (flight),
+   and `https://gh3311870-debug.github.io/first-pr-demo/zombies.html`
+   (zombie siege) — open any of them on your phone.
 
 ## License
 
