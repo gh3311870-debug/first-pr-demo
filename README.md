@@ -90,6 +90,14 @@ every side — survive as many waves as you can:
 - Zombies groan, shamble toward you, and attack (damaging your health) when
   they get close; each wave brings more, slightly faster zombies. The run
   ends when your health hits zero.
+- Headshots (aim for the head) deal triple damage and score a bonus, with a
+  "HEADSHOT" callout. Landing kills in quick succession triggers "DOUBLE
+  KILL" / "TRIPLE KILL" combo callouts.
+- Starting wave 3, tougher crimson "Brute" zombies mix in — bigger, slower,
+  much more health, and they hit harder, but are worth more score.
+- Kills leave blood splatter pools on the ground and burst into flying gore
+  chunks, and zombies collapse in a ragdoll fall when killed instead of just
+  vanishing.
 
 Serve it the same way as the other demos and visit
 `http://localhost:8000/zombies.html`.
