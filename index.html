@@ -130,6 +130,20 @@
     max-width: 80%;
   }
 
+  #backLink {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    color: #fff;
+    text-decoration: none;
+    font-size: 13px;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 6px;
+    padding: 4px 8px;
+    pointer-events: auto;
+  }
+
   #loading {
     position: fixed;
     inset: 0;
@@ -153,6 +167,7 @@
 
   <div id="blockBar"></div>
   <div id="hint">Left pad: move &middot; Right side: look &middot; Tap buttons to build/break</div>
+  <a id="backLink" href="fps.html">Range Shooter &rarr;</a>
 
   <div id="joystick"><div id="joystickKnob"></div></div>
   <div id="lookPad"></div>

@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Range Shooter Mobile</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100%;
+    background: #202634;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  canvas { display: block; }
+
+  #hud {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  #crosshair {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 22px;
+    height: 22px;
+    transform: translate(-50%, -50%);
+  }
+  #crosshair::before, #crosshair::after {
+    content: "";
+    position: absolute;
+    background: rgba(255,255,255,0.9);
+    box-shadow: 0 0 2px rgba(0,0,0,0.7);
+  }
+  #crosshair::before { top: 50%; left: 0; right: 0; height: 2px; transform: translateY(-1px); }
+  #crosshair::after { left: 50%; top: 0; bottom: 0; width: 2px; transform: translateX(-1px); }
+  #crosshair.hit::before, #crosshair.hit::after { background: #ff4d4d; }
+
+  #joystick {
+    position: absolute;
+    left: 24px;
+    bottom: 24px;
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    border: 2px solid rgba(255,255,255,0.4);
+    pointer-events: auto;
+    touch-action: none;
+  }
+  #joystickKnob {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 46px;
+    height: 46px;
+    margin-left: -23px;
+    margin-top: -23px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.55);
+    border: 2px solid rgba(255,255,255,0.8);
+  }
+
+  #lookPad {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 55%;
+    height: 65%;
+    pointer-events: auto;
+    touch-action: none;
+  }
+
+  #shootBtn {
+    position: absolute;
+    right: 30px;
+    bottom: 150px;
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    background: rgba(220, 40, 40, 0.55);
+    border: 3px solid rgba(255,255,255,0.75);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    touch-action: none;
+  }
+
+  #topBar {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 140px;
+    display: flex;
+    justify-content: space-between;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  #hint {
+    position: absolute;
+    top: 42px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    font-size: 12px;
+    text-align: center;
+    max-width: 80%;
+  }
+
+  #backLink {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    color: #fff;
+    text-decoration: none;
+    font-size: 13px;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 6px;
+    padding: 4px 8px;
+    pointer-events: auto;
+  }
+
+  #endScreen {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: #fff;
+    z-index: 50;
+    pointer-events: auto;
+    text-align: center;
+    padding: 20px;
+  }
+  #endScreen h1 { font-size: 28px; margin: 0 0 8px; }
+  #endScreen p { font-size: 16px; margin: 4px 0; opacity: 0.85; }
+  #restartBtn {
+    margin-top: 20px;
+    padding: 12px 28px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: none;
+    background: #4caf50;
+    color: #fff;
+  }
+
+  #loading {
+    position: fixed;
+    inset: 0;
+    background: #202634;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 18px;
+    z-index: 100;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">Loading range...</div>
+
+<div id="hud">
+  <div id="crosshair"></div>
+  <div id="topBar">
+    <div id="scoreLabel">Score: 0</div>
+    <div id="timeLabel">Time: 60</div>
+  </div>
+  <div id="hint">Left pad: move &middot; Right side: look &middot; Red button: shoot</div>
+  <a id="backLink" href="index.html">&larr; Builder demo</a>
+
+  <div id="joystick"><div id="joystickKnob"></div></div>
+  <div id="lookPad"></div>
+  <div id="shootBtn">SHOOT</div>
+</div>
+
+<div id="endScreen">
+  <h1>Time's up!</h1>
+  <p id="finalScore">Final score: 0</p>
+  <p id="finalAccuracy">Accuracy: 0%</p>
+  <button id="restartBtn">Play again</button>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Config ----------
+  var GRAVITY = -20;
+  var MOVE_SPEED = 5;
+  var PLAYER_HEIGHT = 1.7;
+  var ARENA_HALF = 22;
+  var TARGET_COUNT = 6;
+  var ROUND_SECONDS = 60;
+  var SHOOT_RANGE = 60;
+
+  // ---------- Scene setup ----------
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x8fb8d8);
+  scene.fog = new THREE.Fog(0x8fb8d8, 25, 70);
+
+  var camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 200);
+
+  var renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  var hemi = new THREE.HemisphereLight(0xffffff, 0x445566, 1.0);
+  scene.add(hemi);
+  var sun = new THREE.DirectionalLight(0xffffff, 0.7);
+  sun.position.set(20, 40, 15);
+  scene.add(sun);
+
+  // ---------- Arena ----------
+  var groundGeo = new THREE.PlaneGeometry(ARENA_HALF * 2, ARENA_HALF * 2);
+  var groundMat = new THREE.MeshLambertMaterial({ color: 0x6b8f4e });
+  var ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  scene.add(ground);
+
+  var wallMat = new THREE.MeshLambertMaterial({ color: 0x555f6b });
+  var wallHeight = 6;
+  var wallThickness = 1;
+  function addWall(x, z, w, d) {
+    var geo = new THREE.BoxGeometry(w, wallHeight, d);
+    var mesh = new THREE.Mesh(geo, wallMat);
+    mesh.position.set(x, wallHeight / 2, z);
+    scene.add(mesh);
+  }
+  addWall(0, -ARENA_HALF, ARENA_HALF * 2 + wallThickness, wallThickness);
+  addWall(0, ARENA_HALF, ARENA_HALF * 2 + wallThickness, wallThickness);
+  addWall(-ARENA_HALF, 0, wallThickness, ARENA_HALF * 2 + wallThickness);
+  addWall(ARENA_HALF, 0, wallThickness, ARENA_HALF * 2 + wallThickness);
+
+  // a few crate obstacles for visual interest
+  var crateMat = new THREE.MeshLambertMaterial({ color: 0x9b6b3c });
+  [[-8, -4], [6, 5], [-3, 10], [10, -9]].forEach(function (p) {
+    var crate = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), crateMat);
+    crate.position.set(p[0], 1, p[1]);
+    scene.add(crate);
+  });
+
+  // ---------- Targets ----------
+  var targetGeo = new THREE.SphereGeometry(0.6, 16, 16);
+  var targetMatIdle = new THREE.MeshLambertMaterial({ color: 0xe0392b });
+  var targets = [];
+
+  function randomTargetPosition() {
+    var margin = 3;
+    var x = (Math.random() * 2 - 1) * (ARENA_HALF - margin);
+    var z = (Math.random() * 2 - 1) * (ARENA_HALF - margin);
+    var y = 1 + Math.random() * 2.2;
+    return new THREE.Vector3(x, y, z);
+  }
+
+  function spawnTarget() {
+    var mesh = new THREE.Mesh(targetGeo, targetMatIdle.clone());
+    mesh.position.copy(randomTargetPosition());
+    scene.add(mesh);
+    targets.push(mesh);
+  }
+
+  function respawnTarget(mesh) {
+    mesh.position.copy(randomTargetPosition());
+  }
+
+  for (var i = 0; i < TARGET_COUNT; i++) spawnTarget();
+
+  // ---------- Player physics ----------
+  var player = {
+    pos: new THREE.Vector3(0, PLAYER_HEIGHT, 12),
+    vel: new THREE.Vector3(0, 0, 0),
+    yaw: 0,
+    pitch: -0.05
+  };
+
+  function clampToArena(pos) {
+    var margin = 0.8;
+    pos.x = Math.max(-ARENA_HALF + margin, Math.min(ARENA_HALF - margin, pos.x));
+    pos.z = Math.max(-ARENA_HALF + margin, Math.min(ARENA_HALF - margin, pos.z));
+  }
+
+  // ---------- Input: joystick ----------
+  var joystickEl = document.getElementById("joystick");
+  var joystickKnob = document.getElementById("joystickKnob");
+  var moveVec = { x: 0, y: 0 };
+  var joystickTouchId = null;
+  var joystickCenter = { x: 0, y: 0 };
+  var JOYSTICK_MAX = 40;
+
+  function joystickStart(id, clientX, clientY) {
+    joystickTouchId = id;
+    var rect = joystickEl.getBoundingClientRect();
+    joystickCenter.x = rect.left + rect.width / 2;
+    joystickCenter.y = rect.top + rect.height / 2;
+    joystickMove(clientX, clientY);
+  }
+  function joystickMove(clientX, clientY) {
+    var dx = clientX - joystickCenter.x;
+    var dy = clientY - joystickCenter.y;
+    var dist = Math.min(JOYSTICK_MAX, Math.sqrt(dx * dx + dy * dy));
+    var angle = Math.atan2(dy, dx);
+    var kx = Math.cos(angle) * dist;
+    var ky = Math.sin(angle) * dist;
+    joystickKnob.style.transform = "translate(" + kx + "px," + ky + "px)";
+    moveVec.x = kx / JOYSTICK_MAX;
+    moveVec.y = ky / JOYSTICK_MAX;
+  }
+  function joystickEnd() {
+    joystickTouchId = null;
+    moveVec.x = 0; moveVec.y = 0;
+    joystickKnob.style.transform = "translate(0,0)";
+  }
+
+  joystickEl.addEventListener("touchstart", function (e) {
+    e.preventDefault();
+    var t = e.changedTouches[0];
+    joystickStart(t.identifier, t.clientX, t.clientY);
+  }, { passive: false });
+  joystickEl.addEventListener("touchmove", function (e) {
+    e.preventDefault();
+    for (var i = 0; i < e.changedTouches.length; i++) {
+      var t = e.changedTouches[i];
+      if (t.identifier === joystickTouchId) joystickMove(t.clientX, t.clientY);
+    }
+  }, { passive: false });
+  joystickEl.addEventListener("touchend", function (e) { e.preventDefault(); joystickEnd(); }, { passive: false });
+  joystickEl.addEventListener("touchcancel", joystickEnd);
+
+  var mouseJoystickDown = false;
+  joystickEl.addEventListener("mousedown", function (e) {
+    mouseJoystickDown = true;
+    joystickStart("mouse", e.clientX, e.clientY);
+  });
+  window.addEventListener("mousemove", function (e) {
+    if (mouseJoystickDown) joystickMove(e.clientX, e.clientY);
+    if (lookDown) lookMove(e.clientX, e.clientY);
+  });
+  window.addEventListener("mouseup", function () {
+    if (mouseJoystickDown) { mouseJoystickDown = false; joystickEnd(); }
+    lookDown = false;
+  });
+
+  // ---------- Input: look pad ----------
+  var lookPad = document.getElementById("lookPad");
+  var lookTouchId = null;
+  var lookDown = false;
+  var lastLook = { x: 0, y: 0 };
+  var LOOK_SENSITIVITY = 0.006;
+
+  function lookStart(id, x, y) {
+    lookDown = true;
+    lookTouchId = id;
+    lastLook.x = x; lastLook.y = y;
+  }
+  function lookMove(x, y) {
+    var dx = x - lastLook.x;
+    var dy = y - lastLook.y;
+    lastLook.x = x; lastLook.y = y;
+    player.yaw -= dx * LOOK_SENSITIVITY;
+    player.pitch -= dy * LOOK_SENSITIVITY;
+    var maxPitch = Math.PI / 2 - 0.05;
+    player.pitch = Math.max(-maxPitch, Math.min(maxPitch, player.pitch));
+  }
+
+  lookPad.addEventListener("touchstart", function (e) {
+    e.preventDefault();
+    var t = e.changedTouches[0];
+    lookStart(t.identifier, t.clientX, t.clientY);
+  }, { passive: false });
+  lookPad.addEventListener("touchmove", function (e) {
+    e.preventDefault();
+    for (var i = 0; i < e.changedTouches.length; i++) {
+      var t = e.changedTouches[i];
+      if (t.identifier === lookTouchId) lookMove(t.clientX, t.clientY);
+    }
+  }, { passive: false });
+  lookPad.addEventListener("touchend", function (e) {
+    e.preventDefault();
+    lookDown = false; lookTouchId = null;
+  }, { passive: false });
+  lookPad.addEventListener("mousedown", function (e) {
+    lookStart("mouse", e.clientX, e.clientY);
+  });
+
+  // ---------- Shooting ----------
+  var score = 0;
+  var shotsFired = 0;
+  var shotsHit = 0;
+  var raycaster = new THREE.Raycaster();
+  var crosshairEl = document.getElementById("crosshair");
+  var scoreLabel = document.getElementById("scoreLabel");
+
+  function shoot() {
+    if (gameOver) return;
+    shotsFired++;
+    raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+    raycaster.far = SHOOT_RANGE;
+    var hits = raycaster.intersectObjects(targets);
+    if (hits.length > 0) {
+      var hitMesh = hits[0].object;
+      shotsHit++;
+      score += 10;
+      scoreLabel.textContent = "Score: " + score;
+      crosshairEl.classList.add("hit");
+      setTimeout(function () { crosshairEl.classList.remove("hit"); }, 120);
+      respawnTarget(hitMesh);
+    }
+  }
+
+  var shootBtn = document.getElementById("shootBtn");
+  shootBtn.addEventListener("touchstart", function (e) { e.preventDefault(); shoot(); }, { passive: false });
+  shootBtn.addEventListener("mousedown", function (e) { e.preventDefault(); shoot(); });
+
+  // ---------- Timer / game state ----------
+  var timeLeft = ROUND_SECONDS;
+  var gameOver = false;
+  var timeLabel = document.getElementById("timeLabel");
+  var endScreen = document.getElementById("endScreen");
+
+  var timerInterval = setInterval(function () {
+    if (gameOver) return;
+    timeLeft--;
+    timeLabel.textContent = "Time: " + Math.max(0, timeLeft);
+    if (timeLeft <= 0) {
+      endRound();
+    }
+  }, 1000);
+
+  function endRound() {
+    gameOver = true;
+    var accuracy = shotsFired > 0 ? Math.round((shotsHit / shotsFired) * 100) : 0;
+    document.getElementById("finalScore").textContent = "Final score: " + score;
+    document.getElementById("finalAccuracy").textContent = "Accuracy: " + accuracy + "% (" + shotsHit + "/" + shotsFired + ")";
+    endScreen.style.display = "flex";
+  }
+
+  document.getElementById("restartBtn").addEventListener("click", function () {
+    score = 0;
+    shotsFired = 0;
+    shotsHit = 0;
+    timeLeft = ROUND_SECONDS;
+    gameOver = false;
+    scoreLabel.textContent = "Score: 0";
+    timeLabel.textContent = "Time: " + ROUND_SECONDS;
+    endScreen.style.display = "none";
+    targets.forEach(respawnTarget);
+  });
+
+  // ---------- Main loop ----------
+  var clock = new THREE.Clock();
+
+  function update(dt) {
+    dt = Math.min(dt, 0.05);
+    if (gameOver) return;
+
+    var forward = new THREE.Vector3(Math.sin(player.yaw), 0, -Math.cos(player.yaw)).multiplyScalar(-moveVec.y);
+    var right = new THREE.Vector3(Math.cos(player.yaw), 0, Math.sin(player.yaw)).multiplyScalar(moveVec.x);
+    var moveDir = forward.add(right);
+    if (moveDir.lengthSq() > 1) moveDir.normalize();
+
+    player.pos.x += moveDir.x * MOVE_SPEED * dt;
+    player.pos.z += moveDir.z * MOVE_SPEED * dt;
+    clampToArena(player.pos);
+
+    // gentle bob-free flat movement; keep eye height fixed
+    player.pos.y = PLAYER_HEIGHT;
+
+    // slow target bobbing for visual life
+    var t = clock.elapsedTime;
+    targets.forEach(function (mesh, idx) {
+      mesh.position.y += Math.sin(t * 2 + idx) * 0.002;
+    });
+
+    camera.position.copy(player.pos);
+    camera.rotation.order = "YXZ";
+    camera.rotation.y = player.yaw;
+    camera.rotation.x = player.pitch;
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    var dt = clock.getDelta();
+    update(dt);
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener("resize", function () {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  document.getElementById("loading").style.display = "none";
+  animate();
+})();
+</script>
+</body>
+</html>
