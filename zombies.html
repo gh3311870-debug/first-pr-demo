@@ -123,6 +123,26 @@
     100% { opacity: 0; }
   }
 
+  .bigPop {
+    position: absolute;
+    left: 50%;
+    top: 42%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.9);
+    pointer-events: none;
+    animation: bigPopAnim 900ms ease-out forwards;
+  }
+  @keyframes bigPopAnim {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+    35% { transform: translate(-50%, -50%) scale(1); }
+    75% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -65%) scale(1); }
+  }
+
   #joystick {
     position: absolute;
     left: 24px;
@@ -369,6 +389,17 @@
   var ZOMBIE_BASE_SPEED = 1.5;
   var ZOMBIE_BASE_COUNT = 4;
   var WAVE_ANNOUNCE_DELAY = 1400;
+  var HEADSHOT_MULT = 3;
+  var ZOMBIE_FALL_DURATION = 0.55;
+  var GORE_LINGER = 0.35;
+  var BLOOD_POOL_POOL_SIZE = 20;
+  var GIB_POOL_SIZE = 30;
+  var BRUTE_HP_MULT = 3;
+  var BRUTE_SPEED_MULT = 0.68;
+  var BRUTE_DAMAGE_MULT = 1.9;
+  var BRUTE_SCALE = 1.4;
+  var BRUTE_SCORE = 75;
+  var COMBO_WINDOW = 1.3;
 
   // ---------- Sound (synthesized, no audio files) ----------
   var audioCtx = null;
@@ -428,6 +459,9 @@
   function sfxWave() { playTone(200, 500, 0.5, "sine", 0.18); }
   function sfxGameOver() { playTone(300, 60, 1.0, "sawtooth", 0.2); }
   function sfxGroan() { playTone(90 + Math.random() * 40, 50, 0.4, "sawtooth", 0.05); }
+  function sfxHeadshot() { playTone(900, 200, 0.12, "square", 0.18); playNoiseBurst(0.15, 700, 0.18); }
+  function sfxSquelch() { playNoiseBurst(0.12, 500, 0.16); playTone(140, 40, 0.14, "sawtooth", 0.1); }
+  function sfxCombo() { playTone(700, 1100, 0.14, "sine", 0.18); }
 
   // ---------- Scene setup ----------
   var scene = new THREE.Scene();
@@ -578,9 +612,9 @@
     return new THREE.Vector3(x, 0, z);
   }
 
-  function createZombie() {
-    var skinHex = skinTones[Math.floor(Math.random() * skinTones.length)];
-    var shirtHex = shirtTones[Math.floor(Math.random() * shirtTones.length)];
+  function createZombie(isBrute) {
+    var skinHex = isBrute ? 0x6e2a24 : skinTones[Math.floor(Math.random() * skinTones.length)];
+    var shirtHex = isBrute ? 0x2c1512 : shirtTones[Math.floor(Math.random() * shirtTones.length)];
 
     var group = new THREE.Group();
     var skinMat = new THREE.MeshStandardMaterial({ color: skinHex, roughness: 0.9 });
@@ -621,7 +655,10 @@
       zombieHitMeshes.push(part);
     });
 
+    if (isBrute) group.scale.setScalar(BRUTE_SCALE);
+
     group.userData.parts = [head, torso, hips, legL, legR, armL, armR];
+    group.userData.head = head;
     return group;
   }
 
@@ -629,21 +666,33 @@
   var wave = 1;
   var zombiesAliveInWave = 0;
   var waveTransitioning = false;
+  var comboCount = 0;
+  var comboTimer = 0;
 
-  function spawnZombie(speedMult) {
-    var group = createZombie();
+  function bruteChanceForWave(n) {
+    if (n < 3) return 0;
+    return Math.min(0.35, (n - 2) * 0.08);
+  }
+
+  function spawnZombie(speedMult, forceBrute) {
+    var isBrute = forceBrute || Math.random() < bruteChanceForWave(wave);
+    var group = createZombie(isBrute);
     group.position.copy(randomEdgeSpawn());
     group.rotation.y = Math.random() * Math.PI * 2;
     scene.add(group);
     var z = {
       group: group,
-      hp: ZOMBIE_HP,
-      speed: ZOMBIE_BASE_SPEED * speedMult * (0.85 + Math.random() * 0.3),
+      hp: isBrute ? ZOMBIE_HP * BRUTE_HP_MULT : ZOMBIE_HP,
+      speed: ZOMBIE_BASE_SPEED * speedMult * (isBrute ? BRUTE_SPEED_MULT : 1) * (0.85 + Math.random() * 0.3),
       attackCooldown: 0,
+      attackDamage: isBrute ? Math.round(ZOMBIE_ATTACK_DAMAGE * BRUTE_DAMAGE_MULT) : ZOMBIE_ATTACK_DAMAGE,
       dead: false,
       punch: 0,
       groanTimer: 2 + Math.random() * 4,
-      bobPhase: Math.random() * Math.PI * 2
+      bobPhase: Math.random() * Math.PI * 2,
+      isBrute: isBrute,
+      headMesh: group.userData.head,
+      fallElapsed: 0
     };
     zombies.push(z);
     zombiesAliveInWave++;
@@ -656,22 +705,35 @@
     var count = Math.min(ZOMBIE_BASE_COUNT + (wave - 1) * 2, 18);
     var speedMult = 1 + (wave - 1) * 0.06;
     for (var i = 0; i < count; i++) spawnZombie(speedMult);
-    showWavePop("WAVE " + wave);
+    showWavePop("WAVE " + wave, "#ff5e5e");
     sfxWave();
   }
 
-  function showWavePop(text) {
+  function showWavePop(text, color) {
     var el = document.createElement("div");
     el.className = "wavePop";
+    if (color) el.style.color = color;
     el.textContent = text;
     hudEl.appendChild(el);
     setTimeout(function () { hudEl.removeChild(el); }, 1650);
+  }
+
+  function showBigPop(text, color) {
+    var el = document.createElement("div");
+    el.className = "bigPop";
+    el.style.color = color || "#ff8a4a";
+    el.textContent = text;
+    hudEl.appendChild(el);
+    setTimeout(function () { hudEl.removeChild(el); }, 950);
   }
 
   function removeZombie(z) {
     scene.remove(z.group);
     var idx = zombies.indexOf(z);
     if (idx >= 0) zombies.splice(idx, 1);
+  }
+
+  function detachZombieHitbox(z) {
     var hidx;
     z.group.userData.parts.forEach(function (part) {
       hidx = zombieHitMeshes.indexOf(part);
@@ -679,15 +741,33 @@
     });
   }
 
-  function killZombie(z) {
+  function killZombie(z, headshot) {
     if (z.dead) return;
     z.dead = true;
+    z.fallElapsed = 0;
+    detachZombieHitbox(z);
     zombiesKilled++;
     zombiesAliveInWave--;
-    score += 25;
+
+    var points = (z.isBrute ? BRUTE_SCORE : 25) + (headshot ? 15 : 0);
+    score += points;
     scoreLabel.textContent = "Score: " + score;
     sfxZombieDie();
-    setTimeout(function () { removeZombie(z); }, 250);
+
+    var deathPos = z.group.position.clone();
+    deathPos.y = 0.02;
+    spawnBloodPool(deathPos, z.isBrute ? 1.6 : 1);
+    spawnGibs(z.group.position.clone().setY(z.isBrute ? 1.1 : 0.9), z.isBrute);
+
+    comboCount++;
+    comboTimer = COMBO_WINDOW;
+    if (comboCount >= 2) {
+      var label = comboCount === 2 ? "DOUBLE KILL" : comboCount === 3 ? "TRIPLE KILL" : comboCount + "x COMBO";
+      showBigPop(label, "#ffd23f");
+      sfxCombo();
+    }
+
+    setTimeout(function () { removeZombie(z); }, ZOMBIE_FALL_DURATION * 1000 + GORE_LINGER * 1000);
 
     if (zombiesAliveInWave <= 0 && !waveTransitioning && !gameOver) {
       waveTransitioning = true;
@@ -901,6 +981,113 @@
     }
   }
 
+  // ---------- Gore: blood pools + gibs ----------
+  var bloodTexture = makeCanvasTexture(64, function (ctx, size) {
+    ctx.clearRect(0, 0, size, size);
+    var cx = size / 2, cy = size / 2;
+    for (var b = 0; b < 7; b++) {
+      var bx = cx + (Math.random() * 2 - 1) * size * 0.28;
+      var by = cy + (Math.random() * 2 - 1) * size * 0.28;
+      var r = size * (0.14 + Math.random() * 0.22);
+      var grad = ctx.createRadialGradient(bx, by, 0, bx, by, r);
+      grad.addColorStop(0, "rgba(110,10,10,0.95)");
+      grad.addColorStop(0.6, "rgba(90,6,6,0.7)");
+      grad.addColorStop(1, "rgba(90,6,6,0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(bx, by, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+
+  var bloodPoolGeo = new THREE.PlaneGeometry(1, 1);
+  var bloodPoolPool = [];
+  for (var bi = 0; bi < BLOOD_POOL_POOL_SIZE; bi++) {
+    var bMat = new THREE.MeshBasicMaterial({ map: bloodTexture, transparent: true, opacity: 0, depthWrite: false });
+    var bMesh = new THREE.Mesh(bloodPoolGeo, bMat);
+    bMesh.rotation.x = -Math.PI / 2;
+    bMesh.visible = false;
+    scene.add(bMesh);
+    bloodPoolPool.push(bMesh);
+  }
+  var nextBloodPoolIndex = 0;
+
+  function spawnBloodPool(position, scale) {
+    var mesh = bloodPoolPool[nextBloodPoolIndex];
+    nextBloodPoolIndex = (nextBloodPoolIndex + 1) % BLOOD_POOL_POOL_SIZE;
+    mesh.position.copy(position);
+    mesh.rotation.z = Math.random() * Math.PI * 2;
+    var s = (1.1 + Math.random() * 0.9) * scale;
+    mesh.scale.set(s, s, s);
+    mesh.material.opacity = 0.85;
+    mesh.visible = true;
+    return mesh;
+  }
+
+  var GIB_COLORS = [0x8a1414, 0x6b0f0f, 0xa32020];
+  var gibGeo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+  var gibPool = [];
+  for (var gi = 0; gi < GIB_POOL_SIZE; gi++) {
+    var gMat = new THREE.MeshStandardMaterial({ color: GIB_COLORS[gi % GIB_COLORS.length], roughness: 0.7, transparent: true });
+    var gMesh = new THREE.Mesh(gibGeo, gMat);
+    gMesh.visible = false;
+    gMesh.castShadow = true;
+    scene.add(gMesh);
+    gibPool.push({ mesh: gMesh, vel: new THREE.Vector3(), spin: new THREE.Vector3(), life: 0, maxLife: 1, active: false });
+  }
+  var nextGibIndex = 0;
+
+  function spawnGibs(position, isBrute) {
+    var count = isBrute ? 10 : 6;
+    for (var n = 0; n < count; n++) {
+      var g = gibPool[nextGibIndex];
+      nextGibIndex = (nextGibIndex + 1) % GIB_POOL_SIZE;
+      g.active = true;
+      g.mesh.visible = true;
+      g.mesh.position.copy(position);
+      var scl = (isBrute ? 1.4 : 1) * (0.6 + Math.random() * 0.8);
+      g.mesh.scale.setScalar(scl);
+      g.mesh.material.opacity = 1;
+      var speed = 2 + Math.random() * 3.5;
+      var theta = Math.random() * Math.PI * 2;
+      var phi = Math.random() * Math.PI * 0.55;
+      g.vel.set(
+        Math.sin(phi) * Math.cos(theta) * speed,
+        Math.cos(phi) * speed + 1.5,
+        Math.sin(phi) * Math.sin(theta) * speed
+      );
+      g.spin.set((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12);
+      g.life = 0.6 + Math.random() * 0.5;
+      g.maxLife = g.life;
+      g.settled = false;
+    }
+  }
+
+  function updateGibs(dt) {
+    for (var qi = 0; qi < gibPool.length; qi++) {
+      var g = gibPool[qi];
+      if (!g.active) continue;
+      g.life -= dt;
+      if (g.life <= 0) {
+        g.active = false;
+        g.mesh.visible = false;
+        continue;
+      }
+      if (!g.settled) {
+        g.vel.y -= 12 * dt;
+        g.mesh.position.addScaledVector(g.vel, dt);
+        g.mesh.rotation.x += g.spin.x * dt;
+        g.mesh.rotation.y += g.spin.y * dt;
+        g.mesh.rotation.z += g.spin.z * dt;
+        if (g.mesh.position.y <= 0.05) {
+          g.mesh.position.y = 0.05;
+          g.settled = true;
+        }
+      }
+      if (g.life < 0.25) g.mesh.material.opacity = g.life / 0.25;
+    }
+  }
+
   function updateVfx(dt) {
     for (var ti = tracers.length - 1; ti >= 0; ti--) {
       var tr = tracers[ti];
@@ -928,7 +1115,10 @@
       part.mesh.material.opacity = Math.max(0, part.life / part.maxLife);
     }
 
+    updateGibs(dt);
+
     zombies.forEach(function (z) {
+      if (z.dead) return;
       if (z.punch > 0) {
         z.punch -= dt;
         var k = Math.max(0, z.punch / ZOMBIE_PUNCH_DURATION);
@@ -992,19 +1182,26 @@
       for (var i = 0; i < zombies.length; i++) {
         if (zombies[i].group === hitGroup) { z = zombies[i]; break; }
       }
+      var isHeadshot = z && !z.dead && hit.object === z.headMesh;
+
       crosshairEl.classList.remove("hit");
       void crosshairEl.offsetWidth;
       crosshairEl.classList.add("hit");
       spawnTracer(muzzleOrigin, hit.point);
-      spawnImpactBurst(hit.point, 0x6fbf3f, 14);
+      spawnImpactBurst(hit.point, isHeadshot ? 0xcc1c1c : 0x9c1f1f, isHeadshot ? 20 : 12);
       sfxHit();
+      sfxSquelch();
 
       if (z && !z.dead) {
-        z.hp -= ZOMBIE_DAMAGE_PER_HIT;
+        z.hp -= isHeadshot ? ZOMBIE_DAMAGE_PER_HIT * HEADSHOT_MULT : ZOMBIE_DAMAGE_PER_HIT;
         z.punch = ZOMBIE_PUNCH_DURATION;
         if (z.hp <= 0) {
-          showScorePop(25);
-          killZombie(z);
+          if (isHeadshot) {
+            showBigPop("HEADSHOT", "#ff3b3b");
+            sfxHeadshot();
+          }
+          showScorePop((z.isBrute ? BRUTE_SCORE : 25) + (isHeadshot ? 15 : 0));
+          killZombie(z, isHeadshot);
         } else {
           showScorePop(5);
           score += 5;
@@ -1058,12 +1255,16 @@
   }
 
   document.getElementById("restartBtn").addEventListener("click", function () {
-    zombies.slice().forEach(function (z) { removeZombie(z); });
+    zombies.slice().forEach(function (z) { detachZombieHitbox(z); removeZombie(z); });
+    bloodPoolPool.forEach(function (mesh) { mesh.visible = false; mesh.material.opacity = 0; });
+    gibPool.forEach(function (g) { g.active = false; g.mesh.visible = false; });
     score = 0;
     zombiesKilled = 0;
     wave = 0;
     waveTransitioning = false;
     zombiesAliveInWave = 0;
+    comboCount = 0;
+    comboTimer = 0;
     player.health = PLAYER_MAX_HEALTH;
     player.pos.set(0, PLAYER_HEIGHT, 0);
     player.vy = 0;
@@ -1079,10 +1280,16 @@
   var clock = new THREE.Clock();
 
   function updateZombies(dt) {
-    var t = clock.elapsedTime;
     zombies.forEach(function (z) {
-      if (z.dead) return;
       var g = z.group;
+
+      if (z.dead) {
+        z.fallElapsed += dt;
+        var k = Math.min(1, z.fallElapsed / ZOMBIE_FALL_DURATION);
+        g.rotation.x = k * (Math.PI / 2.1);
+        g.position.y = -k * 0.4;
+        return;
+      }
 
       z.groanTimer -= dt;
       if (z.groanTimer <= 0) {
@@ -1106,7 +1313,7 @@
         z.attackCooldown -= dt;
         if (z.attackCooldown <= 0) {
           z.attackCooldown = ZOMBIE_ATTACK_COOLDOWN;
-          damagePlayer(ZOMBIE_ATTACK_DAMAGE);
+          damagePlayer(z.attackDamage);
           z.punch = ZOMBIE_PUNCH_DURATION * 0.6;
         }
       }
@@ -1125,6 +1332,11 @@
     recoilKick = Math.max(0, recoilKick - dt * 7);
     gunGroup.position.z = gunBasePos.z + recoilKick * 0.12;
     gunGroup.rotation.x = gunBaseRotX - recoilKick * 0.22;
+
+    if (comboTimer > 0) {
+      comboTimer -= dt;
+      if (comboTimer <= 0) comboCount = 0;
+    }
 
     if (gameOver) return;
 
