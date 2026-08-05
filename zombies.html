@@ -249,6 +249,54 @@
     touch-action: none;
   }
 
+  #lightningBtn {
+    position: absolute;
+    left: 150px;
+    bottom: 110px;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: rgba(70, 60, 160, 0.5);
+    border: 2px solid rgba(180,200,255,0.85);
+    color: #e6ecff;
+    font-size: 24px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    touch-action: none;
+    transition: opacity 120ms linear;
+  }
+  #lightningBtn.onCooldown {
+    opacity: 0.35;
+  }
+  #lightningCooldownLabel {
+    position: absolute;
+    left: 150px;
+    bottom: 172px;
+    width: 58px;
+    text-align: center;
+    color: #cfe0ff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  #lightningFlash {
+    position: absolute;
+    inset: 0;
+    background: rgba(190, 220, 255, 0.85);
+    opacity: 0;
+  }
+  #lightningFlash.flash {
+    animation: lightningFlashAnim 220ms ease-out;
+  }
+  @keyframes lightningFlashAnim {
+    0% { opacity: 0.85; }
+    100% { opacity: 0; }
+  }
+
   #weaponLabel {
     position: absolute;
     right: 18px;
@@ -378,6 +426,7 @@
 <div id="hud">
   <div id="damageVignette"></div>
   <div id="critVignette"></div>
+  <div id="lightningFlash"></div>
   <div id="crosshair"></div>
   <div id="muzzleFlash"></div>
   <div id="topBar">
@@ -387,7 +436,7 @@
     </div>
     <div id="healthBarOuter"><div id="healthBarInner"></div></div>
   </div>
-  <div id="hint">Left pad: move &middot; Right side: look &middot; &uarr;: jump &middot; Green button: shoot &middot; &#8635;: switch weapon</div>
+  <div id="hint">Left pad: move &middot; Right side: look &middot; &uarr;: jump &middot; Green button: shoot &middot; &#8635;: switch weapon &middot; &#9889;: lightning</div>
   <div id="gameNav">
     <a class="navLink" href="index.html">Builder</a>
     <a class="navLink" href="fps.html">Range</a>
@@ -398,6 +447,8 @@
   <div id="joystick"><div id="joystickKnob"></div></div>
   <div id="lookPad"></div>
   <div id="jumpBtn">&#8593;</div>
+  <div id="lightningCooldownLabel"></div>
+  <div id="lightningBtn">&#9889;</div>
   <div id="weaponLabel">Pistol</div>
   <div id="switchWeaponBtn">&#8635;</div>
   <div id="shootBtn">SHOOT</div>
@@ -447,12 +498,20 @@
   // ---------- Weapons ----------
   // sfxShoot/sfxShotgun/sfxSMG/sfxSniper are function declarations defined below —
   // hoisted, so referencing them here at array-init time is safe.
+  var BULLET_TRACER_COLOR = 0xd8ffb0;
+  var ENERGY_TRACER_COLOR = 0x4be8ff;
   var WEAPONS = [
-    { name: "Pistol", visual: "pistol", cooldown: 0.28, damage: 15, pellets: 1, spread: 0, range: 60, recoil: 1, shakeMult: 1, sfx: function () { return sfxShoot(); } },
-    { name: "Shotgun", visual: "shotgun", cooldown: 0.8, damage: 9, pellets: 6, spread: 0.09, range: 22, recoil: 1.9, shakeMult: 1.8, sfx: function () { return sfxShotgun(); } },
-    { name: "SMG", visual: "smg", cooldown: 0.09, damage: 7, pellets: 1, spread: 0.028, range: 55, recoil: 0.5, shakeMult: 0.55, sfx: function () { return sfxSMG(); } },
-    { name: "Sniper", visual: "sniper", cooldown: 1.05, damage: 55, pellets: 1, spread: 0, range: 90, recoil: 2.4, shakeMult: 2.2, sfx: function () { return sfxSniper(); } }
+    { name: "Pistol", visual: "pistol", cooldown: 0.28, damage: 15, pellets: 1, spread: 0, range: 60, recoil: 1, shakeMult: 1, tracerColor: BULLET_TRACER_COLOR, evaporate: false, sfx: function () { return sfxShoot(); } },
+    { name: "Shotgun", visual: "shotgun", cooldown: 0.8, damage: 9, pellets: 6, spread: 0.09, range: 22, recoil: 1.9, shakeMult: 1.8, tracerColor: BULLET_TRACER_COLOR, evaporate: false, sfx: function () { return sfxShotgun(); } },
+    { name: "SMG", visual: "smg", cooldown: 0.09, damage: 7, pellets: 1, spread: 0.028, range: 55, recoil: 0.5, shakeMult: 0.55, tracerColor: BULLET_TRACER_COLOR, evaporate: false, sfx: function () { return sfxSMG(); } },
+    { name: "Sniper", visual: "sniper", cooldown: 1.05, damage: 55, pellets: 1, spread: 0, range: 90, recoil: 2.4, shakeMult: 2.2, tracerColor: BULLET_TRACER_COLOR, evaporate: false, sfx: function () { return sfxSniper(); } },
+    { name: "Laser", visual: "laser", cooldown: 0.45, damage: 42, pellets: 1, spread: 0, range: 75, recoil: 0.75, shakeMult: 0.8, tracerColor: ENERGY_TRACER_COLOR, evaporate: true, sfx: function () { return sfxLaser(); } }
   ];
+
+  // ---------- Lightning ability ----------
+  var LIGHTNING_COOLDOWN = 11;
+  var LIGHTNING_RANGE = 13;
+  var LIGHTNING_DAMAGE = 45;
 
   // Per-type stat multipliers and body proportions, applied on top of the base zombie stats.
   var ZOMBIE_TYPES = {
@@ -521,6 +580,13 @@
   function sfxSMG() { playNoiseBurst(0.045, 2600, 0.16); playTone(220, 90, 0.05, "square", 0.1); }
   function sfxSniper() { playNoiseBurst(0.1, 3200, 0.28); playTone(90, 30, 0.22, "sawtooth", 0.22); }
   function sfxSwitchWeapon() { playTone(500, 800, 0.06, "square", 0.1); }
+  function sfxLaser() { playTone(1400, 500, 0.09, "sawtooth", 0.14); playTone(2200, 900, 0.07, "sine", 0.08); }
+  function sfxEvaporate() { playTone(1800, 200, 0.28, "sine", 0.16); playNoiseBurst(0.22, 5000, 0.1); }
+  function sfxLightning() {
+    playNoiseBurst(0.35, 3200, 0.32);
+    playTone(700, 60, 0.4, "sawtooth", 0.28);
+    playTone(1800, 300, 0.18, "square", 0.14);
+  }
   function sfxHit() { playTone(500, 220, 0.09, "sawtooth", 0.15); }
   function sfxZombieDie() { playTone(300, 60, 0.3, "sawtooth", 0.16); playNoiseBurst(0.2, 900, 0.15); }
   function sfxPlayerHurt() { playTone(180, 90, 0.18, "square", 0.2); }
@@ -979,10 +1045,13 @@
     });
   }
 
-  function killZombie(z, headshot) {
+  var EVAPORATE_DURATION = 0.32;
+
+  function killZombie(z, headshot, evaporate) {
     if (z.dead) return;
     z.dead = true;
     z.fallElapsed = 0;
+    z.evaporating = !!evaporate;
     detachZombieHitbox(z);
     zombiesKilled++;
     zombiesAliveInWave--;
@@ -990,15 +1059,24 @@
     var points = z.cfg.score + (headshot ? 15 : 0);
     score += points;
     scoreLabel.textContent = "Score: " + score;
-    sfxZombieDie();
-    sfxSplat();
 
-    var deathPos = z.group.position.clone();
-    deathPos.y = 0.02;
-    spawnBloodPool(deathPos, z.cfg.scale * 1.15);
-    spawnGibs(z.group.position.clone().setY(0.9 * z.cfg.scale), z.cfg.scale);
-    if (headshot || Math.random() < DISMEMBER_CHANCE) {
-      spawnHeadGib(z.group.position.clone().setY(1.5 * z.cfg.scale), z.cfg.scale, TYPE_SKIN_COLOR[z.type]);
+    if (evaporate) {
+      sfxEvaporate();
+      spawnEvaporateEffect(z.group.position.clone().setY(0.9 * z.cfg.scale), z.cfg.scale);
+      setTimeout(function () { removeZombie(z); }, EVAPORATE_DURATION * 1000 + 100);
+    } else {
+      sfxZombieDie();
+      sfxSplat();
+
+      var deathPos = z.group.position.clone();
+      deathPos.y = 0.02;
+      spawnBloodPool(deathPos, z.cfg.scale * 1.15);
+      spawnGibs(z.group.position.clone().setY(0.9 * z.cfg.scale), z.cfg.scale);
+      if (headshot || Math.random() < DISMEMBER_CHANCE) {
+        spawnHeadGib(z.group.position.clone().setY(1.5 * z.cfg.scale), z.cfg.scale, TYPE_SKIN_COLOR[z.type]);
+      }
+
+      setTimeout(function () { removeZombie(z); }, ZOMBIE_FALL_DURATION * 1000 + GORE_LINGER * 1000);
     }
 
     comboCount++;
@@ -1008,8 +1086,6 @@
       showBigPop(label, "#ffd23f");
       sfxCombo();
     }
-
-    setTimeout(function () { removeZombie(z); }, ZOMBIE_FALL_DURATION * 1000 + GORE_LINGER * 1000);
 
     if (zombiesAliveInWave <= 0 && !waveTransitioning && !gameOver) {
       waveTransitioning = true;
@@ -1204,6 +1280,18 @@
   sniperStock.visible = false;
   gunGroup.add(sniperStock);
 
+  var laserMat = new THREE.MeshStandardMaterial({ color: 0x1c6b7a, emissive: 0x2ad9ff, emissiveIntensity: 1.1, roughness: 0.3, metalness: 0.5 });
+
+  var laserBarrel = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.24), laserMat);
+  laserBarrel.position.set(0, 0.012, -0.19);
+  laserBarrel.visible = false;
+  gunGroup.add(laserBarrel);
+
+  var laserCell = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.09), laserMat);
+  laserCell.position.set(0, -0.02, 0.02);
+  laserCell.visible = false;
+  gunGroup.add(laserCell);
+
   function updateGunVisual(visual) {
     gunBarrel.visible = visual === "pistol" || visual === "smg";
     smgMag.visible = visual === "smg";
@@ -1212,6 +1300,8 @@
     sniperBarrel.visible = visual === "sniper";
     sniperScope.visible = visual === "sniper";
     sniperStock.visible = visual === "sniper";
+    laserBarrel.visible = visual === "laser";
+    laserCell.visible = visual === "laser";
   }
 
   var recoilKick = 0;
@@ -1224,11 +1314,13 @@
   scene.add(vfxGroup);
 
   var tracers = []; // { line, life, maxLife }
-  var tracerMat = new THREE.LineBasicMaterial({ color: 0xd8ffb0, transparent: true, opacity: 0.9 });
+  var tracerMat = new THREE.LineBasicMaterial({ color: BULLET_TRACER_COLOR, transparent: true, opacity: 0.9 });
 
-  function spawnTracer(from, to) {
+  function spawnTracer(from, to, color) {
     var geo = new THREE.BufferGeometry().setFromPoints([from, to]);
-    var line = new THREE.Line(geo, tracerMat.clone());
+    var mat = tracerMat.clone();
+    if (color) mat.color.setHex(color);
+    var line = new THREE.Line(geo, mat);
     vfxGroup.add(line);
     tracers.push({ line: line, life: 0.08, maxLife: 0.08 });
   }
@@ -1265,6 +1357,11 @@
       p.life = 0.35 + Math.random() * 0.25;
       p.maxLife = p.life;
     }
+  }
+
+  function spawnEvaporateEffect(position, scale) {
+    spawnImpactBurst(position, 0xcdf7ff, Math.round(18 * scale));
+    spawnImpactBurst(position, 0x6fd8ff, Math.round(12 * scale));
   }
 
   // ---------- Muzzle smoke ----------
@@ -1582,7 +1679,45 @@
     }
   }
 
+  // ---------- Lightning ability VFX ----------
+  var lightningBolts = []; // { line, life, maxLife }
+  var lightningMat = new THREE.LineBasicMaterial({ color: 0xbfe8ff, transparent: true, opacity: 1 });
+
+  function spawnLightningBolt(from, to) {
+    var segments = 7;
+    var points = [];
+    for (var i = 0; i <= segments; i++) {
+      var t = i / segments;
+      var p = from.clone().lerp(to, t);
+      if (i > 0 && i < segments) {
+        p.x += (Math.random() - 0.5) * 0.5;
+        p.y += (Math.random() - 0.5) * 0.5;
+        p.z += (Math.random() - 0.5) * 0.5;
+      }
+      points.push(p);
+    }
+    var geo = new THREE.BufferGeometry().setFromPoints(points);
+    var line = new THREE.Line(geo, lightningMat.clone());
+    vfxGroup.add(line);
+    lightningBolts.push({ line: line, life: 0.22, maxLife: 0.22 });
+  }
+
+  function updateLightningBolts(dt) {
+    for (var li = lightningBolts.length - 1; li >= 0; li--) {
+      var b = lightningBolts[li];
+      b.life -= dt;
+      b.line.material.opacity = Math.max(0, b.life / b.maxLife);
+      if (b.life <= 0) {
+        vfxGroup.remove(b.line);
+        b.line.geometry.dispose();
+        b.line.material.dispose();
+        lightningBolts.splice(li, 1);
+      }
+    }
+  }
+
   function updateVfx(dt) {
+    updateLightningBolts(dt);
     for (var ti = tracers.length - 1; ti >= 0; ti--) {
       var tr = tracers[ti];
       tr.life -= dt;
@@ -1678,12 +1813,14 @@
         if (zombies[i].group === hitGroup) { z = zombies[i]; break; }
       }
       var isHeadshot = z && !z.dead && hit.object === z.headMesh;
+      var evaporate = weapon.evaporate;
 
-      spawnTracer(muzzleOrigin, hit.point);
-      spawnImpactBurst(hit.point, isHeadshot ? 0xcc1c1c : 0x9c1f1f, isHeadshot ? 20 : 12);
+      spawnTracer(muzzleOrigin, hit.point, weapon.tracerColor);
+      spawnImpactBurst(hit.point, evaporate ? 0x9fe8ff : (isHeadshot ? 0xcc1c1c : 0x9c1f1f), isHeadshot ? 20 : 12);
 
-      // blood spray on any wall/crate close behind the zombie (through-and-through)
-      if (obstacleHits.length > 0 && obstacleDist - zombieDist < WALL_SPLATTER_RANGE) {
+      // blood spray on any wall/crate close behind the zombie (through-and-through);
+      // energy weapons cauterize instead of splattering blood.
+      if (!evaporate && obstacleHits.length > 0 && obstacleDist - zombieDist < WALL_SPLATTER_RANGE) {
         var wallHit = obstacleHits[0];
         spawnBloodDecal(wallHit.point, worldNormal(wallHit), 0.7 + Math.random() * 0.4);
       }
@@ -1697,7 +1834,7 @@
             sfxHeadshot();
           }
           showScorePop(z.cfg.score + (isHeadshot ? 15 : 0));
-          killZombie(z, isHeadshot);
+          killZombie(z, isHeadshot, evaporate);
         } else {
           showScorePop(5);
           score += 5;
@@ -1707,11 +1844,11 @@
       return true;
     } else if (obstacleHits.length > 0) {
       var oHit = obstacleHits[0];
-      spawnTracer(muzzleOrigin, oHit.point);
-      spawnImpactBurst(oHit.point, 0xcccccc, 8);
+      spawnTracer(muzzleOrigin, oHit.point, weapon.tracerColor);
+      spawnImpactBurst(oHit.point, weapon.evaporate ? 0x9fe8ff : 0xcccccc, 8);
     } else {
       var farPoint = raycaster.ray.at(weapon.range, new THREE.Vector3());
-      spawnTracer(muzzleOrigin, farPoint);
+      spawnTracer(muzzleOrigin, farPoint, weapon.tracerColor);
     }
     return false;
   }
@@ -1765,6 +1902,54 @@
     fireCooldownTimer = Math.min(fireCooldownTimer, 0.15);
     sfxSwitchWeapon();
   }
+
+  // ---------- Lightning ability ----------
+  var abilityCooldownTimer = 0;
+  var lightningBtn = document.getElementById("lightningBtn");
+  var lightningCooldownLabel = document.getElementById("lightningCooldownLabel");
+  var lightningFlashEl = document.getElementById("lightningFlash");
+
+  function useLightningAbility() {
+    if (gameOver || abilityCooldownTimer > 0) return;
+    abilityCooldownTimer = LIGHTNING_COOLDOWN;
+    lightningBtn.classList.add("onCooldown");
+    sfxLightning();
+    triggerShake(2.5);
+
+    lightningFlashEl.classList.remove("flash");
+    void lightningFlashEl.offsetWidth;
+    lightningFlashEl.classList.add("flash");
+
+    var playerChestPos = new THREE.Vector3(player.pos.x, player.pos.y - 0.2, player.pos.z);
+    var struck = 0;
+    zombies.forEach(function (z) {
+      if (z.dead) return;
+      var dist = z.group.position.distanceTo(player.pos);
+      if (dist > LIGHTNING_RANGE) return;
+
+      struck++;
+      var zombieChestPos = z.group.position.clone();
+      zombieChestPos.y += 0.9 * z.cfg.scale;
+      spawnLightningBolt(playerChestPos, zombieChestPos);
+
+      var isHeadshot = false;
+      z.hp -= LIGHTNING_DAMAGE;
+      z.punch = ZOMBIE_PUNCH_DURATION;
+      if (z.hp <= 0) {
+        showScorePop(z.cfg.score);
+        killZombie(z, isHeadshot, true);
+      } else {
+        showScorePop(5);
+        score += 5;
+        scoreLabel.textContent = "Score: " + score;
+      }
+    });
+
+    if (struck === 0) showBigPop("MISS", "#9fc9ff");
+  }
+
+  lightningBtn.addEventListener("touchstart", function (e) { e.preventDefault(); useLightningAbility(); }, { passive: false });
+  lightningBtn.addEventListener("mousedown", function (e) { e.preventDefault(); useLightningAbility(); });
 
   var shootBtn = document.getElementById("shootBtn");
   shootBtn.addEventListener("touchstart", function (e) { e.preventDefault(); shoot(); }, { passive: false });
@@ -1821,6 +2006,9 @@
     currentWeaponIndex = 0;
     weaponLabelEl.textContent = WEAPONS[0].name;
     updateGunVisual(WEAPONS[0].visual);
+    abilityCooldownTimer = 0;
+    lightningCooldownLabel.textContent = "";
+    lightningBtn.classList.remove("onCooldown");
     player.health = PLAYER_MAX_HEALTH;
     player.pos.set(0, PLAYER_HEIGHT, 0);
     player.vy = 0;
@@ -1842,9 +2030,18 @@
 
       if (z.dead) {
         z.fallElapsed += dt;
-        var k = Math.min(1, z.fallElapsed / ZOMBIE_FALL_DURATION);
-        g.rotation.x = k * (Math.PI / 2.1);
-        g.position.y = -k * 0.4;
+        if (z.evaporating) {
+          var ek = Math.min(1, z.fallElapsed / EVAPORATE_DURATION);
+          g.scale.setScalar(z.cfg.scale * (1 - ek));
+          g.rotation.y += dt * 6;
+          g.userData.parts.forEach(function (part) {
+            part.material.emissive.setRGB(ek * 0.5, ek * 0.85, ek);
+          });
+        } else {
+          var k = Math.min(1, z.fallElapsed / ZOMBIE_FALL_DURATION);
+          g.rotation.x = k * (Math.PI / 2.1);
+          g.position.y = -k * 0.4;
+        }
         return;
       }
 
@@ -1904,6 +2101,15 @@
     if (fireCooldownTimer > 0) {
       fireCooldownTimer = Math.max(0, fireCooldownTimer - dt);
       shootBtn.style.opacity = fireCooldownTimer > 0 ? "0.45" : "1";
+    }
+    if (abilityCooldownTimer > 0) {
+      abilityCooldownTimer = Math.max(0, abilityCooldownTimer - dt);
+      if (abilityCooldownTimer > 0) {
+        lightningCooldownLabel.textContent = abilityCooldownTimer.toFixed(1) + "s";
+      } else {
+        lightningCooldownLabel.textContent = "";
+        lightningBtn.classList.remove("onCooldown");
+      }
     }
     recoilKick = Math.max(0, recoilKick - dt * 7);
     gunGroup.position.z = gunBasePos.z + recoilKick * 0.12;
