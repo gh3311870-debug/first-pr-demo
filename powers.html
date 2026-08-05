@@ -70,6 +70,21 @@
     100% { opacity: 0; transform: scale(1.15); }
   }
 
+  #speedLines {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 150ms ease-out;
+    background:
+      repeating-conic-gradient(
+        from 0deg,
+        rgba(255,255,255,0.09) 0deg 2deg,
+        rgba(255,255,255,0) 2deg 12deg
+      );
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 18%, black 62%);
+    mask-image: radial-gradient(circle at 50% 50%, transparent 18%, black 62%);
+  }
+
   .scorePop {
     position: absolute;
     left: 50%;
@@ -258,6 +273,7 @@
 <div id="hud">
   <div id="crosshair"></div>
   <div id="muzzleFlash"></div>
+  <div id="speedLines"></div>
   <div id="topBar">
     <div id="scoreLabel">Score: 0</div>
     <div id="timeLabel">Time: 60</div>
@@ -470,6 +486,20 @@
     return new THREE.Vector3(Math.cos(theta) * r, y, Math.sin(theta) * r);
   }
 
+  var shardGeo = new THREE.ConeGeometry(0.12, 0.4, 4);
+  function addShards(group, coreMat) {
+    var shards = [];
+    for (var s = 0; s < 4; s++) {
+      var shard = new THREE.Mesh(shardGeo, coreMat);
+      var axis = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+      shard.position.copy(axis.clone().multiplyScalar(0.65));
+      shard.lookAt(shard.position.clone().add(axis));
+      group.add(shard);
+      shards.push(shard);
+    }
+    return shards;
+  }
+
   function spawnTarget() {
     var color = orbColors[targets.length % orbColors.length];
     var group = new THREE.Group();
@@ -485,22 +515,14 @@
     var shell = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 1), shellMat);
     group.add(shell);
 
-    var shardGeo = new THREE.ConeGeometry(0.12, 0.4, 4);
-    var shards = [];
-    for (var s = 0; s < 4; s++) {
-      var shard = new THREE.Mesh(shardGeo, coreMat);
-      var axis = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
-      shard.position.copy(axis.clone().multiplyScalar(0.65));
-      shard.lookAt(shard.position.clone().add(axis));
-      group.add(shard);
-      shards.push(shard);
-    }
+    var shards = addShards(group, coreMat);
 
     var light = new THREE.PointLight(color, 0.6, 7);
     group.add(light);
 
     group.position.copy(randomTargetPosition());
     group.userData.punch = 0;
+    group.userData.coreMat = coreMat;
     group.userData.core = core;
     group.userData.shell = shell;
     group.userData.shards = shards;
@@ -514,6 +536,9 @@
   function respawnTarget(group) {
     group.position.copy(randomTargetPosition());
     group.visible = true;
+    if (group.userData.shards.length === 0) {
+      group.userData.shards = addShards(group, group.userData.coreMat);
+    }
   }
 
   for (var ti = 0; ti < TARGET_COUNT; ti++) spawnTarget();
@@ -524,6 +549,7 @@
     yaw: 0,
     pitch: -0.1
   };
+  var contrailTimer = 0;
 
   function clampToArena(pos) {
     var maxR = ARENA_RADIUS - 2;
@@ -732,6 +758,45 @@
     }
   }
 
+  // ---------- Debris: shard pieces flung off a hit target ----------
+  var debris = [];
+  function detachShardsAsDebris(group) {
+    var shards = group.userData.shards;
+    for (var d = 0; d < shards.length; d++) {
+      var shard = shards[d];
+      var worldPos = new THREE.Vector3();
+      shard.getWorldPosition(worldPos);
+      group.remove(shard);
+      shard.position.copy(worldPos);
+      scene.add(shard);
+      var dir = new THREE.Vector3(Math.random() - 0.5, Math.random() * 0.6 + 0.2, Math.random() - 0.5).normalize();
+      debris.push({
+        mesh: shard,
+        vel: dir.multiplyScalar(2.5 + Math.random() * 3),
+        angVel: new THREE.Vector3((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6),
+        life: 1.2 + Math.random() * 0.5
+      });
+    }
+    group.userData.shards = [];
+  }
+
+  function updateDebris(dt) {
+    for (var i = debris.length - 1; i >= 0; i--) {
+      var d = debris[i];
+      d.life -= dt;
+      if (d.life <= 0) {
+        scene.remove(d.mesh);
+        debris.splice(i, 1);
+        continue;
+      }
+      d.vel.y -= 6 * dt;
+      d.mesh.position.addScaledVector(d.vel, dt);
+      d.mesh.rotation.x += d.angVel.x * dt;
+      d.mesh.rotation.y += d.angVel.y * dt;
+      d.mesh.rotation.z += d.angVel.z * dt;
+    }
+  }
+
   var SHOCKWAVE_POOL_SIZE = 8;
   var shockwavePool = [];
   var shockwaveGeo = new THREE.RingGeometry(0.4, 0.55, 20);
@@ -791,7 +856,7 @@
     blastMesh.add(glow);
     blastMesh.visible = false;
     scene.add(blastMesh);
-    blastPool.push({ mesh: blastMesh, light: glow, vel: new THREE.Vector3(), life: 0, active: false });
+    blastPool.push({ mesh: blastMesh, light: glow, vel: new THREE.Vector3(), life: 0, active: false, trailTimer: 0 });
   }
   var nextBlastIndex = 0;
 
@@ -804,6 +869,23 @@
     b.vel.copy(direction).multiplyScalar(BLAST_SPEED);
     b.life = BLAST_LIFETIME;
     b.light.intensity = 2.5;
+    b.trailTimer = 0;
+  }
+
+  function spawnTrailParticle(position, color) {
+    var p = particlePool[nextParticleIndex];
+    nextParticleIndex = (nextParticleIndex + 1) % PARTICLE_POOL_SIZE;
+    p.active = true;
+    p.mesh.visible = true;
+    p.mesh.position.copy(position);
+    p.mesh.position.x += (Math.random() - 0.5) * 0.08;
+    p.mesh.position.y += (Math.random() - 0.5) * 0.08;
+    p.mesh.position.z += (Math.random() - 0.5) * 0.08;
+    p.mesh.material.color.setHex(color);
+    p.mesh.material.opacity = 0.8;
+    p.vel.set(0, -0.3, 0);
+    p.life = 0.18;
+    p.maxLife = p.life;
   }
 
   function updateBlasts(dt) {
@@ -817,6 +899,12 @@
         continue;
       }
       b.mesh.position.addScaledVector(b.vel, dt);
+
+      b.trailTimer -= dt;
+      if (b.trailTimer <= 0) {
+        b.trailTimer = 0.018;
+        spawnTrailParticle(b.mesh.position, 0x5aa0a8);
+      }
 
       for (var ti2 = 0; ti2 < targets.length; ti2++) {
         var target = targets[ti2];
@@ -837,6 +925,7 @@
   var shotsHit = 0;
   var crosshairEl = document.getElementById("crosshair");
   var muzzleFlashEl = document.getElementById("muzzleFlash");
+  var speedLinesEl = document.getElementById("speedLines");
   var scoreLabel = document.getElementById("scoreLabel");
   var hudEl = document.getElementById("hud");
   var fireCooldownTimer = 0;
@@ -861,6 +950,7 @@
     var hitColor = target.userData.core.material.color.getHex();
     spawnImpactBurst(point, hitColor, 26);
     spawnShockwave(point, hitColor);
+    detachShardsAsDebris(target);
     target.userData.punch = TARGET_PUNCH_DURATION;
     setTimeout(function () {
       respawnTarget(target);
@@ -934,6 +1024,7 @@
     updateParticles(dt);
     updateShockwaves(dt);
     updateBlasts(dt);
+    updateDebris(dt);
     if (shakeTime > 0) shakeTime = Math.max(0, shakeTime - dt);
     if (fireCooldownTimer > 0) {
       fireCooldownTimer = Math.max(0, fireCooldownTimer - dt);
@@ -1002,9 +1093,19 @@
     player.pos.add(moveDelta);
     clampToArena(player.pos);
 
-    if (boosting && moveDelta.lengthSq() > 0.0001) {
-      spawnImpactBurst(player.pos.clone(), 0xffcc33, 1);
+    var moveSpeedNow = moveDelta.length();
+    if (moveSpeedNow > 0.001) {
+      contrailTimer -= dt;
+      if (contrailTimer <= 0) {
+        contrailTimer = boosting ? 0.02 : 0.06;
+        var trailPos = player.pos.clone().addScaledVector(forwardDir, -0.7);
+        spawnTrailParticle(trailPos, boosting ? 0xe0b34a : 0x8fa9c4);
+      }
     }
+    if (boosting && moveDelta.lengthSq() > 0.0001) {
+      spawnImpactBurst(player.pos.clone(), 0xe0b34a, 1);
+    }
+    speedLinesEl.style.opacity = boosting ? "1" : "0";
 
     camera.position.copy(player.pos);
     camera.rotation.order = "YXZ";
