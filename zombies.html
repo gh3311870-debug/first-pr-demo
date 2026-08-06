@@ -249,74 +249,59 @@
     touch-action: none;
   }
 
-  #lightningBtn {
+  /* Ability buttons: compact shared layout with the cooldown countdown
+     badged onto the button itself (not a separate stacked label) so the
+     whole column stays short enough to fit on small phone screens. */
+  .abilityBtn {
     position: absolute;
     left: 150px;
-    bottom: 110px;
-    width: 58px;
-    height: 58px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    touch-action: none;
+    transition: opacity 120ms linear;
+    font-size: 21px;
+    font-weight: 700;
+  }
+  .abilityBtn.onCooldown {
+    opacity: 0.35;
+  }
+  .cooldownBadge {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 2px;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+    pointer-events: none;
+  }
+
+  #lightningBtn {
+    bottom: 104px;
     background: rgba(120, 40, 220, 0.5);
     border: 2px solid rgba(200,140,255,0.9);
     box-shadow: 0 0 12px rgba(155,75,255,0.6);
     color: #f0e0ff;
-    font-size: 24px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: auto;
-    touch-action: none;
-    transition: opacity 120ms linear;
-  }
-  #lightningBtn.onCooldown {
-    opacity: 0.35;
   }
   #lightningCooldownLabel {
-    position: absolute;
-    left: 150px;
-    bottom: 172px;
-    width: 58px;
-    text-align: center;
     color: #cfe0ff;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-    font-size: 11px;
-    font-weight: 700;
   }
 
   #fireballBtn {
-    position: absolute;
-    left: 150px;
-    bottom: 196px;
-    width: 58px;
-    height: 58px;
-    border-radius: 50%;
+    bottom: 160px;
     background: rgba(210, 60, 10, 0.5);
     border: 2px solid rgba(255,170,90,0.9);
     box-shadow: 0 0 12px rgba(255,110,30,0.6);
     color: #fff0e0;
-    font-size: 24px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: auto;
-    touch-action: none;
-    transition: opacity 120ms linear;
-  }
-  #fireballBtn.onCooldown {
-    opacity: 0.35;
   }
   #fireballCooldownLabel {
-    position: absolute;
-    left: 150px;
-    bottom: 258px;
-    width: 58px;
-    text-align: center;
     color: #ffd9b8;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-    font-size: 11px;
-    font-weight: 700;
   }
 
   #fireballFlash {
@@ -330,38 +315,14 @@
   }
 
   #supernovaBtn {
-    position: absolute;
-    left: 150px;
-    bottom: 286px;
-    width: 58px;
-    height: 58px;
-    border-radius: 50%;
+    bottom: 216px;
     background: rgba(255, 220, 140, 0.35);
     border: 2px solid rgba(255,245,210,0.95);
     box-shadow: 0 0 18px rgba(255,225,150,0.85);
     color: #fffceb;
-    font-size: 24px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: auto;
-    touch-action: none;
-    transition: opacity 120ms linear;
-  }
-  #supernovaBtn.onCooldown {
-    opacity: 0.35;
   }
   #supernovaCooldownLabel {
-    position: absolute;
-    left: 150px;
-    bottom: 348px;
-    width: 58px;
-    text-align: center;
     color: #fff2d0;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-    font-size: 11px;
-    font-weight: 700;
   }
 
   #supernovaChargeVignette {
@@ -560,12 +521,9 @@
   <div id="joystick"><div id="joystickKnob"></div></div>
   <div id="lookPad"></div>
   <div id="jumpBtn">&#8593;</div>
-  <div id="supernovaCooldownLabel"></div>
-  <div id="supernovaBtn">&#9728;&#65039;</div>
-  <div id="fireballCooldownLabel"></div>
-  <div id="fireballBtn">&#128293;</div>
-  <div id="lightningCooldownLabel"></div>
-  <div id="lightningBtn">&#9889;</div>
+  <div id="supernovaBtn" class="abilityBtn">&#9728;&#65039;<span id="supernovaCooldownLabel" class="cooldownBadge"></span></div>
+  <div id="fireballBtn" class="abilityBtn">&#128293;<span id="fireballCooldownLabel" class="cooldownBadge"></span></div>
+  <div id="lightningBtn" class="abilityBtn">&#9889;<span id="lightningCooldownLabel" class="cooldownBadge"></span></div>
   <div id="weaponLabel">Pistol</div>
   <div id="switchWeaponBtn">&#8635;</div>
   <div id="shootBtn">SHOOT</div>
