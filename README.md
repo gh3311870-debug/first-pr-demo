@@ -112,6 +112,11 @@ every side — survive as many waves as you can:
 - Zombies groan, shamble toward you, and attack (damaging your health) when
   they get close; each wave brings more, slightly faster zombies. The run
   ends when your health hits zero.
+- Clearing a wave pauses the action for an upgrade pick: choose one of three
+  random perks — more weapon damage, more max health (plus a full heal),
+  faster movement, shorter ability cooldowns, or faster weapon fire rate —
+  before the next wave begins. Perks stack across the whole run, so a long
+  survival snowballs into a much stronger loadout.
 - Headshots (aim for the head) deal triple damage and score a bonus, with a
   "HEADSHOT" callout. Landing kills in quick succession triggers "DOUBLE
   KILL" / "TRIPLE KILL" combo callouts.
