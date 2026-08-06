@@ -2170,9 +2170,8 @@
 
   // Fires a single ray in the given direction, applying weapon damage to whatever it hits.
   // Returns whether it struck a zombie, so shoot() can decide on shared hit feedback.
-  function fireRay(direction, damage) {
+  function fireRay(direction, damage, muzzleOrigin) {
     var weapon = WEAPONS[currentWeaponIndex];
-    var muzzleOrigin = camera.position.clone();
     raycaster.set(camera.position, direction);
     raycaster.far = weapon.range;
 
@@ -2265,7 +2264,7 @@
         dir.addScaledVector(up, (Math.random() - 0.5) * 2 * weapon.spread);
         dir.normalize();
       }
-      if (fireRay(dir, weapon.damage)) anyHit = true;
+      if (fireRay(dir, weapon.damage, muzzleWorldPos)) anyHit = true;
     }
 
     if (anyHit) {
