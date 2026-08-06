@@ -397,6 +397,29 @@
     100% { opacity: 0; }
   }
 
+  /* blood spatter flecks on the "lens" when a kill lands close to the player */
+  #bloodSplatterOverlay {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 8% 15%, rgba(150,8,8,0.6) 0%, rgba(150,8,8,0) 6%),
+      radial-gradient(circle at 92% 22%, rgba(130,6,6,0.55) 0%, rgba(130,6,6,0) 7%),
+      radial-gradient(circle at 16% 88%, rgba(160,10,10,0.55) 0%, rgba(160,10,10,0) 8%),
+      radial-gradient(circle at 86% 82%, rgba(120,6,6,0.5) 0%, rgba(120,6,6,0) 6%),
+      radial-gradient(circle at 50% 6%, rgba(140,8,8,0.45) 0%, rgba(140,8,8,0) 10%),
+      radial-gradient(circle at 30% 45%, rgba(110,6,6,0.35) 0%, rgba(110,6,6,0) 5%);
+  }
+  #bloodSplatterOverlay.flash {
+    animation: bloodSplatterAnim 1.2s ease-out;
+  }
+  @keyframes bloodSplatterAnim {
+    0% { opacity: 0.95; }
+    55% { opacity: 0.7; }
+    100% { opacity: 0; }
+  }
+
   #lightningFlash {
     position: absolute;
     inset: 0;
@@ -576,6 +599,7 @@
   <div id="fireballFlash"></div>
   <div id="supernovaChargeVignette"></div>
   <div id="supernovaFlash"></div>
+  <div id="bloodSplatterOverlay"></div>
   <div id="crosshair">
     <span class="chCorner chTL"></span>
     <span class="chCorner chTR"></span>
@@ -733,9 +757,10 @@
     osc.stop(t0 + duration + 0.02);
   }
 
-  function playNoiseBurst(duration, filterFreq, volume) {
+  function playNoiseBurst(duration, filterFreq, volume, filterEndFreq) {
     var ctx = ensureAudio();
     if (!ctx) return;
+    var t0 = ctx.currentTime;
     var bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
     var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     var data = buffer.getChannelData(0);
@@ -744,7 +769,8 @@
     noise.buffer = buffer;
     var filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.value = filterFreq;
+    filter.frequency.setValueAtTime(filterFreq, t0);
+    if (filterEndFreq) filter.frequency.exponentialRampToValueAtTime(Math.max(1, filterEndFreq), t0 + duration);
     var gain = ctx.createGain();
     gain.gain.value = volume;
     noise.connect(filter);
@@ -753,30 +779,96 @@
     noise.start();
   }
 
-  function sfxShoot() { playNoiseBurst(0.07, 2200, 0.22); playTone(160, 70, 0.09, "square", 0.14); }
-  function sfxShotgun() { playNoiseBurst(0.16, 1400, 0.3); playTone(110, 45, 0.16, "square", 0.2); }
-  function sfxSMG() { playNoiseBurst(0.045, 2600, 0.16); playTone(220, 90, 0.05, "square", 0.1); }
-  function sfxSniper() { playNoiseBurst(0.1, 3200, 0.28); playTone(90, 30, 0.22, "sawtooth", 0.22); }
+  // short, punchy low-frequency thump — the "body" under a gunshot crack
+  function playThump(freq, duration, volume) {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var t0 = ctx.currentTime;
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, t0);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(1, freq * 0.4), t0 + duration);
+    gain.gain.setValueAtTime(volume, t0);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.02);
+  }
+
+  function rand(min, max) { return min + Math.random() * (max - min); }
+
+  // Gunshots are layered: a bright transient "crack", a low punchy "thump"
+  // for body/weight, and (for the bigger guns) a short decaying tail that
+  // reads as the shot's report bouncing around the arena. Every call gets
+  // a little random pitch/timing variance so rapid fire doesn't sound like
+  // the exact same sample looping.
+  function sfxShoot() {
+    playNoiseBurst(0.05, rand(2600, 3400), 0.22);
+    playThump(rand(140, 175), 0.1, 0.22);
+    playNoiseBurst(0.09, 1100, 0.06, 400);
+  }
+  function sfxShotgun() {
+    playNoiseBurst(0.05, rand(1600, 2000), 0.32);
+    playThump(rand(85, 105), 0.22, 0.34);
+    playNoiseBurst(0.28, 1200, 0.16, 250);
+  }
+  function sfxSMG() {
+    playNoiseBurst(0.035, rand(3000, 3800), 0.17);
+    playThump(rand(180, 230), 0.055, 0.14);
+  }
+  function sfxSniper() {
+    playNoiseBurst(0.06, rand(3600, 4400), 0.3);
+    playThump(rand(60, 75), 0.4, 0.36);
+    playNoiseBurst(0.5, 900, 0.14, 120);
+  }
   function sfxSwitchWeapon() { playTone(500, 800, 0.06, "square", 0.1); }
-  function sfxLaser() { playTone(1400, 500, 0.09, "sawtooth", 0.14); playTone(2200, 900, 0.07, "sine", 0.08); }
+  function sfxLaser() {
+    playTone(rand(1250, 1550), 500, 0.09, "sawtooth", 0.14);
+    playTone(rand(2000, 2400), 900, 0.07, "sine", 0.08);
+  }
   function sfxEvaporate() { playTone(1800, 200, 0.28, "sine", 0.16); playNoiseBurst(0.22, 5000, 0.1); }
   function sfxLightning() {
     playNoiseBurst(0.35, 3200, 0.32);
     playTone(700, 60, 0.4, "sawtooth", 0.28);
     playTone(1800, 300, 0.18, "square", 0.14);
   }
-  function sfxHit() { playTone(500, 220, 0.09, "sawtooth", 0.15); }
-  function sfxZombieDie() { playTone(300, 60, 0.3, "sawtooth", 0.16); playNoiseBurst(0.2, 900, 0.15); }
+  // Wet, meaty gore audio: a filtered noise "squelch" that sweeps downward
+  // (like the biquad closing on impact) layered with a soft low thud,
+  // pitch-varied so a string of hits doesn't sound identical.
+  function sfxHit() {
+    playNoiseBurst(0.08, rand(1400, 1900), 0.15, rand(300, 500));
+    playTone(rand(420, 560), rand(180, 240), 0.08, "sawtooth", 0.1);
+  }
+  function sfxZombieDie() {
+    playTone(rand(260, 340), 55, 0.3, "sawtooth", 0.16);
+    playNoiseBurst(0.24, rand(800, 1100), 0.16, 150);
+    playThump(rand(70, 90), 0.22, 0.14);
+  }
   function sfxPlayerHurt() { playTone(180, 90, 0.18, "square", 0.2); }
   function sfxJump() { playTone(260, 480, 0.16, "sine", 0.16); }
   function sfxWave() { playTone(200, 500, 0.5, "sine", 0.18); }
   function sfxGameOver() { playTone(300, 60, 1.0, "sawtooth", 0.2); }
   function sfxGroan() { playTone(90 + Math.random() * 40, 50, 0.4, "sawtooth", 0.05); }
   function sfxHeadshot() { playTone(900, 200, 0.12, "square", 0.18); playNoiseBurst(0.15, 700, 0.18); }
-  function sfxSquelch() { playNoiseBurst(0.12, 500, 0.16); playTone(140, 40, 0.14, "sawtooth", 0.1); }
+  function sfxSquelch() {
+    playNoiseBurst(0.14, rand(600, 900), 0.17, rand(150, 250));
+    playTone(rand(150, 200), rand(35, 55), 0.14, "sawtooth", 0.1);
+  }
   function sfxCombo() { playTone(700, 1100, 0.14, "sine", 0.18); }
   function sfxSpit() { playTone(320, 180, 0.16, "sawtooth", 0.14); playNoiseBurst(0.1, 1400, 0.1); }
-  function sfxSplat() { playNoiseBurst(0.16, 400, 0.16); playTone(120, 40, 0.16, "sawtooth", 0.1); }
+  function sfxSplat() {
+    playNoiseBurst(0.2, rand(500, 700), 0.17, rand(100, 180));
+    playTone(rand(130, 170), rand(35, 50), 0.16, "sawtooth", 0.1);
+  }
+  // Extra wet "tear" for limb/head dismemberment — a sharper, higher squelch
+  // than the standard death splat.
+  function sfxDismember() {
+    playNoiseBurst(0.16, rand(1800, 2400), 0.2, rand(300, 450));
+    playTone(rand(700, 900), rand(150, 220), 0.1, "sawtooth", 0.12);
+    playThump(rand(90, 120), 0.18, 0.15);
+  }
   function sfxFireballCast() { playTone(300, 700, 0.2, "sawtooth", 0.16); playNoiseBurst(0.15, 1800, 0.12); }
   function sfxExplosion() {
     playNoiseBurst(0.45, 900, 0.35);
@@ -1364,10 +1456,25 @@
       deathPos.y = 0.02;
       spawnBloodPool(deathPos, z.cfg.scale * 1.15);
       spawnGibs(z.group.position.clone().setY(0.9 * z.cfg.scale), z.cfg.scale);
+      spawnBloodMist(z.group.position.clone().setY(1.1 * z.cfg.scale), z.cfg.scale);
       if (headshot || Math.random() < DISMEMBER_CHANCE) {
-        spawnHeadGib(z.group.position.clone().setY(1.5 * z.cfg.scale), z.cfg.scale, TYPE_SKIN_COLOR[z.type]);
+        sfxDismember();
+        if (headshot || Math.random() < 0.5) {
+          spawnDetachedGib(z.group.position.clone().setY(1.5 * z.cfg.scale), z.cfg.scale, TYPE_SKIN_COLOR[z.type], headGibGeo);
+        } else {
+          var armSide = Math.random() < 0.5 ? -1 : 1;
+          var armPos = z.group.position.clone().setY(1.02 * z.cfg.scale);
+          armPos.x += armSide * 0.4 * z.cfg.scale;
+          spawnDetachedGib(armPos, z.cfg.scale, TYPE_SKIN_COLOR[z.type], limbGibGeo);
+        }
       }
       flashEnergyLight(z.group.position.clone().setY(0.9 * z.cfg.scale), 0xff1f4d, 4, 5);
+
+      if (z.group.position.distanceTo(player.pos) <= CLOSE_KILL_RANGE) {
+        bloodSplatterEl.classList.remove("flash");
+        void bloodSplatterEl.offsetWidth;
+        bloodSplatterEl.classList.add("flash");
+      }
 
       setTimeout(function () { removeZombie(z); }, ZOMBIE_FALL_DURATION * 1000 + GORE_LINGER * 1000);
     }
@@ -1893,6 +2000,13 @@
   }
   var nextGibIndex = 0;
 
+  // A fine spray of blood droplets on top of the chunkier gibs, for a more
+  // visceral "burst" on kill — smaller, non-glowing, faster-fading.
+  function spawnBloodMist(position, scale) {
+    spawnImpactBurst(position, 0xb8151f, Math.round(14 * scale));
+    spawnImpactBurst(position, 0x7a0d12, Math.round(10 * scale));
+  }
+
   function spawnGibs(position, scale) {
     var count = Math.round(10 * scale);
     for (var n = 0; n < count; n++) {
@@ -1944,15 +2058,18 @@
     }
   }
 
-  // Dismemberment: an occasional detached head flies off on kill (rare, one-off meshes).
+  // Dismemberment: an occasional detached head or arm flies off on kill
+  // (rare, one-off meshes since it's uncommon enough not to need pooling).
   var headGibGeo = new THREE.SphereGeometry(0.22, 10, 10);
+  var limbGibGeo = new THREE.BoxGeometry(0.17, 0.62, 0.19);
   var activeHeadGibs = [];
 
-  function spawnHeadGib(position, scale, skinHex) {
+  function spawnDetachedGib(position, scale, skinHex, geometry) {
     var mat = new THREE.MeshStandardMaterial({ color: skinHex, roughness: 0.9, transparent: true });
-    var mesh = new THREE.Mesh(headGibGeo, mat);
+    var mesh = new THREE.Mesh(geometry, mat);
     mesh.scale.setScalar(scale);
     mesh.position.copy(position);
+    mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
     mesh.castShadow = true;
     scene.add(mesh);
     var speed = 3 + Math.random() * 2.5;
@@ -2375,6 +2492,8 @@
   var healthBarInner = document.getElementById("healthBarInner");
   var damageVignetteEl = document.getElementById("damageVignette");
   var critVignetteEl = document.getElementById("critVignette");
+  var bloodSplatterEl = document.getElementById("bloodSplatterOverlay");
+  var CLOSE_KILL_RANGE = 3.5;
   var hudEl = document.getElementById("hud");
 
   function showScorePop(amount) {
