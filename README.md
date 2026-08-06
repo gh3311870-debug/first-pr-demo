@@ -89,10 +89,13 @@ every side — survive as many waves as you can:
 - Circular &#8635; button: cycle weapons — **Pistol** (balanced), **Shotgun**
   (six-pellet spread, devastating up close), **SMG** (fast, low-damage
   full-auto-feel tapping), **Sniper** (slow, huge single-target damage and
-  extra range), and **Laser** (a glowing energy rifle that evaporates
-  zombies in a burst of light instead of leaving a corpse). Each weapon has
-  its own saturated neon tracer color, viewmodel, recoil, screen shake, and
-  sound — muzzle flashes and bullet impacts light up in that same color.
+  extra range), **Laser** (a glowing energy rifle that evaporates
+  zombies in a burst of light instead of leaving a corpse), and **Sword** (a
+  close-range melee blade — swing it at a zombie standing in front of you
+  to lop off a limb in a spray of blood, and finish them off with enough
+  hits, occasionally taking the head clean off). Each weapon has its own
+  saturated neon tracer color, viewmodel, recoil, screen shake, and sound —
+  muzzle flashes and bullet impacts light up in that same color.
 - Purple &#9889; button: unleash a **Lightning** ability — a heavy-damage
   neon-violet bolt that chains to every zombie within range of you at once,
   on an ~11-second cooldown (shown on the button). Great for breaking up a
