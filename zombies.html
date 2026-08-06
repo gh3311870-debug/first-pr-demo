@@ -2317,8 +2317,17 @@
 
   // Fires a single ray in the given direction, applying weapon damage to whatever it hits.
   // Returns whether it struck a zombie, so shoot() can decide on shared hit feedback.
-  function fireRay(direction, damage, muzzleOrigin) {
+  function fireRay(direction, damage) {
     var weapon = WEAPONS[currentWeaponIndex];
+    // Anchor the tracer's visible start to a point directly on the aim ray
+    // (a short distance in front of the camera) rather than the gun model's
+    // actual screen-offset position. The gun sits off to the side of the
+    // crosshair, so a beam from the literal muzzle to a crosshair-accurate
+    // hit point has to visibly bend to get there — at a glance that reads
+    // as "shooting to the side" even though the hit itself is always
+    // exactly where the crosshair points. Starting on the ray keeps the
+    // beam dead straight down the crosshair line every time.
+    var muzzleOrigin = camera.position.clone().addScaledVector(direction, 0.4);
     raycaster.set(camera.position, direction);
     raycaster.far = weapon.range;
 
@@ -2411,7 +2420,7 @@
         dir.addScaledVector(up, (Math.random() - 0.5) * 2 * weapon.spread);
         dir.normalize();
       }
-      if (fireRay(dir, weapon.damage, muzzleWorldPos)) anyHit = true;
+      if (fireRay(dir, weapon.damage)) anyHit = true;
     }
 
     if (anyHit) {
