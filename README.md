@@ -138,6 +138,11 @@ every side — survive as many waves as you can:
   Bullet tracers are bright glowing neon-tube beams (a white-hot core plus a
   colored glow layer) rather than thin lines, and
   bullet/spark impacts on walls and crates now throw actual glowing sparks.
+- A cyberpunk-styled HUD: a cyan/magenta chromatic "glitch text" look on the
+  score, wave, and labels; a bracket-style neon reticle; a segmented neon
+  health bar that shifts from cyan-green to magenta-red when critical; faint
+  always-on scanlines; and a two-tone cyan-key/magenta-rim lighting setup
+  across the whole arena. Buttons give tactile press feedback when tapped.
 
 Serve it the same way as the other demos and visit
 `http://localhost:8000/zombies.html`.
