@@ -125,10 +125,15 @@ every side — survive as many waves as you can:
   through, dead leafless trees scattered around, a leaning-tombstone
   graveyard, a crate barricade, and a central rubble pile for cover.
 - Kills leave blood splatter pools on the ground, burst into flying gore
-  chunks, and occasionally dismember (heads can fly off), with zombies
-  collapsing in a ragdoll fall and lingering as corpses instead of
-  vanishing. Through-and-through shots splatter blood on nearby walls and
-  crates too.
+  chunks and a fine blood mist, and occasionally dismember — heads or arms
+  can fly off and tumble away with physics, with zombies collapsing in a
+  ragdoll fall and lingering as corpses instead of vanishing.
+  Through-and-through shots splatter blood on nearby walls and crates too,
+  and a close-range kill splashes blood across the screen itself.
+- Layered, punchier sound effects: gunshots blend a crack, a body thump,
+  and a tail for a more realistic report, each with pitch variance so shots
+  don't sound identical; kills and dismemberment get their own meaty,
+  filtered-noise squelches instead of a single tone.
 - More shooting feedback: drifting muzzle smoke, ejected shell casings, and
   a pulsing red vignette when your health drops critically low.
 - Filmic tone mapping and brighter moonlight/fill lighting for a punchier,
