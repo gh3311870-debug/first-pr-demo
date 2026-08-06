@@ -25,6 +25,20 @@
     z-index: 10;
   }
 
+  /* faint always-on CRT/hologram scanlines + a cool cyan/magenta corner
+     vignette for a cyberpunk HUD feel, sitting under the interactive controls */
+  #scanlines {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    mix-blend-mode: overlay;
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 1px, transparent 3px),
+      radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 60%, rgba(20,0,40,0.35) 100%),
+      linear-gradient(120deg, rgba(47,246,255,0.05), rgba(255,42,223,0.05));
+  }
+
   #damageVignette {
     position: absolute;
     inset: 0;
@@ -54,28 +68,45 @@
     50% { opacity: 0.65; }
   }
 
+  /* cyberpunk bracket reticle: four corner brackets + a glowing center dot */
   #crosshair {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 22px;
-    height: 22px;
+    width: 30px;
+    height: 30px;
     transform: translate(-50%, -50%);
+    filter: drop-shadow(0 0 4px rgba(47,246,255,0.85)) drop-shadow(0 0 2px rgba(255,42,223,0.5));
   }
-  #crosshair::before, #crosshair::after {
+  #crosshair::before {
     content: "";
     position: absolute;
-    background: rgba(255,255,255,0.9);
-    box-shadow: 0 0 2px rgba(0,0,0,0.7);
+    top: 50%;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    background: #2ff6ff;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
   }
-  #crosshair::before { top: 50%; left: 0; right: 0; height: 2px; transform: translateY(-1px); }
-  #crosshair::after { left: 50%; top: 0; bottom: 0; width: 2px; transform: translateX(-1px); }
+  .chCorner {
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    border: 0 solid #2ff6ff;
+    transition: border-color 80ms linear;
+  }
+  .chTL { top: 0; left: 0; border-top-width: 2px; border-left-width: 2px; }
+  .chTR { top: 0; right: 0; border-top-width: 2px; border-right-width: 2px; }
+  .chBL { bottom: 0; left: 0; border-bottom-width: 2px; border-left-width: 2px; }
+  .chBR { bottom: 0; right: 0; border-bottom-width: 2px; border-right-width: 2px; }
   #crosshair.hit {
     animation: crosshairPop 180ms ease-out;
   }
-  #crosshair.hit::before, #crosshair.hit::after { background: #7cff5e; }
+  #crosshair.hit::before { background: #ff2adf; }
+  #crosshair.hit .chCorner { border-color: #ff2adf; }
   @keyframes crosshairPop {
-    0% { transform: translate(-50%, -50%) scale(1.8); }
+    0% { transform: translate(-50%, -50%) scale(1.7); }
     100% { transform: translate(-50%, -50%) scale(1); }
   }
 
@@ -104,10 +135,11 @@
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    color: #7cff5e;
+    font-family: 'Consolas', 'SFMono-Regular', Menlo, Monaco, 'Courier New', monospace;
+    color: #2ff6ff;
     font-size: 22px;
     font-weight: 700;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+    text-shadow: 1px 0 rgba(255,42,223,0.8), -1px 0 rgba(47,246,255,0.6), 0 1px 4px rgba(0,0,0,0.9);
     pointer-events: none;
     animation: scorePopAnim 600ms ease-out forwards;
   }
@@ -121,10 +153,12 @@
     left: 50%;
     top: 34%;
     transform: translate(-50%, -50%);
+    font-family: 'Consolas', 'SFMono-Regular', Menlo, Monaco, 'Courier New', monospace;
     color: #ff5e5e;
     font-size: 30px;
     font-weight: 800;
-    letter-spacing: 1px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
     text-shadow: 0 2px 6px rgba(0,0,0,0.9);
     pointer-events: none;
     animation: wavePopAnim 1600ms ease-out forwards;
@@ -142,9 +176,11 @@
     left: 50%;
     top: 42%;
     transform: translate(-50%, -50%);
+    font-family: 'Consolas', 'SFMono-Regular', Menlo, Monaco, 'Courier New', monospace;
     font-size: 24px;
     font-weight: 800;
-    letter-spacing: 1px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
     text-shadow: 0 2px 6px rgba(0,0,0,0.9);
     pointer-events: none;
     animation: bigPopAnim 900ms ease-out forwards;
@@ -190,6 +226,13 @@
     height: 65%;
     pointer-events: auto;
     touch-action: none;
+  }
+
+  /* tactile press feedback for every tappable HUD button */
+  #shootBtn:active, #jumpBtn:active, #switchWeaponBtn:active,
+  .abilityBtn:active, #restartBtn:active {
+    transform: scale(0.9);
+    filter: brightness(1.3);
   }
 
   #shootBtn {
@@ -263,7 +306,7 @@
     justify-content: center;
     pointer-events: auto;
     touch-action: none;
-    transition: opacity 120ms linear;
+    transition: opacity 120ms linear, transform 60ms ease, filter 60ms ease;
     font-size: 21px;
     font-weight: 700;
   }
@@ -373,11 +416,18 @@
     right: 18px;
     bottom: 312px;
     width: 84px;
-    color: #fff;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-    font-size: 13px;
-    font-weight: 700;
+    font-size: 12px;
     text-align: center;
+    text-transform: uppercase;
+  }
+
+  /* shared cyberpunk "glitch text" look: cyan body with a thin magenta/cyan
+     chromatic-aberration fringe, used across the HUD's readouts */
+  .neonText {
+    font-family: 'Consolas', 'SFMono-Regular', Menlo, Monaco, 'Courier New', monospace;
+    color: #d8fbff;
+    text-shadow: 1px 0 rgba(255,42,223,0.8), -1px 0 rgba(47,246,255,0.8), 0 1px 4px rgba(0,0,0,0.9);
+    letter-spacing: 0.5px;
   }
 
   #topBar {
@@ -388,10 +438,9 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    color: #fff;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 700;
+    text-transform: uppercase;
   }
   #topBarRow {
     display: flex;
@@ -401,16 +450,21 @@
     width: 100%;
     max-width: 220px;
     height: 14px;
-    border-radius: 7px;
-    background: rgba(0,0,0,0.4);
-    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 3px;
+    background: rgba(6,10,20,0.65);
+    border: 1px solid rgba(47,246,255,0.7);
+    box-shadow: 0 0 8px rgba(47,246,255,0.45), inset 0 0 4px rgba(0,0,0,0.6);
     overflow: hidden;
   }
   #healthBarInner {
     height: 100%;
     width: 100%;
-    background: linear-gradient(90deg, #6fd94a, #9bff5e);
-    transition: width 150ms linear, background 150ms linear;
+    background: linear-gradient(90deg, #1fd6c0, #39ff7a);
+    box-shadow: 0 0 10px rgba(57,255,122,0.8);
+    background-image:
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.18) 0 2px, transparent 2px 10px),
+      linear-gradient(90deg, #1fd6c0, #39ff7a);
+    transition: width 150ms linear, background-image 150ms linear, box-shadow 150ms linear;
   }
 
   #hint {
@@ -418,11 +472,10 @@
     top: 78px;
     left: 50%;
     transform: translateX(-50%);
-    color: #fff;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-    font-size: 12px;
+    font-size: 11px;
     text-align: center;
     max-width: 80%;
+    opacity: 0.85;
   }
 
   #gameNav {
@@ -437,56 +490,77 @@
     pointer-events: auto;
   }
   .navLink, .navCurrent {
-    color: #fff;
+    font-family: 'Consolas', 'SFMono-Regular', Menlo, Monaco, 'Courier New', monospace;
+    color: #d8fbff;
     text-decoration: none;
-    font-size: 12px;
-    background: rgba(0,0,0,0.35);
-    border: 1px solid rgba(255,255,255,0.4);
-    border-radius: 6px;
+    font-size: 11px;
+    text-transform: uppercase;
+    background: rgba(6,10,20,0.55);
+    border: 1px solid rgba(47,246,255,0.6);
+    border-radius: 4px;
     padding: 4px 7px;
+    text-shadow: 0 0 4px rgba(47,246,255,0.7);
   }
   .navCurrent {
-    background: rgba(255,255,255,0.28);
+    background: rgba(255,42,223,0.22);
+    border-color: rgba(255,42,223,0.85);
+    color: #ffe0fb;
+    text-shadow: 0 0 5px rgba(255,42,223,0.85);
     font-weight: 700;
   }
 
   #endScreen {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.8);
+    background: rgba(6,2,16,0.88);
     display: none;
     align-items: center;
     justify-content: center;
     flex-direction: column;
-    color: #fff;
+    font-family: 'Consolas', 'SFMono-Regular', Menlo, Monaco, 'Courier New', monospace;
+    color: #d8fbff;
     z-index: 50;
     pointer-events: auto;
     text-align: center;
     padding: 20px;
   }
-  #endScreen h1 { font-size: 28px; margin: 0 0 8px; color: #ff5e5e; }
-  #endScreen p { font-size: 16px; margin: 4px 0; opacity: 0.85; }
+  #endScreen h1 {
+    font-size: 30px;
+    margin: 0 0 8px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #ff2adf;
+    text-shadow: 0 0 12px rgba(255,42,223,0.85), 0 0 24px rgba(255,42,223,0.5);
+  }
+  #endScreen p { font-size: 15px; margin: 4px 0; opacity: 0.9; }
   #restartBtn {
     margin-top: 20px;
     padding: 12px 28px;
-    font-size: 16px;
-    border-radius: 8px;
-    border: none;
-    background: #4caf50;
-    color: #fff;
+    font-size: 15px;
+    font-family: inherit;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 4px;
+    border: 1px solid rgba(47,246,255,0.9);
+    background: rgba(47,246,255,0.15);
+    box-shadow: 0 0 14px rgba(47,246,255,0.55);
+    color: #d8fbff;
   }
 
   #loading {
     position: fixed;
     inset: 0;
-    background: #14161c;
+    background: #0e0a1a;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    font-family: 'Consolas', 'SFMono-Regular', Menlo, Monaco, 'Courier New', monospace;
+    color: #2ff6ff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
     font-size: 18px;
     z-index: 100;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    text-shadow: 0 0 8px rgba(47,246,255,0.7);
   }
 </style>
 </head>
@@ -495,22 +569,28 @@
 <div id="loading">Loading graveyard...</div>
 
 <div id="hud">
+  <div id="scanlines"></div>
   <div id="damageVignette"></div>
   <div id="critVignette"></div>
   <div id="lightningFlash"></div>
   <div id="fireballFlash"></div>
   <div id="supernovaChargeVignette"></div>
   <div id="supernovaFlash"></div>
-  <div id="crosshair"></div>
+  <div id="crosshair">
+    <span class="chCorner chTL"></span>
+    <span class="chCorner chTR"></span>
+    <span class="chCorner chBL"></span>
+    <span class="chCorner chBR"></span>
+  </div>
   <div id="muzzleFlash"></div>
   <div id="topBar">
     <div id="topBarRow">
-      <div id="scoreLabel">Score: 0</div>
-      <div id="waveLabel">Wave: 1</div>
+      <div id="scoreLabel" class="neonText">Score: 0</div>
+      <div id="waveLabel" class="neonText">Wave: 1</div>
     </div>
     <div id="healthBarOuter"><div id="healthBarInner"></div></div>
   </div>
-  <div id="hint">Left pad: move &middot; Right side: look &middot; &uarr;: jump &middot; Green button: shoot &middot; &#8635;: switch weapon &middot; &#9889;: lightning &middot; &#128293;: fireball &middot; &#9728;&#65039;: supernova</div>
+  <div id="hint" class="neonText">Left pad: move &middot; Right side: look &middot; &uarr;: jump &middot; Green button: shoot &middot; &#8635;: switch weapon &middot; &#9889;: lightning &middot; &#128293;: fireball &middot; &#9728;&#65039;: supernova</div>
   <div id="gameNav">
     <a class="navLink" href="index.html">Builder</a>
     <a class="navLink" href="fps.html">Range</a>
@@ -524,7 +604,7 @@
   <div id="supernovaBtn" class="abilityBtn">&#9728;&#65039;<span id="supernovaCooldownLabel" class="cooldownBadge"></span></div>
   <div id="fireballBtn" class="abilityBtn">&#128293;<span id="fireballCooldownLabel" class="cooldownBadge"></span></div>
   <div id="lightningBtn" class="abilityBtn">&#9889;<span id="lightningCooldownLabel" class="cooldownBadge"></span></div>
-  <div id="weaponLabel">Pistol</div>
+  <div id="weaponLabel" class="neonText">Pistol</div>
   <div id="switchWeaponBtn">&#8635;</div>
   <div id="shootBtn">SHOOT</div>
 </div>
@@ -716,8 +796,8 @@
 
   // ---------- Scene setup ----------
   var scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1b2230);
-  scene.fog = new THREE.Fog(0x1b2230, 22, 78);
+  scene.background = new THREE.Color(0x140c28);
+  scene.fog = new THREE.Fog(0x140c28, 22, 78);
 
   var camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 200);
   scene.add(camera);
@@ -731,9 +811,11 @@
   renderer.toneMappingExposure = 1.15;
   document.body.appendChild(renderer.domElement);
 
-  var hemi = new THREE.HemisphereLight(0x93a6d6, 0x232a38, 0.7);
+  // cyberpunk two-tone lighting: a cool cyan key light (moon) balanced by a
+  // magenta rim/fill, instead of a single neutral moonlight
+  var hemi = new THREE.HemisphereLight(0x5ad9ff, 0x2a1440, 0.65);
   scene.add(hemi);
-  var moon = new THREE.DirectionalLight(0xc3d4ff, 1.05);
+  var moon = new THREE.DirectionalLight(0x8fe8ff, 1.05);
   moon.position.set(-15, 30, -10);
   moon.castShadow = true;
   moon.shadow.mapSize.set(2048, 2048);
@@ -746,10 +828,15 @@
   moon.shadow.bias = -0.002;
   scene.add(moon);
 
-  // low warm fill light near the player so muzzle/energy flashes have
+  // magenta rim light from roughly the opposite side, no shadow (cheap fill)
+  var rimLight = new THREE.DirectionalLight(0xff2adf, 0.4);
+  rimLight.position.set(18, 14, 22);
+  scene.add(rimLight);
+
+  // low magenta fill light near the player so muzzle/energy flashes have
   // something nearby to catch and bounce off, and zombies read as more
   // than pure black silhouettes at close range
-  var playerFill = new THREE.PointLight(0x88a0d8, 0.35, 9, 2);
+  var playerFill = new THREE.PointLight(0xd85aff, 0.35, 9, 2);
   camera.add(playerFill);
   playerFill.position.set(0, 0.1, 0.2);
 
@@ -783,8 +870,9 @@
       ctx.fill();
     }
 
-    // subtle grid seams (cracked ground)
-    ctx.strokeStyle = "rgba(0,0,0,0.12)";
+    // subtle grid seams (cracked ground), faintly cyan-lit like a buried
+    // circuit line rather than plain dirt cracks
+    ctx.strokeStyle = "rgba(60,220,255,0.1)";
     ctx.lineWidth = 2;
     var cell = size / 8;
     for (var i = 0; i <= 8; i++) {
@@ -2538,9 +2626,14 @@
     if (gameOver) return;
     player.health = Math.max(0, player.health - amount);
     healthBarInner.style.width = (player.health / PLAYER_MAX_HEALTH * 100) + "%";
-    healthBarInner.style.background = player.health > 40
-      ? "linear-gradient(90deg, #6fd94a, #9bff5e)"
-      : "linear-gradient(90deg, #d9502f, #ff8a4a)";
+    var healthScanlines = "repeating-linear-gradient(90deg, rgba(0,0,0,0.18) 0 2px, transparent 2px 10px), ";
+    if (player.health > 40) {
+      healthBarInner.style.backgroundImage = healthScanlines + "linear-gradient(90deg, #1fd6c0, #39ff7a)";
+      healthBarInner.style.boxShadow = "0 0 10px rgba(57,255,122,0.8)";
+    } else {
+      healthBarInner.style.backgroundImage = healthScanlines + "linear-gradient(90deg, #ff2adf, #ff3b3b)";
+      healthBarInner.style.boxShadow = "0 0 10px rgba(255,42,223,0.85)";
+    }
     damageVignetteEl.classList.remove("hit");
     void damageVignetteEl.offsetWidth;
     damageVignetteEl.classList.add("hit");
@@ -2595,7 +2688,8 @@
     gameOver = false;
     scoreLabel.textContent = "Score: 0";
     healthBarInner.style.width = "100%";
-    healthBarInner.style.background = "linear-gradient(90deg, #6fd94a, #9bff5e)";
+    healthBarInner.style.backgroundImage = "repeating-linear-gradient(90deg, rgba(0,0,0,0.18) 0 2px, transparent 2px 10px), linear-gradient(90deg, #1fd6c0, #39ff7a)";
+    healthBarInner.style.boxShadow = "0 0 10px rgba(57,255,122,0.8)";
     critVignetteEl.classList.remove("active");
     endScreen.style.display = "none";
     startWave(1);
