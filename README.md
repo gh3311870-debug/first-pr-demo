@@ -113,9 +113,10 @@ every side — survive as many waves as you can:
   their distance and attack from range (from wave 2), and towering crimson
   **Brutes** with much more health and a harder hit (from wave 3).
   Wounded zombies bleed as they stagger toward you.
-- The arena is a small ruined town: gutted brick building shells you can
-  walk and fight through, a leaning-tombstone graveyard, a crate barricade,
-  and a central rubble pile for cover — not just an open field.
+- A large abandoned town: dead, dry grass instead of a lawn, half a dozen
+  gutted brick houses with boarded-up windows you can walk and fight
+  through, dead leafless trees scattered around, a leaning-tombstone
+  graveyard, a crate barricade, and a central rubble pile for cover.
 - Kills leave blood splatter pools on the ground, burst into flying gore
   chunks, and occasionally dismember (heads can fly off), with zombies
   collapsing in a ragdoll fall and lingering as corpses instead of

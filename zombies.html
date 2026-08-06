@@ -521,7 +521,7 @@
   var JUMP_SPEED = 6.5;
   var MOVE_SPEED = 5;
   var PLAYER_HEIGHT = 1.7;
-  var ARENA_HALF = 22;
+  var ARENA_HALF = 34;
   var ZOMBIE_PUNCH_DURATION = 0.18;
   var BOB_FREQUENCY = 9;
   var BOB_AMOUNT = 0.045;
@@ -537,8 +537,8 @@
   var HEADSHOT_MULT = 3;
   var ZOMBIE_FALL_DURATION = 0.55;
   var GORE_LINGER = 6;
-  var BLOOD_POOL_POOL_SIZE = 42;
-  var GIB_POOL_SIZE = 48;
+  var BLOOD_POOL_POOL_SIZE = 60;
+  var GIB_POOL_SIZE = 64;
   var COMBO_WINDOW = 1.3;
   var BLEED_INTERVAL = 0.9;
   var DISMEMBER_CHANCE = 0.5;
@@ -674,7 +674,7 @@
   // ---------- Scene setup ----------
   var scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1b2230);
-  scene.fog = new THREE.Fog(0x1b2230, 18, 55);
+  scene.fog = new THREE.Fog(0x1b2230, 22, 78);
 
   var camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 200);
   scene.add(camera);
@@ -693,7 +693,7 @@
   var moon = new THREE.DirectionalLight(0xc3d4ff, 1.05);
   moon.position.set(-15, 30, -10);
   moon.castShadow = true;
-  moon.shadow.mapSize.set(1024, 1024);
+  moon.shadow.mapSize.set(2048, 2048);
   moon.shadow.camera.left = -ARENA_HALF - 5;
   moon.shadow.camera.right = ARENA_HALF + 5;
   moon.shadow.camera.top = ARENA_HALF + 5;
@@ -722,10 +722,26 @@
     return tex;
   }
 
+  // dead, dry grass: dusty tan-brown base with patches of bare dirt and
+  // sparse withered grass-blade streaks instead of a healthy green lawn
   var groundTexture = makeCanvasTexture(256, function (ctx, size) {
-    ctx.fillStyle = "#3a3f33";
+    ctx.fillStyle = "#5a4f37";
     ctx.fillRect(0, 0, size, size);
-    ctx.strokeStyle = "rgba(0,0,0,0.15)";
+
+    // bare dirt patches
+    for (var d = 0; d < 14; d++) {
+      var dx = Math.random() * size, dy = Math.random() * size, dr = 10 + Math.random() * 26;
+      var dgrad = ctx.createRadialGradient(dx, dy, 0, dx, dy, dr);
+      dgrad.addColorStop(0, "rgba(70,55,35,0.55)");
+      dgrad.addColorStop(1, "rgba(70,55,35,0)");
+      ctx.fillStyle = dgrad;
+      ctx.beginPath();
+      ctx.arc(dx, dy, dr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // subtle grid seams (cracked ground)
+    ctx.strokeStyle = "rgba(0,0,0,0.12)";
     ctx.lineWidth = 2;
     var cell = size / 8;
     for (var i = 0; i <= 8; i++) {
@@ -738,12 +754,25 @@
       ctx.lineTo(size, i * cell);
       ctx.stroke();
     }
-    for (var s = 0; s < 500; s++) {
+
+    // sparse withered grass blades (dull yellow-brown, not green)
+    for (var b = 0; b < 260; b++) {
+      var bx = Math.random() * size, by = Math.random() * size;
+      var bh = 3 + Math.random() * 5;
+      ctx.strokeStyle = "rgba(" + (120 + Math.random() * 40 | 0) + "," + (105 + Math.random() * 30 | 0) + "," + (50 + Math.random() * 20 | 0) + ",0.5)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx + (Math.random() * 2 - 1), by - bh);
+      ctx.stroke();
+    }
+
+    for (var s = 0; s < 400; s++) {
       ctx.fillStyle = "rgba(0,0,0,0.08)";
       ctx.fillRect(Math.random() * size, Math.random() * size, 2, 2);
     }
   });
-  groundTexture.repeat.set(ARENA_HALF / 2, ARENA_HALF / 2);
+  groundTexture.repeat.set(ARENA_HALF / 1.6, ARENA_HALF / 1.6);
 
   var wallTexture = makeCanvasTexture(128, function (ctx, size) {
     ctx.fillStyle = "#444a52";
@@ -848,40 +877,88 @@
     return mesh;
   }
 
-  // a few crate obstacles for visual interest
+  // a few crate obstacles for visual interest, scattered across the larger plaza
   var crateMat = new THREE.MeshStandardMaterial({ map: crateTexture, roughness: 0.85, metalness: 0 });
-  var crateSpots = [[-8, -4], [6, 5], [-3, 10], [10, -9], [2, -2], [-9, 3]];
+  var crateSpots = [[-8, -4], [6, 5], [-3, 10], [10, -9], [2, -2], [-9, 3], [-16, -6], [17, -3], [4, 18], [-5, -20], [22, 5], [-25, -10]];
   crateSpots.forEach(function (p) {
     addBox(p[0], p[1], 2, 2, 2, crateMat);
   });
 
-  // ---------- Ruined town layout: gutted buildings, graveyard, rubble ----------
+  // ---------- Abandoned town layout: derelict houses, graveyard, rubble, dead trees ----------
   var buildingMat = new THREE.MeshStandardMaterial({ map: brickTexture, roughness: 0.9, metalness: 0.02 });
+  var windowMat = new THREE.MeshStandardMaterial({ color: 0x0c0c10, roughness: 0.7, metalness: 0.05 });
 
-  function addBuildingShell(cx, cz, w, d, height) {
+  function addWindowPatch(x, y, z, w, h, thinAxis) {
+    var thin = 0.03;
+    var geo = thinAxis === "x" ? new THREE.BoxGeometry(thin, h, w) : new THREE.BoxGeometry(w, h, thin);
+    var mesh = new THREE.Mesh(geo, windowMat);
+    mesh.position.set(x, y, z);
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+  }
+
+  function addBuildingShell(cx, cz, w, d, height, opts) {
+    opts = opts || {};
     var t = 0.4;
     var doorW = Math.min(2.2, w * 0.35);
     var segW = (w - doorW) / 2;
-    addBox(cx, cz - d / 2, w, t, height, buildingMat); // back wall, solid
+    if (!opts.collapsedBack) addBox(cx, cz - d / 2, w, t, height, buildingMat); // back wall
     addBox(cx - (doorW / 2 + segW / 2), cz + d / 2, segW, t, height, buildingMat); // front-left, door gap between
     addBox(cx + (doorW / 2 + segW / 2), cz + d / 2, segW, t, height, buildingMat); // front-right
     addBox(cx - w / 2, cz, t, d, height, buildingMat); // left wall
     addBox(cx + w / 2, cz, t, d, height, buildingMat); // right wall
+
+    // boarded-up windows, punched into the two side walls
+    var winY = height * 0.58;
+    var winH = Math.min(1.3, height * 0.42);
+    var winW = Math.min(1.15, d * 0.32);
+    addWindowPatch(cx - w / 2 - 0.02, winY, cz, winW, winH, "x");
+    addWindowPatch(cx + w / 2 + 0.02, winY, cz, winW, winH, "x");
   }
 
-  addBuildingShell(-14, -13, 9, 8, 4.6);
-  addBuildingShell(13, 9, 8, 9, 4.6);
-  addBuildingShell(14, -14, 6, 6, 3.8);
+  // half a dozen gutted, abandoned houses spread across the wider map
+  addBuildingShell(-20, -18, 10, 9, 4.8);
+  addBuildingShell(20, 14, 9, 10, 4.8);
+  addBuildingShell(22, -20, 7, 7, 4.0);
+  addBuildingShell(-22, 20, 8, 8, 4.4);
+  addBuildingShell(-10, -26, 11, 6, 4.2, { collapsedBack: true }); // partially caved in
+  addBuildingShell(9, 27, 6, 10, 4.6);
+
+  // dead, leafless trees for atmosphere
+  var deadTreeMat = new THREE.MeshStandardMaterial({ color: 0x3b2f22, roughness: 0.95 });
+  var deadTreeSpots = [
+    [-14, -3], [-4, -14], [12, -2], [3, 14], [-27, -24], [27, 24],
+    [-6, 24], [18, -12], [-18, 9], [26, -6], [-2, -30], [15, 20]
+  ];
+  deadTreeSpots.forEach(function (p) {
+    var trunkH = 2.2 + Math.random() * 1.6;
+    addBox(p[0], p[1], 0.22, 0.22, trunkH, deadTreeMat);
+    for (var b = 0; b < 3; b++) {
+      var branch = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.9, 0.09), deadTreeMat);
+      branch.position.set(
+        p[0] + (Math.random() - 0.5) * 0.3,
+        trunkH * (0.6 + Math.random() * 0.35),
+        p[1] + (Math.random() - 0.5) * 0.3
+      );
+      branch.rotation.z = (Math.random() - 0.5) * 1.4;
+      branch.rotation.x = (Math.random() - 0.5) * 1.4;
+      branch.castShadow = true;
+      scene.add(branch);
+    }
+  });
 
   // low barricade of stacked crates funneling movement near the plaza
-  var barricadeSpots = [[3, -13], [4, -13], [5, -13], [3, -12], [5, -12]];
+  var barricadeSpots = [[5, -18], [6, -18], [7, -18], [5, -17], [7, -17]];
   barricadeSpots.forEach(function (p) {
     addBox(p[0], p[1], 1.6, 1.6, 1.4, crateMat);
   });
 
-  // small graveyard cluster of leaning tombstones
+  // graveyard cluster of leaning tombstones
   var stoneMat = new THREE.MeshStandardMaterial({ map: stoneTexture, roughness: 0.95 });
-  var graveyardSpots = [[-17, 14], [-15.5, 15.5], [-18, 17], [-14.5, 17.5], [-16.5, 19], [-19, 15]];
+  var graveyardSpots = [
+    [-27, 8], [-25.5, 9.5], [-28, 11], [-24.5, 11.5], [-26.5, 13], [-29, 9],
+    [-27.5, 14.5], [-25, 15.5]
+  ];
   graveyardSpots.forEach(function (p) {
     var mesh = addBox(p[0], p[1], 0.5, 0.15, 0.85, stoneMat);
     mesh.rotation.y = Math.random() * Math.PI;
@@ -889,7 +966,7 @@
   });
 
   // rubble pile near the plaza center for cover
-  var rubbleSpots = [[0, 5, 0.8], [0.9, 5.6, 0.5], [-0.7, 4.6, 0.6], [0.3, 6.2, 0.45]];
+  var rubbleSpots = [[0, 7, 0.8], [0.9, 7.6, 0.5], [-0.7, 6.6, 0.6], [0.3, 8.2, 0.45]];
   rubbleSpots.forEach(function (p) {
     var mesh = addBox(p[0], p[1], p[2], p[2], p[2], crateMat);
     mesh.rotation.y = Math.random() * Math.PI;
@@ -1457,7 +1534,7 @@
     tracers.push({ mesh: core.mesh, material: core.material, life: 0.09, maxLife: 0.09 });
   }
 
-  var PARTICLE_POOL_SIZE = 40;
+  var PARTICLE_POOL_SIZE = 90;
   var particlePool = [];
   var particleGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
   for (var pi = 0; pi < PARTICLE_POOL_SIZE; pi++) {
@@ -1515,7 +1592,7 @@
   }
 
   // ---------- Muzzle smoke ----------
-  var SMOKE_POOL_SIZE = 18;
+  var SMOKE_POOL_SIZE = 32;
   var smokeGeo = new THREE.SphereGeometry(0.05, 6, 6);
   var smokePool = [];
   for (var smi = 0; smi < SMOKE_POOL_SIZE; smi++) {
@@ -1561,7 +1638,7 @@
   }
 
   // ---------- Shell casings ----------
-  var CASING_POOL_SIZE = 10;
+  var CASING_POOL_SIZE = 22;
   var casingGeo = new THREE.BoxGeometry(0.018, 0.05, 0.018);
   var casingPool = [];
   for (var cai = 0; cai < CASING_POOL_SIZE; cai++) {
