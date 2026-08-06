@@ -90,12 +90,17 @@ every side — survive as many waves as you can:
   (six-pellet spread, devastating up close), **SMG** (fast, low-damage
   full-auto-feel tapping), **Sniper** (slow, huge single-target damage and
   extra range), and **Laser** (a glowing energy rifle that evaporates
-  zombies in a burst of light instead of leaving a corpse). Each has a
-  distinct viewmodel, recoil, screen shake, and sound.
+  zombies in a burst of light instead of leaving a corpse). Each weapon has
+  its own saturated neon tracer color, viewmodel, recoil, screen shake, and
+  sound — muzzle flashes and bullet impacts light up in that same color.
 - Purple &#9889; button: unleash a **Lightning** ability — a heavy-damage
-  chained bolt that zaps every zombie within range of you at once, on an
-  ~11-second cooldown (shown on the button). Great for breaking up a crowd
-  that's closed in around you.
+  neon-violet bolt that chains to every zombie within range of you at once,
+  on an ~11-second cooldown (shown on the button). Great for breaking up a
+  crowd that's closed in around you.
+- Orange &#128293; button: hurl a **Fireball** — a glowing projectile that
+  streaks out with an ember trail and explodes in a shockwave on impact,
+  dealing splash damage to every zombie caught in the blast radius. ~8-second
+  cooldown.
 - Top bar: live score, current wave, and a health bar
 - Zombies groan, shamble toward you, and attack (damaging your health) when
   they get close; each wave brings more, slightly faster zombies. The run
@@ -119,10 +124,11 @@ every side — survive as many waves as you can:
 - More shooting feedback: drifting muzzle smoke, ejected shell casings, and
   a pulsing red vignette when your health drops critically low.
 - Filmic tone mapping and brighter moonlight/fill lighting for a punchier,
-  higher-contrast look. Every shot casts real dynamic light — a warm flash
-  from ballistic weapons, a cyan flash from the Laser and Lightning — that
+  higher-contrast look. Every shot and ability casts its own colored neon
+  dynamic light — matching its tracer/bolt/fireball color — that actually
   lights up nearby walls and zombies instead of just being a flat overlay.
-  Bullet tracers are bright glowing beams rather than thin lines, and
+  Bullet tracers are bright glowing neon-tube beams (a white-hot core plus a
+  colored glow layer) rather than thin lines, and
   bullet/spark impacts on walls and crates now throw actual glowing sparks.
 
 Serve it the same way as the other demos and visit
