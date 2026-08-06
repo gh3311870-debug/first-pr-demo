@@ -354,7 +354,7 @@
     opacity: 0;
   }
   #fireballFlash.flash {
-    animation: lightningFlashAnim 260ms ease-out;
+    animation: lightningFlashAnim 340ms ease-out;
   }
 
   #supernovaBtn {
@@ -1367,6 +1367,7 @@
       if (headshot || Math.random() < DISMEMBER_CHANCE) {
         spawnHeadGib(z.group.position.clone().setY(1.5 * z.cfg.scale), z.cfg.scale, TYPE_SKIN_COLOR[z.type]);
       }
+      flashEnergyLight(z.group.position.clone().setY(0.9 * z.cfg.scale), 0xff1f4d, 4, 5);
 
       setTimeout(function () { removeZombie(z); }, ZOMBIE_FALL_DURATION * 1000 + GORE_LINGER * 1000);
     }
@@ -1883,7 +1884,7 @@
   var gibGeo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
   var gibPool = [];
   for (var gi = 0; gi < GIB_POOL_SIZE; gi++) {
-    var gMat = new THREE.MeshStandardMaterial({ color: GIB_COLORS[gi % GIB_COLORS.length], roughness: 0.7, transparent: true });
+    var gMat = new THREE.MeshStandardMaterial({ color: GIB_COLORS[gi % GIB_COLORS.length], emissive: 0x4a0505, emissiveIntensity: 0.6, roughness: 0.6, transparent: true });
     var gMesh = new THREE.Mesh(gibGeo, gMat);
     gMesh.visible = false;
     gMesh.castShadow = true;
@@ -2087,11 +2088,18 @@
   }
 
   function spawnFireExplosion(position, radius) {
-    spawnImpactBurst(position, 0xfff2c0, 16, true);
-    spawnImpactBurst(position, NEON_FIRE, 22, true);
-    spawnImpactBurst(position, 0xff2f0f, 14, true);
-    flashEnergyLight(position, NEON_FIRE, 10, radius + 6);
-    spawnExpandingRing(position, 0xffb04a, radius * 3.2, 0.4, 0.8, 0);
+    spawnImpactBurst(position, 0xfff2c0, 26, true);
+    spawnImpactBurst(position, NEON_FIRE, 34, true);
+    spawnImpactBurst(position, 0xff2f0f, 22, true);
+    flashEnergyLight(position, NEON_FIRE, 14, radius + 9);
+    spawnExpandingRing(position, 0xffb04a, radius * 3.6, 0.42, 0.85, 0);
+    spawnExpandingRing(position, 0xff2f0f, radius * 2.4, 0.55, 0.6, 60);
+
+    // a second, smaller pulse a beat later for a "double punch" feel
+    setTimeout(function () {
+      spawnImpactBurst(position, 0xffcf7a, 16, true);
+      flashEnergyLight(position, NEON_FIRE, 6, radius + 4);
+    }, 120);
   }
 
   // Inward-collapsing particle burst for the Supernova's charge-up.
@@ -2159,7 +2167,7 @@
     fb.material.dispose();
 
     sfxExplosion();
-    triggerShake(3);
+    triggerShake(3.8);
     fireballFlashEl.classList.remove("flash");
     void fireballFlashEl.offsetWidth;
     fireballFlashEl.classList.add("flash");
@@ -2240,32 +2248,52 @@
   // Jagged neon bolt built from short glow+core beam segments (same technique
   // as tracers) rather than a thin Line, so it actually looks like a bright
   // lightning bolt instead of a hairline.
+  function addBoltSegmentLayers(layers, segFrom, segTo, thicknessMult) {
+    var segOffset = segTo.clone().sub(segFrom);
+    var segLen = segOffset.length();
+    if (segLen < 0.001) return;
+    var segDir = segOffset.normalize();
+    var glow = makeTracerBeam(segFrom, segDir, segLen, LIGHTNING_NEON_COLOR, 0.13 * thicknessMult, 0.65);
+    var core = makeTracerBeam(segFrom, segDir, segLen, 0xffffff, 0.045 * thicknessMult, 1);
+    layers.push({ mesh: glow.mesh, material: glow.material, baseOpacity: 0.65 });
+    layers.push({ mesh: core.mesh, material: core.material, baseOpacity: 1 });
+  }
+
   function spawnLightningBolt(from, to) {
-    var segments = 7;
+    var segments = 9;
     var points = [];
     for (var i = 0; i <= segments; i++) {
       var t = i / segments;
       var p = from.clone().lerp(to, t);
       if (i > 0 && i < segments) {
-        p.x += (Math.random() - 0.5) * 0.6;
-        p.y += (Math.random() - 0.5) * 0.6;
-        p.z += (Math.random() - 0.5) * 0.6;
+        p.x += (Math.random() - 0.5) * 0.8;
+        p.y += (Math.random() - 0.5) * 0.8;
+        p.z += (Math.random() - 0.5) * 0.8;
       }
       points.push(p);
     }
     var layers = [];
     for (var s = 0; s < segments; s++) {
-      var segFrom = points[s];
-      var segOffset = points[s + 1].clone().sub(segFrom);
-      var segLen = segOffset.length();
-      if (segLen < 0.001) continue;
-      var segDir = segOffset.normalize();
-      var glow = makeTracerBeam(segFrom, segDir, segLen, LIGHTNING_NEON_COLOR, 0.09, 0.6);
-      var core = makeTracerBeam(segFrom, segDir, segLen, 0xffffff, 0.03, 1);
-      layers.push({ mesh: glow.mesh, material: glow.material, baseOpacity: 0.6 });
-      layers.push({ mesh: core.mesh, material: core.material, baseOpacity: 1 });
+      addBoltSegmentLayers(layers, points[s], points[s + 1], 1);
     }
-    lightningBolts.push({ layers: layers, life: 0.22, maxLife: 0.22 });
+
+    // one or two short branching forks off a random mid-bolt point, for a
+    // more chaotic, high-voltage look
+    var branchCount = 1 + Math.floor(Math.random() * 2);
+    for (var b = 0; b < branchCount; b++) {
+      var originIdx = 2 + Math.floor(Math.random() * (segments - 3));
+      var origin = points[originIdx];
+      var branchDir = new THREE.Vector3((Math.random() - 0.5), (Math.random() - 0.5) * 0.6, (Math.random() - 0.5)).normalize();
+      var branchLen = 0.8 + Math.random() * 1.2;
+      var branchEnd = origin.clone().addScaledVector(branchDir, branchLen);
+      var midPoint = origin.clone().lerp(branchEnd, 0.5);
+      midPoint.x += (Math.random() - 0.5) * 0.4;
+      midPoint.z += (Math.random() - 0.5) * 0.4;
+      addBoltSegmentLayers(layers, origin, midPoint, 0.55);
+      addBoltSegmentLayers(layers, midPoint, branchEnd, 0.4);
+    }
+
+    lightningBolts.push({ layers: layers, life: 0.24, maxLife: 0.24 });
   }
 
   function updateLightningBolts(dt) {
@@ -2323,7 +2351,7 @@
       if (z.punch > 0) {
         z.punch -= dt;
         var k = Math.max(0, z.punch / ZOMBIE_PUNCH_DURATION);
-        z.group.userData.parts.forEach(function (part) { part.material.emissive.setRGB(k, 0, 0); });
+        z.group.userData.parts.forEach(function (part) { part.material.emissive.setRGB(k, 0, k * 0.35); });
       }
     });
   }
@@ -2498,14 +2526,14 @@
     abilityCooldownTimer = LIGHTNING_COOLDOWN;
     lightningBtn.classList.add("onCooldown");
     sfxLightning();
-    triggerShake(2.5);
+    triggerShake(3.2);
 
     lightningFlashEl.classList.remove("flash");
     void lightningFlashEl.offsetWidth;
     lightningFlashEl.classList.add("flash");
 
     var playerChestPos = new THREE.Vector3(player.pos.x, player.pos.y - 0.2, player.pos.z);
-    flashEnergyLight(playerChestPos, LIGHTNING_NEON_COLOR, 9, LIGHTNING_RANGE + 4);
+    flashEnergyLight(playerChestPos, LIGHTNING_NEON_COLOR, 13, LIGHTNING_RANGE + 6);
     var struck = 0;
     zombies.forEach(function (z) {
       if (z.dead) return;
