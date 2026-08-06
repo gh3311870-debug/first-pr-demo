@@ -751,9 +751,11 @@
     { name: "Shotgun", visual: "shotgun", cooldown: 0.8, damage: 9, pellets: 6, spread: 0.09, range: 22, recoil: 1.9, shakeMult: 1.8, tracerColor: NEON_ORANGE, evaporate: false, sfx: function () { return sfxShotgun(); } },
     { name: "SMG", visual: "smg", cooldown: 0.09, damage: 7, pellets: 1, spread: 0.028, range: 55, recoil: 0.5, shakeMult: 0.55, tracerColor: NEON_YELLOW, evaporate: false, sfx: function () { return sfxSMG(); } },
     { name: "Sniper", visual: "sniper", cooldown: 1.05, damage: 55, pellets: 1, spread: 0, range: 90, recoil: 2.4, shakeMult: 2.2, tracerColor: NEON_PINK, evaporate: false, sfx: function () { return sfxSniper(); } },
-    { name: "Laser", visual: "laser", cooldown: 0.45, damage: 42, pellets: 1, spread: 0, range: 75, recoil: 0.75, shakeMult: 0.8, tracerColor: NEON_CYAN, evaporate: true, sfx: function () { return sfxLaser(); } }
+    { name: "Laser", visual: "laser", cooldown: 0.45, damage: 42, pellets: 1, spread: 0, range: 75, recoil: 0.75, shakeMult: 0.8, tracerColor: NEON_CYAN, evaporate: true, sfx: function () { return sfxLaser(); } },
+    { name: "Sword", visual: "sword", melee: true, cooldown: 0.45, damage: 16, pellets: 0, spread: 0, range: 2.8, recoil: 1.2, shakeMult: 1.1, tracerColor: 0xd8f0ff, evaporate: false, sfx: function () { return sfxSwordSwing(); } }
   ];
   var BULLET_TRACER_COLOR = NEON_GREEN;
+  var SWORD_HALF_ANGLE_COS = 0.45; // ~63 degree half-angle swing cone
 
   // ---------- Lightning ability ----------
   var LIGHTNING_COOLDOWN = 11;
@@ -989,6 +991,15 @@
     playNoiseBurst(0.16, rand(1800, 2400), 0.2, rand(300, 450));
     playTone(rand(700, 900), rand(150, 220), 0.1, "sawtooth", 0.12);
     playThump(rand(90, 120), 0.18, 0.15);
+  }
+  function sfxSwordSwing() {
+    playNoiseBurst(0.14, rand(2200, 2800), 0.14, rand(700, 1000));
+    playTone(rand(500, 650), rand(280, 360), 0.06, "sine", 0.05);
+  }
+  function sfxSwordHit() {
+    playNoiseBurst(0.1, rand(2600, 3200), 0.22, rand(400, 600));
+    playTone(rand(180, 240), rand(60, 90), 0.1, "sawtooth", 0.14);
+    playThump(rand(100, 130), 0.14, 0.13);
   }
   function sfxFireballCast() { playTone(300, 700, 0.2, "sawtooth", 0.16); playNoiseBurst(0.15, 1800, 0.12); }
   function sfxExplosion() {
@@ -1578,6 +1589,7 @@
       spawnBloodPool(deathPos, z.cfg.scale * 1.15);
       spawnGibs(z.group.position.clone().setY(0.9 * z.cfg.scale), z.cfg.scale);
       spawnBloodMist(z.group.position.clone().setY(1.1 * z.cfg.scale), z.cfg.scale);
+      spawnBloodSquirt(z.group.position.clone().setY(1.0 * z.cfg.scale), z.cfg.scale);
       if (headshot || Math.random() < DISMEMBER_CHANCE) {
         sfxDismember();
         if (headshot || Math.random() < 0.5) {
@@ -1817,7 +1829,29 @@
   laserCell.visible = false;
   gunGroup.add(laserCell);
 
+  var swordBladeMat = new THREE.MeshStandardMaterial({ color: 0xd8e4e8, roughness: 0.25, metalness: 0.85, emissive: 0x2a3a3f, emissiveIntensity: 0.3 });
+  var swordBlade = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.5, 0.012), swordBladeMat);
+  swordBlade.position.set(0.02, 0.18, -0.05);
+  swordBlade.rotation.z = -0.18;
+  swordBlade.visible = false;
+  gunGroup.add(swordBlade);
+
+  var swordGuard = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.02, 0.03), gunMetalMat);
+  swordGuard.position.set(0.02, -0.065, -0.05);
+  swordGuard.rotation.z = -0.18;
+  swordGuard.visible = false;
+  gunGroup.add(swordGuard);
+
+  var swordHilt = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.13, 0.032), gunGripMat);
+  swordHilt.position.set(0.03, -0.13, -0.03);
+  swordHilt.rotation.z = -0.18;
+  swordHilt.visible = false;
+  gunGroup.add(swordHilt);
+
   function updateGunVisual(visual) {
+    gunBody.visible = visual !== "sword";
+    gunGrip.visible = visual !== "sword";
+    gunSight.visible = visual !== "sword";
     gunBarrel.visible = visual === "pistol" || visual === "smg";
     smgMag.visible = visual === "smg";
     shotgunBarrel.visible = visual === "shotgun";
@@ -1827,6 +1861,9 @@
     sniperStock.visible = visual === "sniper";
     laserBarrel.visible = visual === "laser";
     laserCell.visible = visual === "laser";
+    swordBlade.visible = visual === "sword";
+    swordGuard.visible = visual === "sword";
+    swordHilt.visible = visual === "sword";
   }
 
   var recoilKick = 0;
@@ -1898,7 +1935,7 @@
     tracers.push({ mesh: core.mesh, material: core.material, life: 0.09, maxLife: 0.09 });
   }
 
-  var PARTICLE_POOL_SIZE = 90;
+  var PARTICLE_POOL_SIZE = 180;
   var particlePool = [];
   var particleGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
   for (var pi = 0; pi < PARTICLE_POOL_SIZE; pi++) {
@@ -1938,6 +1975,44 @@
       }
       p.life = (glow ? 0.16 : 0.35) + Math.random() * (glow ? 0.12 : 0.25);
       p.maxLife = p.life;
+    }
+  }
+
+  // A pulsing jet of blood rather than a single instantaneous poof: fires a
+  // few small bursts in quick succession, each kicked in a fresh random
+  // horizontal direction with a strong upward arc, so it reads as an actual
+  // wound spurting rather than a static splash.
+  function spawnBloodSquirt(position, scale) {
+    var pulseCount = 3;
+    for (var i = 0; i < pulseCount; i++) {
+      (function (pulseIndex) {
+        setTimeout(function () {
+          var theta = Math.random() * Math.PI * 2;
+          var jetDir = new THREE.Vector3(Math.cos(theta), 0, Math.sin(theta));
+          for (var n = 0; n < 7; n++) {
+            var p = particlePool[nextParticleIndex];
+            nextParticleIndex = (nextParticleIndex + 1) % PARTICLE_POOL_SIZE;
+            p.active = true;
+            p.mesh.visible = true;
+            p.mesh.position.copy(position);
+            p.mesh.material.color.setHex(pulseIndex === 0 ? 0xc41e28 : 0x8f0f17);
+            p.mesh.material.opacity = 1;
+            p.mesh.material.blending = THREE.NormalBlending;
+            p.mesh.material.toneMapped = true;
+            p.mesh.scale.set(1, 1, 2.4 + Math.random() * 1.6);
+            var speed = (4.5 + Math.random() * 3) * scale;
+            var v = jetDir.clone();
+            v.x += (Math.random() - 0.5) * 0.4;
+            v.z += (Math.random() - 0.5) * 0.4;
+            v.y = 2.6 + Math.random() * 1.8;
+            v.normalize().multiplyScalar(speed);
+            p.vel.copy(v);
+            p.mesh.quaternion.setFromUnitVectors(UNIT_Z, p.vel.clone().normalize());
+            p.life = 0.32 + Math.random() * 0.22;
+            p.maxLife = p.life;
+          }
+        }, pulseIndex * 85);
+      })(i);
     }
   }
 
@@ -2707,6 +2782,14 @@
     var weapon = WEAPONS[currentWeaponIndex];
     fireCooldownTimer = weapon.cooldown * upgrades.fireRateMult;
 
+    if (weapon.melee) {
+      triggerShake(weapon.shakeMult);
+      triggerRecoil(weapon.recoil);
+      weapon.sfx();
+      meleeSwing(weapon);
+      return;
+    }
+
     var rgb = hexToRgbString(weapon.tracerColor);
     muzzleFlashEl.style.background = "radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(" + rgb + ",0.65) 30%, rgba(" + rgb + ",0) 68%)";
     muzzleFlashEl.classList.remove("flash");
@@ -2747,6 +2830,67 @@
       crosshairEl.classList.add("hit");
       sfxHit();
       sfxSquelch();
+    }
+  }
+
+  // Finds the closest living zombie within melee range and roughly in front of
+  // the player (a wide cone, not a pinpoint raycast, since a swing is a swipe
+  // through space rather than a single thin ray).
+  function meleeSwing(weapon) {
+    var forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    var target = null;
+    var bestDist = Infinity;
+    zombies.forEach(function (z) {
+      if (z.dead) return;
+      var toZombie = z.group.position.clone().sub(player.pos);
+      var dist = toZombie.length();
+      if (dist > weapon.range) return;
+      toZombie.normalize();
+      if (toZombie.dot(forward) < SWORD_HALF_ANGLE_COS) return;
+      if (dist < bestDist) { bestDist = dist; target = z; }
+    });
+
+    if (!target) return;
+    swordHitZombie(target, weapon);
+  }
+
+  function swordHitZombie(z, weapon) {
+    var damage = weapon.damage * upgrades.damageMult;
+    var hitPos = z.group.position.clone().setY(1.0 * z.cfg.scale);
+    spawnImpactBurst(hitPos, 0xe8302f, 14, false);
+    spawnBloodSquirt(hitPos, z.cfg.scale);
+    spawnBloodPool(z.group.position.clone().setY(0.02), (0.5 + Math.random() * 0.3) * z.cfg.scale);
+    sfxSwordHit();
+
+    z.hp -= damage;
+    z.punch = ZOMBIE_PUNCH_DURATION;
+    var willKill = z.hp <= 0;
+
+    if (!willKill) {
+      // a hit that doesn't finish the zombie off still visibly lops off a limb
+      sfxDismember();
+      var armSide = Math.random() < 0.5 ? -1 : 1;
+      var limbPos = z.group.position.clone().setY(1.02 * z.cfg.scale);
+      limbPos.x += armSide * 0.4 * z.cfg.scale;
+      spawnDetachedGib(limbPos, z.cfg.scale, TYPE_SKIN_COLOR[z.type], limbGibGeo);
+    }
+
+    crosshairEl.classList.remove("hit");
+    void crosshairEl.offsetWidth;
+    crosshairEl.classList.add("hit");
+
+    if (willKill) {
+      var cutHead = Math.random() < 0.5;
+      if (cutHead) {
+        showBigPop("DECAPITATED", "#ff3b3b");
+        sfxHeadshot();
+      }
+      showScorePop(z.cfg.score + (cutHead ? 15 : 0));
+      killZombie(z, cutHead, false);
+    } else {
+      showScorePop(5);
+      score += 5;
+      scoreLabel.textContent = "Score: " + score;
     }
   }
 
