@@ -101,6 +101,13 @@ every side — survive as many waves as you can:
   streaks out with an ember trail and explodes in a shockwave on impact,
   dealing splash damage to every zombie caught in the blast radius. ~8-second
   cooldown.
+- Gold &#9728;&#65039; button: the ultimate — **Supernova**. Time briefly
+  slows as energy implodes into your chest, then it detonates: a blinding
+  full-screen flash, an expanding white-hot core, three color-shifting
+  shockwave rings (white &rarr; cyan &rarr; violet), a huge burst of embers
+  in every direction, and a massive dynamic light — instantly vaporizing
+  every zombie on the map. ~25-second cooldown; save it for when you're
+  overwhelmed.
 - Top bar: live score, current wave, and a health bar
 - Zombies groan, shamble toward you, and attack (damaging your health) when
   they get close; each wave brings more, slightly faster zombies. The run
