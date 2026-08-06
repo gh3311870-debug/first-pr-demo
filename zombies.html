@@ -1589,6 +1589,7 @@
       spawnBloodPool(deathPos, z.cfg.scale * 1.15);
       spawnGibs(z.group.position.clone().setY(0.9 * z.cfg.scale), z.cfg.scale);
       spawnBloodMist(z.group.position.clone().setY(1.1 * z.cfg.scale), z.cfg.scale);
+      spawnBloodSquirt(z.group.position.clone().setY(1.0 * z.cfg.scale), z.cfg.scale);
       if (headshot || Math.random() < DISMEMBER_CHANCE) {
         sfxDismember();
         if (headshot || Math.random() < 0.5) {
@@ -1934,7 +1935,7 @@
     tracers.push({ mesh: core.mesh, material: core.material, life: 0.09, maxLife: 0.09 });
   }
 
-  var PARTICLE_POOL_SIZE = 90;
+  var PARTICLE_POOL_SIZE = 180;
   var particlePool = [];
   var particleGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
   for (var pi = 0; pi < PARTICLE_POOL_SIZE; pi++) {
@@ -1974,6 +1975,44 @@
       }
       p.life = (glow ? 0.16 : 0.35) + Math.random() * (glow ? 0.12 : 0.25);
       p.maxLife = p.life;
+    }
+  }
+
+  // A pulsing jet of blood rather than a single instantaneous poof: fires a
+  // few small bursts in quick succession, each kicked in a fresh random
+  // horizontal direction with a strong upward arc, so it reads as an actual
+  // wound spurting rather than a static splash.
+  function spawnBloodSquirt(position, scale) {
+    var pulseCount = 3;
+    for (var i = 0; i < pulseCount; i++) {
+      (function (pulseIndex) {
+        setTimeout(function () {
+          var theta = Math.random() * Math.PI * 2;
+          var jetDir = new THREE.Vector3(Math.cos(theta), 0, Math.sin(theta));
+          for (var n = 0; n < 7; n++) {
+            var p = particlePool[nextParticleIndex];
+            nextParticleIndex = (nextParticleIndex + 1) % PARTICLE_POOL_SIZE;
+            p.active = true;
+            p.mesh.visible = true;
+            p.mesh.position.copy(position);
+            p.mesh.material.color.setHex(pulseIndex === 0 ? 0xc41e28 : 0x8f0f17);
+            p.mesh.material.opacity = 1;
+            p.mesh.material.blending = THREE.NormalBlending;
+            p.mesh.material.toneMapped = true;
+            p.mesh.scale.set(1, 1, 2.4 + Math.random() * 1.6);
+            var speed = (4.5 + Math.random() * 3) * scale;
+            var v = jetDir.clone();
+            v.x += (Math.random() - 0.5) * 0.4;
+            v.z += (Math.random() - 0.5) * 0.4;
+            v.y = 2.6 + Math.random() * 1.8;
+            v.normalize().multiplyScalar(speed);
+            p.vel.copy(v);
+            p.mesh.quaternion.setFromUnitVectors(UNIT_Z, p.vel.clone().normalize());
+            p.life = 0.32 + Math.random() * 0.22;
+            p.maxLife = p.life;
+          }
+        }, pulseIndex * 85);
+      })(i);
     }
   }
 
@@ -2819,6 +2858,7 @@
     var damage = weapon.damage * upgrades.damageMult;
     var hitPos = z.group.position.clone().setY(1.0 * z.cfg.scale);
     spawnImpactBurst(hitPos, 0xe8302f, 14, false);
+    spawnBloodSquirt(hitPos, z.cfg.scale);
     spawnBloodPool(z.group.position.clone().setY(0.02), (0.5 + Math.random() * 0.3) * z.cfg.scale);
     sfxSwordHit();
 
