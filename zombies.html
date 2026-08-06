@@ -88,7 +88,7 @@
     margin-left: -130px;
     margin-top: -130px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,235,150,0.55) 0%, rgba(255,180,60,0.25) 35%, rgba(255,180,60,0) 70%);
+    background: radial-gradient(circle, rgba(255,250,220,0.85) 0%, rgba(255,200,90,0.4) 32%, rgba(255,180,60,0) 68%);
     opacity: 0;
   }
   #muzzleFlash.flash {
@@ -613,11 +613,13 @@
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
   document.body.appendChild(renderer.domElement);
 
-  var hemi = new THREE.HemisphereLight(0x8899cc, 0x1a1d24, 0.55);
+  var hemi = new THREE.HemisphereLight(0x93a6d6, 0x232a38, 0.7);
   scene.add(hemi);
-  var moon = new THREE.DirectionalLight(0xaebfff, 0.85);
+  var moon = new THREE.DirectionalLight(0xc3d4ff, 1.05);
   moon.position.set(-15, 30, -10);
   moon.castShadow = true;
   moon.shadow.mapSize.set(1024, 1024);
@@ -629,6 +631,13 @@
   moon.shadow.camera.far = 100;
   moon.shadow.bias = -0.002;
   scene.add(moon);
+
+  // low warm fill light near the player so muzzle/energy flashes have
+  // something nearby to catch and bounce off, and zombies read as more
+  // than pure black silhouettes at close range
+  var playerFill = new THREE.PointLight(0x88a0d8, 0.35, 9, 2);
+  camera.add(playerFill);
+  playerFill.position.set(0, 0.1, 0.2);
 
   // ---------- Procedural textures (no external assets) ----------
   function makeCanvasTexture(size, draw) {
@@ -1309,20 +1318,57 @@
     recoilKick = mult || 1;
   }
 
+  // Dynamic muzzle/energy flash lights: a brief bright point light punches out
+  // from the gun (or the player, for lightning) each shot and decays fast,
+  // so shots actually cast light on nearby walls/zombies instead of just
+  // being a flat sprite on the HUD.
+  var muzzleLight = new THREE.PointLight(0xffb84d, 0, 7, 2);
+  scene.add(muzzleLight);
+  var energyLight = new THREE.PointLight(0x7fe8ff, 0, 11, 2);
+  scene.add(energyLight);
+
+  function flashMuzzleLight(position, color, intensity) {
+    muzzleLight.position.copy(position);
+    muzzleLight.color.setHex(color);
+    muzzleLight.intensity = intensity;
+  }
+
+  function flashEnergyLight(position, color, intensity, distance) {
+    energyLight.position.copy(position);
+    energyLight.color.setHex(color);
+    energyLight.intensity = intensity;
+    energyLight.distance = distance || 11;
+  }
+
   // ---------- VFX: tracers, impact particles, screen shake ----------
   var vfxGroup = new THREE.Group();
   scene.add(vfxGroup);
 
-  var tracers = []; // { line, life, maxLife }
-  var tracerMat = new THREE.LineBasicMaterial({ color: BULLET_TRACER_COLOR, transparent: true, opacity: 0.9 });
+  // Tracers are thin glowing beam meshes (not 1px Lines, which browsers
+  // render at a fixed hairline width) so they read as bright, visible shots.
+  var tracers = []; // { mesh, material, life, maxLife }
+  var tracerBeamGeo = new THREE.BoxGeometry(1, 1, 1);
+  var UNIT_Z = new THREE.Vector3(0, 0, 1);
 
   function spawnTracer(from, to, color) {
-    var geo = new THREE.BufferGeometry().setFromPoints([from, to]);
-    var mat = tracerMat.clone();
-    if (color) mat.color.setHex(color);
-    var line = new THREE.Line(geo, mat);
-    vfxGroup.add(line);
-    tracers.push({ line: line, life: 0.08, maxLife: 0.08 });
+    var offset = to.clone().sub(from);
+    var length = offset.length();
+    if (length < 0.001) return;
+
+    var mat = new THREE.MeshBasicMaterial({
+      color: color || BULLET_TRACER_COLOR,
+      transparent: true,
+      opacity: 1,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false
+    });
+    var mesh = new THREE.Mesh(tracerBeamGeo, mat);
+    mesh.scale.set(0.018, 0.018, length);
+    mesh.position.copy(from).addScaledVector(offset, 0.5);
+    mesh.quaternion.setFromUnitVectors(UNIT_Z, offset.normalize());
+    vfxGroup.add(mesh);
+    tracers.push({ mesh: mesh, material: mat, life: 0.09, maxLife: 0.09 });
   }
 
   var PARTICLE_POOL_SIZE = 40;
@@ -1337,7 +1383,7 @@
   }
   var nextParticleIndex = 0;
 
-  function spawnImpactBurst(position, color, count) {
+  function spawnImpactBurst(position, color, count, glow) {
     for (var n = 0; n < count; n++) {
       var p = particlePool[nextParticleIndex];
       nextParticleIndex = (nextParticleIndex + 1) % PARTICLE_POOL_SIZE;
@@ -1346,7 +1392,11 @@
       p.mesh.position.copy(position);
       p.mesh.material.color.setHex(color);
       p.mesh.material.opacity = 1;
-      var speed = 1.5 + Math.random() * 2.5;
+      p.mesh.material.blending = glow ? THREE.AdditiveBlending : THREE.NormalBlending;
+      p.mesh.material.toneMapped = !glow;
+      var stretch = glow ? 1.8 + Math.random() : 1;
+      p.mesh.scale.set(1, 1, stretch);
+      var speed = (glow ? 3 : 1.5) + Math.random() * (glow ? 4.5 : 2.5);
       var theta = Math.random() * Math.PI * 2;
       var phi = Math.random() * Math.PI * 0.6;
       p.vel.set(
@@ -1354,14 +1404,19 @@
         Math.cos(phi) * speed + 1,
         Math.sin(phi) * Math.sin(theta) * speed
       );
-      p.life = 0.35 + Math.random() * 0.25;
+      if (glow) {
+        p.mesh.quaternion.setFromUnitVectors(UNIT_Z, p.vel.clone().normalize());
+      } else {
+        p.mesh.quaternion.identity();
+      }
+      p.life = (glow ? 0.16 : 0.35) + Math.random() * (glow ? 0.12 : 0.25);
       p.maxLife = p.life;
     }
   }
 
   function spawnEvaporateEffect(position, scale) {
-    spawnImpactBurst(position, 0xcdf7ff, Math.round(18 * scale));
-    spawnImpactBurst(position, 0x6fd8ff, Math.round(12 * scale));
+    spawnImpactBurst(position, 0xe8fbff, Math.round(18 * scale), true);
+    spawnImpactBurst(position, 0x6fd8ff, Math.round(12 * scale), true);
   }
 
   // ---------- Muzzle smoke ----------
@@ -1667,7 +1722,7 @@
       var distToPlayer = p.mesh.position.distanceTo(player.pos);
       if (distToPlayer < 0.8) {
         damagePlayer(SPIT_DAMAGE);
-        spawnImpactBurst(p.mesh.position.clone(), 0x9fe23a, 10);
+        spawnImpactBurst(p.mesh.position.clone(), 0xb6ff4d, 10, true);
         p.active = false;
         p.mesh.visible = false;
         continue;
@@ -1681,7 +1736,7 @@
 
   // ---------- Lightning ability VFX ----------
   var lightningBolts = []; // { line, life, maxLife }
-  var lightningMat = new THREE.LineBasicMaterial({ color: 0xbfe8ff, transparent: true, opacity: 1 });
+  var lightningMat = new THREE.LineBasicMaterial({ color: 0xbfe8ff, transparent: true, opacity: 1, toneMapped: false });
 
   function spawnLightningBolt(from, to) {
     var segments = 7;
@@ -1721,11 +1776,10 @@
     for (var ti = tracers.length - 1; ti >= 0; ti--) {
       var tr = tracers[ti];
       tr.life -= dt;
-      tr.line.material.opacity = Math.max(0, tr.life / tr.maxLife) * 0.9;
+      tr.material.opacity = Math.max(0, tr.life / tr.maxLife);
       if (tr.life <= 0) {
-        vfxGroup.remove(tr.line);
-        tr.line.geometry.dispose();
-        tr.line.material.dispose();
+        vfxGroup.remove(tr.mesh);
+        tr.material.dispose();
         tracers.splice(ti, 1);
       }
     }
@@ -1816,7 +1870,7 @@
       var evaporate = weapon.evaporate;
 
       spawnTracer(muzzleOrigin, hit.point, weapon.tracerColor);
-      spawnImpactBurst(hit.point, evaporate ? 0x9fe8ff : (isHeadshot ? 0xcc1c1c : 0x9c1f1f), isHeadshot ? 20 : 12);
+      spawnImpactBurst(hit.point, evaporate ? 0x9fe8ff : (isHeadshot ? 0xff2b2b : 0xe8302f), isHeadshot ? 20 : 12, evaporate);
 
       // blood spray on any wall/crate close behind the zombie (through-and-through);
       // energy weapons cauterize instead of splattering blood.
@@ -1845,7 +1899,7 @@
     } else if (obstacleHits.length > 0) {
       var oHit = obstacleHits[0];
       spawnTracer(muzzleOrigin, oHit.point, weapon.tracerColor);
-      spawnImpactBurst(oHit.point, weapon.evaporate ? 0x9fe8ff : 0xcccccc, 8);
+      spawnImpactBurst(oHit.point, weapon.evaporate ? 0x9fe8ff : 0xffcf7a, 8, true);
     } else {
       var farPoint = raycaster.ray.at(weapon.range, new THREE.Vector3());
       spawnTracer(muzzleOrigin, farPoint, weapon.tracerColor);
@@ -1867,8 +1921,13 @@
 
     var muzzleWorldPos = new THREE.Vector3();
     gunGroup.getWorldPosition(muzzleWorldPos);
-    spawnMuzzleSmoke(muzzleWorldPos);
-    spawnCasing();
+    if (weapon.evaporate) {
+      flashEnergyLight(muzzleWorldPos, 0x6fe8ff, 5.5, 8);
+    } else {
+      flashMuzzleLight(muzzleWorldPos, 0xffb84d, 4.5 * Math.max(1, weapon.pellets * 0.5));
+      spawnMuzzleSmoke(muzzleWorldPos);
+      spawnCasing();
+    }
 
     var forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
     var right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
@@ -1921,6 +1980,7 @@
     lightningFlashEl.classList.add("flash");
 
     var playerChestPos = new THREE.Vector3(player.pos.x, player.pos.y - 0.2, player.pos.z);
+    flashEnergyLight(playerChestPos, 0xbfe8ff, 9, LIGHTNING_RANGE + 4);
     var struck = 0;
     zombies.forEach(function (z) {
       if (z.dead) return;
@@ -2114,6 +2174,8 @@
     recoilKick = Math.max(0, recoilKick - dt * 7);
     gunGroup.position.z = gunBasePos.z + recoilKick * 0.12;
     gunGroup.rotation.x = gunBaseRotX - recoilKick * 0.22;
+    if (muzzleLight.intensity > 0) muzzleLight.intensity = Math.max(0, muzzleLight.intensity - dt * 32);
+    if (energyLight.intensity > 0) energyLight.intensity = Math.max(0, energyLight.intensity - dt * 14);
 
     if (comboTimer > 0) {
       comboTimer -= dt;
