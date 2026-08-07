@@ -764,10 +764,17 @@
     { name: "Sniper", visual: "sniper", cooldown: 1.05, damage: 55, pellets: 1, spread: 0, range: 90, recoil: 2.4, shakeMult: 2.2, tracerColor: NEON_PINK, evaporate: false, sfx: function () { return sfxSniper(); } },
     { name: "Laser", visual: "laser", cooldown: 0.45, damage: 42, pellets: 1, spread: 0, range: 75, recoil: 0.75, shakeMult: 0.8, tracerColor: NEON_CYAN, evaporate: true, sfx: function () { return sfxLaser(); } },
     { name: "Sword", visual: "sword", melee: true, cooldown: 0.45, damage: 16, pellets: 0, spread: 0, range: 2.8, recoil: 1.2, shakeMult: 1.1, tracerColor: 0xd8f0ff, evaporate: false, sfx: function () { return sfxSwordSwing(); } },
-    { name: "Rocket", visual: "rocket", projectile: true, cooldown: 1.6, damage: 70, pellets: 0, spread: 0, range: 80, recoil: 3.2, shakeMult: 2.6, tracerColor: 0xffb04a, evaporate: false, sfx: function () { return sfxRocketLaunch(); } }
+    { name: "Rocket", visual: "rocket", projectile: true, cooldown: 1.6, damage: 70, pellets: 0, spread: 0, range: 80, recoil: 3.2, shakeMult: 2.6, tracerColor: 0xffb04a, evaporate: false, sfx: function () { return sfxRocketLaunch(); } },
+    { name: "Flamethrower", visual: "flamethrower", flame: true, autoFire: true, cooldown: 0.1, damage: 4, pellets: 0, spread: 0, range: 7, recoil: 0.35, shakeMult: 0.3, tracerColor: 0xff7a1f, evaporate: false, sfx: function () { return sfxFlamethrower(); } }
   ];
   var BULLET_TRACER_COLOR = NEON_GREEN;
   var SWORD_HALF_ANGLE_COS = 0.45; // ~63 degree half-angle swing cone
+  var FLAME_HALF_ANGLE_COS = 0.5; // ~60 degree half-angle spray cone
+
+  // ---------- Flamethrower: ignites zombies for burn damage over time ----------
+  var FLAME_BURN_DURATION = 3;
+  var FLAME_BURN_TICK_INTERVAL = 0.4;
+  var FLAME_BURN_TICK_DAMAGE = 3;
 
   // ---------- Rocket Launcher weapon: projectile + big splash explosion ----------
   var ROCKET_SPEED = 26;
@@ -1028,6 +1035,13 @@
     playNoiseBurst(0.55, 700, 0.4, 90);
     playTone(100, 35, 0.55, "sawtooth", 0.32);
     playThump(rand(45, 60), 0.5, 0.3);
+  }
+  function sfxFlamethrower() {
+    playNoiseBurst(0.12, rand(1800, 2400), 0.16, rand(600, 900));
+    playTone(rand(300, 400), rand(150, 220), 0.07, "sawtooth", 0.07);
+  }
+  function sfxBurnTick() {
+    playNoiseBurst(0.08, rand(2200, 2800), 0.07, rand(500, 700));
   }
   function sfxExplosion() {
     playNoiseBurst(0.45, 900, 0.35);
@@ -1536,7 +1550,10 @@
       bobPhase: Math.random() * Math.PI * 2,
       isBrute: type === "brute",
       headMesh: group.userData.head,
-      fallElapsed: 0
+      fallElapsed: 0,
+      burning: false,
+      burnTimer: 0,
+      burnTickTimer: 0
     };
     zombies.push(z);
     zombiesAliveInWave++;
@@ -1892,6 +1909,24 @@
   rocketNose.visible = false;
   gunGroup.add(rocketNose);
 
+  var flameTankMat = new THREE.MeshStandardMaterial({ color: 0x8a1f1f, roughness: 0.5, metalness: 0.3 });
+  var flameTank = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.11, 0.16), flameTankMat);
+  flameTank.position.set(0, -0.05, 0.1);
+  flameTank.visible = false;
+  gunGroup.add(flameTank);
+
+  var flameNozzleMat = new THREE.MeshStandardMaterial({ color: 0x2b2e2b, roughness: 0.5, metalness: 0.5 });
+  var flameNozzle = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.28), flameNozzleMat);
+  flameNozzle.position.set(0, 0.01, -0.16);
+  flameNozzle.visible = false;
+  gunGroup.add(flameNozzle);
+
+  var flamePilotMat = new THREE.MeshStandardMaterial({ color: 0xffb04a, emissive: 0xff5a1f, emissiveIntensity: 0.9, roughness: 0.4 });
+  var flamePilot = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.03), flamePilotMat);
+  flamePilot.position.set(0, 0.01, -0.31);
+  flamePilot.visible = false;
+  gunGroup.add(flamePilot);
+
   function updateGunVisual(visual) {
     gunBody.visible = visual !== "sword" && visual !== "rocket";
     gunGrip.visible = visual !== "sword" && visual !== "rocket";
@@ -1911,6 +1946,9 @@
     rocketTube.visible = visual === "rocket";
     rocketSight.visible = visual === "rocket";
     rocketNose.visible = visual === "rocket";
+    flameTank.visible = visual === "flamethrower";
+    flameNozzle.visible = visual === "flamethrower";
+    flamePilot.visible = visual === "flamethrower";
   }
 
   var recoilKick = 0;
@@ -2633,26 +2671,27 @@
   // A bigger, smokier version of the Fireball's explosion — extra dark
   // debris burst and a slower grey shockwave ring alongside the fire, plus
   // staggered smoke puffs drifting outward from the blast center.
+  // A blunt ordnance blast, deliberately built to read differently from the
+  // Fireball's clean magical-fire burst: a brief white-hot core instead of a
+  // sustained ember glow, and the rest of the palette is soot, dirt and
+  // rubble rather than orange flame — dominated by dark debris and a slow
+  // dust shockwave instead of fire rings.
   function spawnRocketExplosion(position, radius) {
-    spawnImpactBurst(position, 0xfff2c0, 20, true);
-    spawnImpactBurst(position, 0xffb04a, 30, true);
-    spawnImpactBurst(position, 0xff2f0f, 26, true);
-    spawnImpactBurst(position, 0x2a2a2a, 20, false);
-    flashEnergyLight(position, 0xffb04a, 16, radius + 10);
-    spawnExpandingRing(position, 0xffcf7a, radius * 3.2, 0.45, 0.9, 0);
-    spawnExpandingRing(position, 0xff3010, radius * 2.6, 0.6, 0.65, 60);
-    spawnExpandingRing(position, 0x555555, radius * 2, 0.9, 0.4, 100);
-    for (var i = 0; i < 4; i++) {
+    spawnImpactBurst(position, 0xffffff, 12, true);
+    spawnImpactBurst(position, 0xffb35c, 8, true);
+    spawnImpactBurst(position, 0x1a1a1a, 28, false);
+    spawnImpactBurst(position, 0x4a3a28, 22, false);
+    spawnImpactBurst(position, 0x6b6b6b, 18, false);
+    flashEnergyLight(position, 0xffb35c, 14, radius + 8);
+    spawnExpandingRing(position, 0x8a7a5a, radius * 3.4, 0.55, 0.7, 0);
+    spawnExpandingRing(position, 0x3a3a3a, radius * 2.2, 0.9, 0.55, 90);
+    for (var i = 0; i < 5; i++) {
       (function (idx) {
         setTimeout(function () {
-          spawnMuzzleSmoke(position.clone().add(new THREE.Vector3((Math.random() - 0.5) * radius, 0.3 + Math.random() * 0.6, (Math.random() - 0.5) * radius)));
-        }, idx * 90);
+          spawnMuzzleSmoke(position.clone().add(new THREE.Vector3((Math.random() - 0.5) * radius, 0.3 + Math.random() * 0.8, (Math.random() - 0.5) * radius)));
+        }, idx * 110);
       })(i);
     }
-    setTimeout(function () {
-      spawnImpactBurst(position, 0xffcf7a, 16, true);
-      flashEnergyLight(position, 0xffb04a, 7, radius + 5);
-    }, 130);
   }
 
   // On top of the normal gore path (blood pool + a chance of dismemberment),
@@ -2864,10 +2903,21 @@
 
     zombies.forEach(function (z) {
       if (z.dead) return;
+      var punchK = 0;
       if (z.punch > 0) {
         z.punch -= dt;
-        var k = Math.max(0, z.punch / ZOMBIE_PUNCH_DURATION);
-        z.group.userData.parts.forEach(function (part) { part.material.emissive.setRGB(k, 0, k * 0.35); });
+        punchK = Math.max(0, z.punch / ZOMBIE_PUNCH_DURATION);
+      }
+      var burnGlow = 0;
+      if (z.burning) {
+        var burnFade = Math.min(1, z.burnTimer / 0.3);
+        burnGlow = burnFade * (0.55 + Math.random() * 0.35);
+      }
+      if (punchK > 0 || burnGlow > 0) {
+        var r = Math.max(punchK, burnGlow);
+        var g = burnGlow * 0.4;
+        var b = punchK * 0.35;
+        z.group.userData.parts.forEach(function (part) { part.material.emissive.setRGB(r, g, b); });
       }
     });
   }
@@ -3003,6 +3053,14 @@
       return;
     }
 
+    if (weapon.flame) {
+      triggerShake(weapon.shakeMult);
+      triggerRecoil(weapon.recoil);
+      weapon.sfx();
+      flamethrowerAttack(weapon);
+      return;
+    }
+
     var rgb = hexToRgbString(weapon.tracerColor);
     muzzleFlashEl.style.background = "radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(" + rgb + ",0.65) 30%, rgba(" + rgb + ",0) 68%)";
     muzzleFlashEl.classList.remove("flash");
@@ -3104,6 +3162,77 @@
       showScorePop(5);
       score += 5;
       scoreLabel.textContent = "Score: " + score;
+    }
+  }
+
+  // Sets (or refreshes) a zombie alight — burn damage ticks over time in
+  // updateZombies, independent of whether the flame stream keeps hitting it.
+  function igniteZombie(z) {
+    z.burning = true;
+    z.burnTimer = FLAME_BURN_DURATION;
+    if (!z.burnTickTimer || z.burnTickTimer <= 0) z.burnTickTimer = FLAME_BURN_TICK_INTERVAL;
+  }
+
+  // A quick directional cone burst of flame particles, reused every tap/tick
+  // of the flamethrower so a held stream reads as a continuous jet of fire.
+  function spawnFlameSpray(origin, dir, range) {
+    for (var n = 0; n < 10; n++) {
+      var p = particlePool[nextParticleIndex];
+      nextParticleIndex = (nextParticleIndex + 1) % PARTICLE_POOL_SIZE;
+      p.active = true;
+      p.mesh.visible = true;
+      p.mesh.position.copy(origin);
+      p.mesh.material.color.setHex(Math.random() < 0.5 ? 0xff7a1f : 0xffcf6a);
+      p.mesh.material.opacity = 1;
+      p.mesh.material.blending = THREE.AdditiveBlending;
+      p.mesh.material.toneMapped = false;
+      p.mesh.scale.set(1, 1, 1.6 + Math.random());
+      var spreadDir = dir.clone();
+      spreadDir.x += (Math.random() - 0.5) * 0.5;
+      spreadDir.y += (Math.random() - 0.5) * 0.3;
+      spreadDir.z += (Math.random() - 0.5) * 0.5;
+      spreadDir.normalize();
+      var speed = range * 0.7 + Math.random() * range * 0.6;
+      p.vel.copy(spreadDir).multiplyScalar(speed);
+      p.mesh.quaternion.setFromUnitVectors(UNIT_Z, spreadDir);
+      p.life = 0.14 + Math.random() * 0.1;
+      p.maxLife = p.life;
+    }
+  }
+
+  // Hits every living zombie in a wide cone in front of the player (not just
+  // the closest, unlike the sword) with light direct damage and ignites them
+  // for the real damage-over-time payoff.
+  function flamethrowerAttack(weapon) {
+    var forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    var muzzleWorldPos = new THREE.Vector3();
+    gunGroup.getWorldPosition(muzzleWorldPos);
+    flashMuzzleLight(muzzleWorldPos, weapon.tracerColor, 3);
+    spawnFlameSpray(muzzleWorldPos, forward, weapon.range);
+
+    var hitAny = false;
+    zombies.forEach(function (z) {
+      if (z.dead) return;
+      var toZombie = z.group.position.clone().sub(player.pos);
+      var dist = toZombie.length();
+      if (dist > weapon.range) return;
+      toZombie.normalize();
+      if (toZombie.dot(forward) < FLAME_HALF_ANGLE_COS) return;
+
+      hitAny = true;
+      igniteZombie(z);
+      z.hp -= weapon.damage * upgrades.damageMult;
+      z.punch = ZOMBIE_PUNCH_DURATION;
+      if (z.hp <= 0) {
+        showScorePop(z.cfg.score);
+        killZombie(z, false, false);
+      }
+    });
+
+    if (hitAny) {
+      crosshairEl.classList.remove("hit");
+      void crosshairEl.offsetWidth;
+      crosshairEl.classList.add("hit");
     }
   }
 
@@ -3240,8 +3369,34 @@
   supernovaBtn.addEventListener("mousedown", function (e) { e.preventDefault(); useSupernovaAbility(); });
 
   var shootBtn = document.getElementById("shootBtn");
-  shootBtn.addEventListener("touchstart", function (e) { e.preventDefault(); shoot(); }, { passive: false });
-  shootBtn.addEventListener("mousedown", function (e) { e.preventDefault(); shoot(); });
+  // Every other weapon fires once per tap. A weapon flagged autoFire (the
+  // flamethrower) keeps calling shoot() on an interval for as long as the
+  // button is held, so holding it down reads as a continuous stream rather
+  // than needing rapid re-tapping — shoot() itself still gates on
+  // fireCooldownTimer, so the interval just no-ops between actual shots.
+  var shootHoldInterval = null;
+  function startShootHold() {
+    shoot();
+    stopShootHold();
+    if (WEAPONS[currentWeaponIndex].autoFire) {
+      shootHoldInterval = setInterval(function () {
+        if (gameOver) { stopShootHold(); return; }
+        shoot();
+      }, 40);
+    }
+  }
+  function stopShootHold() {
+    if (shootHoldInterval) {
+      clearInterval(shootHoldInterval);
+      shootHoldInterval = null;
+    }
+  }
+  shootBtn.addEventListener("touchstart", function (e) { e.preventDefault(); startShootHold(); }, { passive: false });
+  shootBtn.addEventListener("touchend", function (e) { e.preventDefault(); stopShootHold(); }, { passive: false });
+  shootBtn.addEventListener("touchcancel", stopShootHold);
+  shootBtn.addEventListener("mousedown", function (e) { e.preventDefault(); startShootHold(); });
+  shootBtn.addEventListener("mouseup", stopShootHold);
+  shootBtn.addEventListener("mouseleave", stopShootHold);
 
   var jumpBtn = document.getElementById("jumpBtn");
   jumpBtn.addEventListener("touchstart", function (e) { e.preventDefault(); wantJump = true; sfxJump(); }, { passive: false });
@@ -3372,6 +3527,24 @@
           z.bleedTimer = BLEED_INTERVAL;
           spawnBloodPool(g.position.clone().setY(0.02), 0.4 * z.cfg.scale);
         }
+      }
+
+      if (z.burning) {
+        z.burnTimer -= dt;
+        z.burnTickTimer -= dt;
+        if (z.burnTickTimer <= 0) {
+          z.burnTickTimer = FLAME_BURN_TICK_INTERVAL;
+          z.hp -= FLAME_BURN_TICK_DAMAGE * upgrades.damageMult;
+          spawnImpactBurst(g.position.clone().setY((0.4 + Math.random() * 0.8) * z.cfg.scale), Math.random() < 0.5 ? 0xff5a1f : 0xffcf6a, 3, true);
+          if (Math.random() < 0.5) sfxBurnTick();
+          if (z.hp <= 0) {
+            z.burning = false;
+            showScorePop(z.cfg.score);
+            killZombie(z, false, false);
+            return;
+          }
+        }
+        if (z.burnTimer <= 0) z.burning = false;
       }
 
       var toPlayer = new THREE.Vector3(player.pos.x - g.position.x, 0, player.pos.z - g.position.z);

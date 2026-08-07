@@ -93,12 +93,18 @@ every side — survive as many waves as you can:
   zombies in a burst of light instead of leaving a corpse), **Sword** (a
   close-range melee blade — swing it at a zombie standing in front of you
   to lop off a limb in a spray of blood, and finish them off with enough
-  hits, occasionally taking the head clean off), and **Rocket Launcher** (a
+  hits, occasionally taking the head clean off), **Rocket Launcher** (a
   slow-firing rocket that streaks out with a smoke trail and detonates in a
-  huge fiery, smoke-filled blast on impact — anything caught in the splash
-  radius is blown apart, limbs and all, and multiple zombies can go down in
-  one shot). Each weapon has its own saturated neon tracer color, viewmodel,
-  recoil, screen shake, and sound —
+  blunt, debris-and-smoke-filled ordnance blast — a brief white-hot flash
+  followed by dark soot, dirt and a slow dust shockwave rather than a fiery
+  glow, so it reads as a real explosion rather than the Fireball ability's
+  magical burst. Anything caught in the splash radius is blown apart, limbs
+  and all, and multiple zombies can go down in one shot), and
+  **Flamethrower** (hold the SHOOT button to spray a continuous cone of fire
+  — zombies caught in the stream catch alight and keep taking burn damage
+  for a few seconds afterward even if you stop hitting them, with a
+  flickering orange glow while they burn). Each weapon has its own saturated
+  neon tracer color, viewmodel, recoil, screen shake, and sound —
   muzzle flashes and bullet impacts light up in that same color.
 - Purple &#9889; button: unleash a **Lightning** ability — a heavy-damage
   neon-violet bolt that chains to every zombie within range of you at once,
