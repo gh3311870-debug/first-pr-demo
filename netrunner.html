@@ -88,6 +88,10 @@
     background: radial-gradient(circle, rgba(255,46,154,0.6) 0%, rgba(255,46,154,0) 65%);
     animation: abilityFlashAnim 450ms ease-out;
   }
+  #abilityFlash.flashWhite {
+    background: radial-gradient(circle, rgba(255,255,255,0.85) 0%, rgba(170,240,255,0.4) 40%, rgba(170,240,255,0) 70%);
+    animation: abilityFlashAnim 550ms ease-out;
+  }
   @keyframes abilityFlashAnim {
     0% { opacity: 1; }
     100% { opacity: 0; }
@@ -227,6 +231,15 @@
     background: rgba(255,46,154,0.22);
     border-color: rgba(255,46,154,0.85);
     box-shadow: 0 0 14px rgba(255,46,154,0.55);
+  }
+  #overloadBtn {
+    bottom: 168px;
+    width: 64px;
+    height: 64px;
+    font-size: 22px;
+    background: rgba(255,255,255,0.22);
+    border-color: rgba(216,251,255,0.95);
+    box-shadow: 0 0 20px rgba(216,251,255,0.7);
   }
 
   #moveStick {
@@ -390,7 +403,7 @@
       <div id="healthWrap"></div>
     </div>
   </div>
-  <div id="hint">Left pad: move &middot; Right pad: aim &amp; hold to fire &middot; &#9889; Dash &middot; &#9762; EMP Burst</div>
+  <div id="hint">Left pad: move &middot; Right pad: aim &amp; hold to fire &middot; &#9889; Dash &middot; &#9762; EMP Burst &middot; &#9737; Overload Laser</div>
   <div id="gameNav">
     <a class="navLink" href="index.html">Builder</a>
     <a class="navLink" href="fps.html">Range</a>
@@ -403,6 +416,7 @@
   <div id="aimStick"><div id="aimKnob"></div></div>
   <div id="dashBtn" class="abilityBtn">&#9889;<span id="dashCooldownLabel" class="abilityCooldownLabel"></span></div>
   <div id="empBtn" class="abilityBtn">&#9762;<span id="empCooldownLabel" class="abilityCooldownLabel"></span></div>
+  <div id="overloadBtn" class="abilityBtn">&#9737;<span id="overloadCooldownLabel" class="abilityCooldownLabel"></span></div>
 </div>
 
 <div id="waveClear">
@@ -440,6 +454,10 @@
   var EMP_RADIUS = 9;
   var EMP_DAMAGE = 4;
   var EMP_COOLDOWN = 10;
+  var OVERLOAD_COOLDOWN = 14;
+  var OVERLOAD_RANGE = 30;
+  var OVERLOAD_WIDTH = 1.3;
+  var OVERLOAD_DAMAGE = 12;
 
   // ---------- Orientation / fullscreen ----------
   var rotateOverlayEl = document.getElementById("rotateOverlay");
@@ -518,6 +536,8 @@
   function sfxPerk() { playTone(600, 1200, 0.15, "sine", 0.14); }
   function sfxDash() { playNoiseBurst(0.12, 3000, 0.15); playTone(1400, 2400, 0.1, "sine", 0.12); }
   function sfxEmp() { playNoiseBurst(0.3, 900, 0.22); playTone(220, 900, 0.4, "square", 0.16); }
+  function sfxOverloadCharge() { playTone(300, 1400, 0.4, "sine", 0.12); }
+  function sfxOverloadFire() { playNoiseBurst(0.4, 4000, 0.28); playTone(1800, 200, 0.5, "sawtooth", 0.22); }
 
   // ---------- Scene setup ----------
   var scene = new THREE.Scene();
@@ -531,11 +551,13 @@
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.35;
   document.body.appendChild(renderer.domElement);
 
-  var hemi = new THREE.HemisphereLight(0x3a2a55, 0x090014, 0.7);
+  var hemi = new THREE.HemisphereLight(0x3a2a55, 0x090014, 0.8);
   scene.add(hemi);
-  var key = new THREE.DirectionalLight(0x66e0ff, 0.9);
+  var key = new THREE.DirectionalLight(0x66e0ff, 1.1);
   key.position.set(14, 30, 8);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
@@ -547,7 +569,7 @@
   key.shadow.camera.far = 90;
   key.shadow.bias = -0.002;
   scene.add(key);
-  var rim = new THREE.PointLight(0xff2e9a, 1.1, 60);
+  var rim = new THREE.PointLight(0xff2e9a, 1.6, 60);
   rim.position.set(-10, 6, -10);
   scene.add(rim);
 
@@ -614,13 +636,13 @@
   function addBuilding(x, z, w, h, d) {
     var geo = new THREE.BoxGeometry(w, h, d);
     var neonColor = buildingColors[buildings.length % buildingColors.length];
-    var mat = new THREE.MeshStandardMaterial({ map: buildingTexture, roughness: 0.7, metalness: 0.3, emissive: neonColor, emissiveIntensity: 0.35 });
+    var mat = new THREE.MeshStandardMaterial({ map: buildingTexture, roughness: 0.7, metalness: 0.3, emissive: neonColor, emissiveIntensity: 0.55 });
     var mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(x, h / 2, z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     scene.add(mesh);
-    buildings.push({ mesh: mesh, mat: mat, baseIntensity: 0.35, flickerPhase: Math.random() * 10 });
+    buildings.push({ mesh: mesh, mat: mat, baseIntensity: 0.55, flickerPhase: Math.random() * 10 });
   }
   var ring = ARENA_HALF - 2;
   for (var a = 0; a < Math.PI * 2; a += Math.PI / 10) {
@@ -683,7 +705,9 @@
     fireCooldownMul: 1,
     damageMul: 1,
     speedMul: 1,
-    invulnTimer: 0
+    invulnTimer: 0,
+    pelletCount: 1,
+    pierceCount: 0
   };
 
   function clampToArena(p) {
@@ -875,18 +899,36 @@
   }
 
   // ---------- Bolts (player projectiles) ----------
-  var boltGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.5, 6);
-  var boltMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+  var boltGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.6, 6);
+  var boltMat = new THREE.MeshBasicMaterial({ color: 0xaef8ff });
   var bolts = [];
   var fireCooldownTimer = 0;
 
-  function spawnBolt(dirX, dirZ) {
+  function spawnBolt(dirX, dirZ, pierceLeft) {
     var mesh = new THREE.Mesh(boltGeo, boltMat.clone());
     mesh.rotation.x = Math.PI / 2;
     mesh.rotation.z = Math.atan2(dirX, dirZ);
     mesh.position.set(player.x, 0.8, player.z);
     scene.add(mesh);
-    bolts.push({ mesh: mesh, vx: dirX * BOLT_SPEED, vz: dirZ * BOLT_SPEED, life: BOLT_LIFE, damage: BOLT_DAMAGE_BASE * player.damageMul });
+    bolts.push({
+      mesh: mesh, vx: dirX * BOLT_SPEED, vz: dirZ * BOLT_SPEED, life: BOLT_LIFE,
+      damage: BOLT_DAMAGE_BASE * player.damageMul, pierceLeft: pierceLeft, hitEnemies: []
+    });
+  }
+
+  // Fires the player's full pellet spread (widens with the Split Rounds
+  // perk) as one logical shot, so cooldown/sound/muzzle VFX only fire once
+  // per trigger pull rather than once per pellet.
+  function fireBolts(ax, az) {
+    var count = player.pelletCount;
+    var baseAngle = Math.atan2(ax, az);
+    var spread = count > 1 ? 0.17 : 0;
+    var start = -((count - 1) / 2) * spread;
+    for (var i = 0; i < count; i++) {
+      var a = baseAngle + start + i * spread;
+      spawnBolt(Math.sin(a), Math.cos(a), player.pierceCount);
+    }
+    spawnBurst(player.x + ax * 0.9, 0.75, player.z + az * 0.9, 0xd8fbff, 5);
     sfxShoot();
   }
 
@@ -990,7 +1032,7 @@
   var abilityFlashEl = document.getElementById("abilityFlash");
 
   function flashAbility(cls) {
-    abilityFlashEl.classList.remove("flashCyan", "flashPink");
+    abilityFlashEl.classList.remove("flashCyan", "flashPink", "flashWhite");
     void abilityFlashEl.offsetWidth;
     abilityFlashEl.classList.add(cls);
   }
@@ -1045,6 +1087,86 @@
   empBtn.addEventListener("touchstart", function (e) { e.preventDefault(); useEmpBurst(); }, { passive: false });
   empBtn.addEventListener("mousedown", function (e) { e.preventDefault(); useEmpBurst(); });
 
+  // ---------- Ability: Overload Laser (massive piercing beam ultimate) ----------
+  var overloadCooldownTimer = 0;
+  var overloadBtn = document.getElementById("overloadBtn");
+  var overloadCooldownLabel = document.getElementById("overloadCooldownLabel");
+
+  var OVERLOAD_BEAM_DURATION = 0.4;
+  var overloadBeamTimer = 0;
+  var overloadBeamGeo = new THREE.CylinderGeometry(1, 1, 1, 12, 1, true);
+  var overloadCoreMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  var overloadGlowMat = new THREE.MeshBasicMaterial({ color: 0x9df7ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  var overloadCore = new THREE.Mesh(overloadBeamGeo, overloadCoreMat);
+  var overloadGlow = new THREE.Mesh(overloadBeamGeo, overloadGlowMat);
+  overloadCore.visible = false;
+  overloadGlow.visible = false;
+  scene.add(overloadCore, overloadGlow);
+
+  function useOverloadLaser() {
+    if (gameOver || overloadCooldownTimer > 0) return;
+    overloadCooldownTimer = OVERLOAD_COOLDOWN;
+    abilityShakeTime = ABILITY_SHAKE_DURATION * 2.2;
+
+    var ax, az;
+    if (aiming) {
+      var alen = Math.sqrt(aimVec.x * aimVec.x + aimVec.y * aimVec.y);
+      if (alen > 0.001) { ax = aimVec.x / alen; az = aimVec.y / alen; }
+    }
+    if (ax === undefined) { ax = Math.sin(player.angle); az = Math.cos(player.angle); }
+    player.angle = Math.atan2(ax, az);
+
+    for (var ei = enemies.length - 1; ei >= 0; ei--) {
+      var en = enemies[ei];
+      var dx = en.x - player.x, dz = en.z - player.z;
+      var proj = dx * ax + dz * az;
+      if (proj < 0 || proj > OVERLOAD_RANGE) continue;
+      var perpX = dx - ax * proj, perpZ = dz - az * proj;
+      var perpDist = Math.sqrt(perpX * perpX + perpZ * perpZ);
+      if (perpDist <= OVERLOAD_WIDTH) {
+        en.health -= OVERLOAD_DAMAGE;
+        spawnBurst(en.x, en.mesh.position.y, en.z, 0xffffff, 10);
+        spawnShockwave(en.x, 0.05, en.z, 0xd8fbff, en.type === "brute" ? 2 : 1.3, 0.3);
+        if (en.health <= 0) killEnemy(en, ei);
+      }
+    }
+
+    overloadCore.visible = true;
+    overloadGlow.visible = true;
+    overloadCoreMat.opacity = 0.95;
+    overloadGlowMat.opacity = 0.5;
+    overloadBeamTimer = OVERLOAD_BEAM_DURATION;
+    var beamAngle = Math.atan2(ax, az);
+    var midX = player.x + ax * OVERLOAD_RANGE / 2;
+    var midZ = player.z + az * OVERLOAD_RANGE / 2;
+    overloadCore.rotation.set(Math.PI / 2, 0, beamAngle);
+    overloadCore.position.set(midX, 0.8, midZ);
+    overloadCore.scale.set(0.16, OVERLOAD_RANGE, 0.16);
+    overloadGlow.rotation.set(Math.PI / 2, 0, beamAngle);
+    overloadGlow.position.set(midX, 0.8, midZ);
+    overloadGlow.scale.set(0.42, OVERLOAD_RANGE, 0.42);
+
+    spawnShockwave(player.x, 0.05, player.z, 0xffffff, 3, 0.4);
+    sfxOverloadFire();
+    flashAbility("flashWhite");
+  }
+
+  function updateOverloadBeam(dt) {
+    if (overloadBeamTimer > 0) {
+      overloadBeamTimer = Math.max(0, overloadBeamTimer - dt);
+      var t = overloadBeamTimer / OVERLOAD_BEAM_DURATION;
+      overloadCoreMat.opacity = 0.95 * t;
+      overloadGlowMat.opacity = 0.5 * t;
+      if (overloadBeamTimer <= 0) {
+        overloadCore.visible = false;
+        overloadGlow.visible = false;
+      }
+    }
+  }
+
+  overloadBtn.addEventListener("touchstart", function (e) { e.preventDefault(); useOverloadLaser(); }, { passive: false });
+  overloadBtn.addEventListener("mousedown", function (e) { e.preventDefault(); useOverloadLaser(); });
+
   // ---------- Health UI ----------
   var healthWrap = document.getElementById("healthWrap");
   function renderHealth() {
@@ -1074,7 +1196,9 @@
     { name: "Overclocked Rounds", desc: "+30% projectile damage", apply: function () { player.damageMul *= 1.3; } },
     { name: "Rapid Uplink", desc: "+25% fire rate", apply: function () { player.fireCooldownMul *= 0.75; } },
     { name: "Reinforced Shell", desc: "+1 max health, full heal", apply: function () { player.maxHealth += 1; player.health = player.maxHealth; renderHealth(); } },
-    { name: "Servo Boost", desc: "+15% move speed", apply: function () { player.speedMul *= 1.15; } }
+    { name: "Servo Boost", desc: "+15% move speed", apply: function () { player.speedMul *= 1.15; } },
+    { name: "Split Rounds", desc: "+1 bolt fired per shot, in a spread", apply: function () { player.pelletCount += 1; } },
+    { name: "Piercing Rounds", desc: "Bolts punch through +1 extra enemy", apply: function () { player.pierceCount += 1; } }
   ];
 
   function shuffle(arr) {
@@ -1134,8 +1258,14 @@
     player.damageMul = 1;
     player.speedMul = 1;
     player.invulnTimer = 0;
+    player.pelletCount = 1;
+    player.pierceCount = 0;
     dashCooldownTimer = 0;
     empCooldownTimer = 0;
+    overloadCooldownTimer = 0;
+    overloadBeamTimer = 0;
+    overloadCore.visible = false;
+    overloadGlow.visible = false;
     score = 0;
     wave = 1;
     gameOver = false;
@@ -1163,6 +1293,7 @@
     updateParticles(dt);
     updateRings(dt);
     updateBuildings(clock.elapsedTime);
+    updateOverloadBeam(dt);
     groundMat.emissiveIntensity = 0.3 + Math.sin(clock.elapsedTime * 0.8) * 0.08;
 
     if (fireCooldownTimer > 0) fireCooldownTimer -= dt;
@@ -1176,6 +1307,11 @@
       empCooldownTimer = Math.max(0, empCooldownTimer - dt);
       empBtn.classList.toggle("onCooldown", empCooldownTimer > 0);
       empCooldownLabel.textContent = empCooldownTimer > 0 ? empCooldownTimer.toFixed(1) : "";
+    }
+    if (overloadCooldownTimer > 0) {
+      overloadCooldownTimer = Math.max(0, overloadCooldownTimer - dt);
+      overloadBtn.classList.toggle("onCooldown", overloadCooldownTimer > 0);
+      overloadCooldownLabel.textContent = overloadCooldownTimer > 0 ? overloadCooldownTimer.toFixed(1) : "";
     }
     if (player.invulnTimer > 0) {
       player.invulnTimer = Math.max(0, player.invulnTimer - dt);
@@ -1212,7 +1348,7 @@
         player.angle = Math.atan2(ax, az);
         updateAimIndicator(ax, az, clock.elapsedTime);
         if (fireCooldownTimer <= 0) {
-          spawnBolt(ax, az);
+          fireBolts(ax, az);
           fireCooldownTimer = FIRE_COOLDOWN_BASE * player.fireCooldownMul;
         }
       } else {
@@ -1268,6 +1404,7 @@
       var bolt = bolts[bi];
       for (var ei = enemies.length - 1; ei >= 0; ei--) {
         var en = enemies[ei];
+        if (bolt.hitEnemies.indexOf(en) !== -1) continue;
         var bdx = bolt.mesh.position.x - en.x;
         var bdz = bolt.mesh.position.z - en.z;
         var r = en.type === "brute" ? 0.9 : 0.55;
@@ -1275,10 +1412,15 @@
           en.health -= bolt.damage;
           sfxDroneHit();
           spawnBurst(en.x, en.mesh.position.y, en.z, 0xffffff, 4);
-          scene.remove(bolt.mesh);
-          bolts.splice(bi, 1);
+          bolt.hitEnemies.push(en);
           if (en.health <= 0) killEnemy(en, ei);
-          break;
+          if (bolt.pierceLeft > 0) {
+            bolt.pierceLeft--;
+          } else {
+            scene.remove(bolt.mesh);
+            bolts.splice(bi, 1);
+            break;
+          }
         }
       }
     }
