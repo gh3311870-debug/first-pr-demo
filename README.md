@@ -197,17 +197,25 @@ close in wave after wave:
 - Pink &#9762; button: **EMP Burst** — a radial shockwave that damages every
   enemy around you at once, with a screen flash and expanding neon ring.
   Longer cooldown — save it for when you're surrounded.
+- White &#9737; button: **Overload Laser** — an ultimate that fires an
+  instant, massive piercing beam in whatever direction you're aiming (or
+  facing, if you're not currently aiming), dealing heavy damage to every
+  enemy caught in its path, with a blinding white flash and a long cooldown.
 - Clearing a wave pauses the action for a perk pick: choose one of three
   random upgrades — more projectile damage, faster fire rate, more max
-  health (plus a full heal), or faster movement — before the next wave
-  begins. Perks stack across the run.
+  health (plus a full heal), faster movement, **Split Rounds** (fire an
+  extra bolt per shot in a spread), or **Piercing Rounds** (bolts punch
+  through an extra enemy instead of stopping) — before the next wave
+  begins. Perks stack across the run, so a long survival snowballs into a
+  real wall of fire.
 - A glitchy cyberpunk HUD: cyan/magenta chromatic "glitch text" labels that
   flicker on a timer, always-on scanlines, and a pulsing vignette flash when
   you take damage
-- Heavier neon VFX throughout: glowing spark trails on every bolt, expanding
-  shockwave rings on kills and abilities, a flickering neon skyline where
-  each building pulses its own cyan/magenta/violet glow, a subtly pulsing
-  grid floor, and a cyan spark trail behind your runner while moving
+- Heavier neon VFX throughout: filmic tone mapping and brighter lighting for
+  a punchier glow, glowing spark trails on every bolt, expanding shockwave
+  rings on kills and abilities, a flickering neon skyline where each
+  building pulses its own cyan/magenta/violet glow, a subtly pulsing grid
+  floor, and a cyan spark trail behind your runner while moving
 - If your screen is in portrait, a "rotate your device" prompt appears with
   a one-tap fullscreen/landscape-lock button — this game is built to be
   played in landscape
