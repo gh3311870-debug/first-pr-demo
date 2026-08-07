@@ -378,6 +378,27 @@
     color: #fff2d0;
   }
 
+  #plasmaBtn {
+    bottom: 272px;
+    background: rgba(20, 210, 190, 0.4);
+    border: 2px solid rgba(140,255,235,0.95);
+    box-shadow: 0 0 14px rgba(70,255,225,0.75);
+    color: #e0fffa;
+  }
+  #plasmaCooldownLabel {
+    color: #d0fff5;
+  }
+
+  #plasmaFlash {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(120,255,235,0.7) 35%, rgba(50,220,200,0.4) 100%);
+    opacity: 0;
+  }
+  #plasmaFlash.flash {
+    animation: lightningFlashAnim 300ms ease-out;
+  }
+
   #supernovaChargeVignette {
     position: absolute;
     inset: 0;
@@ -662,6 +683,7 @@
   <div id="lightningFlash"></div>
   <div id="fireballFlash"></div>
   <div id="rocketFlash"></div>
+  <div id="plasmaFlash"></div>
   <div id="supernovaChargeVignette"></div>
   <div id="supernovaFlash"></div>
   <div id="bloodSplatterOverlay"></div>
@@ -679,7 +701,7 @@
     </div>
     <div id="healthBarOuter"><div id="healthBarInner"></div></div>
   </div>
-  <div id="hint" class="neonText">Left pad: move &middot; Right side: look &middot; &uarr;: jump &middot; Green button: shoot &middot; &#8635;: switch weapon &middot; &#9889;: lightning &middot; &#128293;: fireball &middot; &#9728;&#65039;: supernova</div>
+  <div id="hint" class="neonText">Left pad: move &middot; Right side: look &middot; &uarr;: jump &middot; Green button: shoot &middot; &#8635;: switch weapon &middot; &#9889;: lightning &middot; &#128293;: fireball &middot; &#9883;&#65039;: plasma &middot; &#9728;&#65039;: supernova</div>
   <div id="gameNav">
     <a class="navLink" href="index.html">Builder</a>
     <a class="navLink" href="fps.html">Range</a>
@@ -691,6 +713,7 @@
   <div id="lookPad"></div>
   <div id="jumpBtn">&#8593;</div>
   <div id="supernovaBtn" class="abilityBtn">&#9728;&#65039;<span id="supernovaCooldownLabel" class="cooldownBadge"></span></div>
+  <div id="plasmaBtn" class="abilityBtn">&#9883;&#65039;<span id="plasmaCooldownLabel" class="cooldownBadge"></span></div>
   <div id="fireballBtn" class="abilityBtn">&#128293;<span id="fireballCooldownLabel" class="cooldownBadge"></span></div>
   <div id="lightningBtn" class="abilityBtn">&#9889;<span id="lightningCooldownLabel" class="cooldownBadge"></span></div>
   <div id="weaponLabel" class="neonText">Pistol</div>
@@ -801,6 +824,12 @@
   var SUPERNOVA_CHARGE_TIME = 0.4;
   var SUPERNOVA_SLOWMO_SCALE = 0.2;
   var SUPERNOVA_CORE_COLOR = 0xfff6d8;
+
+  // ---------- Plasma Lance ability: instant piercing beam ----------
+  var PLASMA_COOLDOWN = 13;
+  var PLASMA_DAMAGE = 60;
+  var PLASMA_RANGE = 40;
+  var PLASMA_NEON_COLOR = 0x4dffe0;
 
   // ---------- Between-wave upgrades ----------
   // Multiplicative/additive modifiers picked by the player after clearing a wave.
@@ -1057,6 +1086,11 @@
     playTone(1600, 100, 0.5, "square", 0.22);
     playTone(150, 30, 0.9, "sawtooth", 0.35);
     playTone(50, 20, 1.1, "sine", 0.3);
+  }
+  function sfxPlasma() {
+    playTone(rand(700, 900), 900, 0.14, "sawtooth", 0.16);
+    playTone(rand(1600, 1900), 220, 0.12, "sine", 0.14);
+    playNoiseBurst(0.18, 2400, 0.14, 500);
   }
 
   // ---------- Scene setup ----------
@@ -2018,6 +2052,21 @@
     var core = makeTracerBeam(from, dir, length, 0xffffff, 0.014, 1);
     tracers.push({ mesh: glow.mesh, material: glow.material, life: 0.09, maxLife: 0.09 });
     tracers.push({ mesh: core.mesh, material: core.material, life: 0.09, maxLife: 0.09 });
+  }
+
+  // A thicker, brighter, longer-lived beam than a bullet tracer, for the
+  // Plasma Lance ability — reads as a sustained energy discharge rather
+  // than an instant bullet streak.
+  function spawnPlasmaBeam(from, to) {
+    var offset = to.clone().sub(from);
+    var length = offset.length();
+    if (length < 0.001) return;
+    var dir = offset.normalize();
+
+    var glow = makeTracerBeam(from, dir, length, PLASMA_NEON_COLOR, 0.13, 0.6);
+    var core = makeTracerBeam(from, dir, length, 0xffffff, 0.035, 1);
+    tracers.push({ mesh: glow.mesh, material: glow.material, life: 0.32, maxLife: 0.32 });
+    tracers.push({ mesh: core.mesh, material: core.material, life: 0.32, maxLife: 0.32 });
   }
 
   var PARTICLE_POOL_SIZE = 180;
@@ -3319,6 +3368,77 @@
   fireballBtn.addEventListener("touchstart", function (e) { e.preventDefault(); useFireballAbility(); }, { passive: false });
   fireballBtn.addEventListener("mousedown", function (e) { e.preventDefault(); useFireballAbility(); });
 
+  // ---------- Plasma Lance ability: instant piercing beam ----------
+  var plasmaCooldownTimer = 0;
+  var plasmaBtn = document.getElementById("plasmaBtn");
+  var plasmaCooldownLabel = document.getElementById("plasmaCooldownLabel");
+  var plasmaFlashEl = document.getElementById("plasmaFlash");
+
+  function usePlasmaAbility() {
+    if (gameOver || plasmaCooldownTimer > 0) return;
+    plasmaCooldownTimer = PLASMA_COOLDOWN * upgrades.cooldownMult;
+    plasmaBtn.classList.add("onCooldown");
+    sfxPlasma();
+    triggerRecoil(1.6);
+    triggerShake(2.6);
+
+    plasmaFlashEl.classList.remove("flash");
+    void plasmaFlashEl.offsetWidth;
+    plasmaFlashEl.classList.add("flash");
+
+    var dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    var origin = camera.position.clone().addScaledVector(dir, 0.4);
+
+    raycaster.set(camera.position, dir);
+    raycaster.far = PLASMA_RANGE;
+    var obstacleHits = raycaster.intersectObjects(obstacles);
+    var maxDist = obstacleHits.length > 0 ? obstacleHits[0].distance : PLASMA_RANGE;
+
+    // Pierces through every zombie between the player and the first wall/
+    // crate (or max range) rather than stopping at the first hit — a single
+    // raycast can register more than one hit mesh per zombie (e.g. head and
+    // body), so dedupe by zombie identity before applying damage.
+    var zombieHits = raycaster.intersectObjects(zombieHitMeshes);
+    var struckZombies = [];
+    var seen = [];
+    zombieHits.forEach(function (hit) {
+      if (hit.distance > maxDist) return;
+      var hitGroup = hit.object.userData.rootZombie;
+      var z = null;
+      for (var i = 0; i < zombies.length; i++) {
+        if (zombies[i].group === hitGroup) { z = zombies[i]; break; }
+      }
+      if (!z || z.dead || seen.indexOf(z) >= 0) return;
+      seen.push(z);
+      struckZombies.push(z);
+    });
+
+    var beamEnd = camera.position.clone().addScaledVector(dir, maxDist);
+    spawnPlasmaBeam(origin, beamEnd);
+    flashEnergyLight(origin, PLASMA_NEON_COLOR, 12, 14);
+
+    struckZombies.forEach(function (z) {
+      var hitPos = z.group.position.clone().setY(0.9 * z.cfg.scale);
+      spawnImpactBurst(hitPos, PLASMA_NEON_COLOR, 16, true);
+      flashEnergyLight(hitPos, PLASMA_NEON_COLOR, 6, 6);
+      z.hp -= PLASMA_DAMAGE * upgrades.damageMult;
+      z.punch = ZOMBIE_PUNCH_DURATION;
+      if (z.hp <= 0) {
+        showScorePop(z.cfg.score);
+        killZombie(z, false, true, PLASMA_NEON_COLOR);
+      } else {
+        showScorePop(5);
+        score += 5;
+        scoreLabel.textContent = "Score: " + score;
+      }
+    });
+
+    if (struckZombies.length === 0) showBigPop("MISS", "#7fffea");
+  }
+
+  plasmaBtn.addEventListener("touchstart", function (e) { e.preventDefault(); usePlasmaAbility(); }, { passive: false });
+  plasmaBtn.addEventListener("mousedown", function (e) { e.preventDefault(); usePlasmaAbility(); });
+
   // ---------- Supernova ability (ultimate): charge in slow-mo, then detonate ----------
   var supernovaCooldownTimer = 0;
   var supernovaBtn = document.getElementById("supernovaBtn");
@@ -3468,6 +3588,9 @@
     supernovaCooldownLabel.textContent = "";
     supernovaBtn.classList.remove("onCooldown");
     supernovaChargeVignetteEl.classList.remove("charging");
+    plasmaCooldownTimer = 0;
+    plasmaCooldownLabel.textContent = "";
+    plasmaBtn.classList.remove("onCooldown");
     globalTimeScale = 1;
     upgrades.damageMult = 1;
     upgrades.speedMult = 1;
@@ -3618,6 +3741,15 @@
       } else {
         supernovaCooldownLabel.textContent = "";
         supernovaBtn.classList.remove("onCooldown");
+      }
+    }
+    if (plasmaCooldownTimer > 0) {
+      plasmaCooldownTimer = Math.max(0, plasmaCooldownTimer - dt);
+      if (plasmaCooldownTimer > 0) {
+        plasmaCooldownLabel.textContent = plasmaCooldownTimer.toFixed(1) + "s";
+      } else {
+        plasmaCooldownLabel.textContent = "";
+        plasmaBtn.classList.remove("onCooldown");
       }
     }
     recoilKick = Math.max(0, recoilKick - dt * 7);
