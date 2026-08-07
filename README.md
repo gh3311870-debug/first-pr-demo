@@ -114,6 +114,10 @@ every side — survive as many waves as you can:
   streaks out with an ember trail and explodes in a shockwave on impact,
   dealing splash damage to every zombie caught in the blast radius. ~8-second
   cooldown.
+- Teal &#9883;&#65039; button: fire a **Plasma Lance** — an instant, piercing
+  beam that punches straight through every zombie standing in a line in
+  front of you, dealing heavy damage to all of them at once instead of
+  splashing outward like the Fireball. ~13-second cooldown.
 - Gold &#9728;&#65039; button: the ultimate — **Supernova**. Time briefly
   slows as energy implodes into your chest, then it detonates: a blinding
   full-screen flash, an expanding white-hot core, three color-shifting
