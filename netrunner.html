@@ -860,6 +860,37 @@
     sfxShoot();
   }
 
+  // ---------- Aim laser + reticle: shows exactly where a shot will travel ----------
+  var AIM_LINE_LENGTH = 9;
+  var aimLineGeo = new THREE.CylinderGeometry(0.035, 0.035, 1, 6);
+  var aimLineMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false });
+  var aimLineMesh = new THREE.Mesh(aimLineGeo, aimLineMat);
+  aimLineMesh.visible = false;
+  scene.add(aimLineMesh);
+
+  var aimReticleGeo = new THREE.RingGeometry(0.28, 0.4, 24);
+  var aimReticleMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.85, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
+  var aimReticleMesh = new THREE.Mesh(aimReticleGeo, aimReticleMat);
+  aimReticleMesh.rotation.x = -Math.PI / 2;
+  aimReticleMesh.visible = false;
+  scene.add(aimReticleMesh);
+
+  function updateAimIndicator(ax, az, t) {
+    aimLineMesh.visible = true;
+    aimReticleMesh.visible = true;
+    aimLineMesh.rotation.x = Math.PI / 2;
+    aimLineMesh.rotation.z = Math.atan2(ax, az);
+    aimLineMesh.scale.y = AIM_LINE_LENGTH;
+    aimLineMesh.position.set(player.x + ax * AIM_LINE_LENGTH / 2, 0.75, player.z + az * AIM_LINE_LENGTH / 2);
+    var pulse = 1 + Math.sin(t * 14) * 0.12;
+    aimReticleMesh.scale.setScalar(pulse);
+    aimReticleMesh.position.set(player.x + ax * AIM_LINE_LENGTH, 0.06, player.z + az * AIM_LINE_LENGTH);
+  }
+  function hideAimIndicator() {
+    aimLineMesh.visible = false;
+    aimReticleMesh.visible = false;
+  }
+
   // ---------- Enemies ----------
   var enemies = [];
   var enemyGeoDrone = new THREE.OctahedronGeometry(0.5, 0);
@@ -1126,6 +1157,7 @@
 
     if (gameOver) {
       updateBolts(dt);
+      hideAimIndicator();
       return;
     }
 
@@ -1148,11 +1180,16 @@
       if (alen > 0.001) {
         ax /= alen; az /= alen;
         player.angle = Math.atan2(ax, az);
+        updateAimIndicator(ax, az, clock.elapsedTime);
         if (fireCooldownTimer <= 0) {
           spawnBolt(ax, az);
           fireCooldownTimer = FIRE_COOLDOWN_BASE * player.fireCooldownMul;
         }
+      } else {
+        hideAimIndicator();
       }
+    } else {
+      hideAimIndicator();
     }
 
     playerGroup.position.set(player.x, 0, player.z);
