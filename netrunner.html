@@ -92,6 +92,10 @@
     background: radial-gradient(circle, rgba(255,255,255,0.85) 0%, rgba(170,240,255,0.4) 40%, rgba(170,240,255,0) 70%);
     animation: abilityFlashAnim 550ms ease-out;
   }
+  #abilityFlash.flashGold {
+    background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,215,120,0.75) 30%, rgba(255,120,60,0.35) 60%, rgba(255,120,60,0) 80%);
+    animation: abilityFlashAnim 900ms ease-out;
+  }
   @keyframes abilityFlashAnim {
     0% { opacity: 1; }
     100% { opacity: 0; }
@@ -196,19 +200,21 @@
     font-size: 14px;
   }
 
+  /* Compact column, badge-style cooldown overlaid on the button itself
+     (rather than a separate stacked label), so all four abilities fit
+     comfortably above the aim stick even on short landscape phones. */
   .abilityBtn {
     position: absolute;
-    right: 150px;
-    width: 60px;
-    height: 60px;
+    right: 146px;
+    width: 46px;
+    height: 46px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-direction: column;
     pointer-events: auto;
     touch-action: none;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     color: #fff;
     border: 2px solid;
@@ -216,9 +222,15 @@
   }
   .abilityBtn.onCooldown { opacity: 0.35; }
   .abilityCooldownLabel {
-    font-size: 10px;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 2px;
+    text-align: center;
+    font-size: 8px;
     font-weight: 700;
-    margin-top: 1px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+    pointer-events: none;
   }
   #dashBtn {
     bottom: 24px;
@@ -227,19 +239,22 @@
     box-shadow: 0 0 14px rgba(0,229,255,0.55);
   }
   #empBtn {
-    bottom: 96px;
+    bottom: 78px;
     background: rgba(255,46,154,0.22);
     border-color: rgba(255,46,154,0.85);
     box-shadow: 0 0 14px rgba(255,46,154,0.55);
   }
   #overloadBtn {
-    bottom: 168px;
-    width: 64px;
-    height: 64px;
-    font-size: 22px;
+    bottom: 132px;
     background: rgba(255,255,255,0.22);
     border-color: rgba(216,251,255,0.95);
-    box-shadow: 0 0 20px rgba(216,251,255,0.7);
+    box-shadow: 0 0 14px rgba(216,251,255,0.7);
+  }
+  #supernovaBtn {
+    bottom: 186px;
+    background: rgba(255,205,90,0.28);
+    border-color: rgba(255,230,150,0.95);
+    box-shadow: 0 0 16px rgba(255,205,90,0.75);
   }
 
   #moveStick {
@@ -403,7 +418,7 @@
       <div id="healthWrap"></div>
     </div>
   </div>
-  <div id="hint">Left pad: move &middot; Right pad: aim &amp; hold to fire &middot; &#9889; Dash &middot; &#9762; EMP Burst &middot; &#9737; Overload Laser</div>
+  <div id="hint">Left pad: move &middot; Right pad: aim &amp; hold to fire &middot; &#9889; Dash &middot; &#9762; EMP &middot; &#9737; Laser &middot; &#9728;&#65039; Supernova</div>
   <div id="gameNav">
     <a class="navLink" href="index.html">Builder</a>
     <a class="navLink" href="fps.html">Range</a>
@@ -417,6 +432,7 @@
   <div id="dashBtn" class="abilityBtn">&#9889;<span id="dashCooldownLabel" class="abilityCooldownLabel"></span></div>
   <div id="empBtn" class="abilityBtn">&#9762;<span id="empCooldownLabel" class="abilityCooldownLabel"></span></div>
   <div id="overloadBtn" class="abilityBtn">&#9737;<span id="overloadCooldownLabel" class="abilityCooldownLabel"></span></div>
+  <div id="supernovaBtn" class="abilityBtn">&#9728;&#65039;<span id="supernovaCooldownLabel" class="abilityCooldownLabel"></span></div>
 </div>
 
 <div id="waveClear">
@@ -458,6 +474,11 @@
   var OVERLOAD_RANGE = 30;
   var OVERLOAD_WIDTH = 1.3;
   var OVERLOAD_DAMAGE = 12;
+  var SUPERNOVA_COOLDOWN = 20;
+  var SUPERNOVA_SPEED = 13;
+  var SUPERNOVA_MAX_RANGE = 24;
+  var SUPERNOVA_RADIUS = 10;
+  var SUPERNOVA_DAMAGE = 30;
 
   // ---------- Orientation / fullscreen ----------
   var rotateOverlayEl = document.getElementById("rotateOverlay");
@@ -538,6 +559,12 @@
   function sfxEmp() { playNoiseBurst(0.3, 900, 0.22); playTone(220, 900, 0.4, "square", 0.16); }
   function sfxOverloadCharge() { playTone(300, 1400, 0.4, "sine", 0.12); }
   function sfxOverloadFire() { playNoiseBurst(0.4, 4000, 0.28); playTone(1800, 200, 0.5, "sawtooth", 0.22); }
+  function sfxSupernovaLaunch() { playTone(220, 700, 0.35, "sine", 0.16); }
+  function sfxSupernovaBlast() {
+    playNoiseBurst(0.6, 1400, 0.32);
+    playTone(120, 700, 0.7, "sawtooth", 0.24);
+    playTone(900, 80, 0.5, "sine", 0.15);
+  }
 
   // ---------- Scene setup ----------
   var scene = new THREE.Scene();
@@ -883,6 +910,23 @@
     }
   }
 
+  // ---------- Temporary dynamic lights (e.g. a detonation's blast glow) ----------
+  var tempLights = [];
+  function spawnTempLight(x, y, z, color, intensity, radius, life) {
+    var light = new THREE.PointLight(color, intensity, radius);
+    light.position.set(x, y, z);
+    scene.add(light);
+    tempLights.push({ light: light, life: life, maxLife: life, maxIntensity: intensity });
+  }
+  function updateTempLights(dt) {
+    for (var i = tempLights.length - 1; i >= 0; i--) {
+      var t = tempLights[i];
+      t.life -= dt;
+      if (t.life <= 0) { scene.remove(t.light); tempLights.splice(i, 1); continue; }
+      t.light.intensity = t.maxIntensity * (t.life / t.maxLife);
+    }
+  }
+
   // ---------- Bolt trail sparks ----------
   var trailTimer = 0;
   function spawnBoltTrailSpark(x, y, z) {
@@ -1020,7 +1064,32 @@
     sfxDroneDie();
   }
 
-  // ---------- Abilities: Dash + EMP Burst ----------
+  // ---------- Abilities: Dash + EMP Burst + Overload Laser + Supernova ----------
+  // Ultimates fire from a separate button than the aim stick, so juggling
+  // both thumbs to line up a precise manual aim under pressure is the
+  // common complaint. If the aim stick is actively held, honor it exactly;
+  // otherwise auto-target the nearest enemy so a bare button tap still
+  // does something useful instead of firing wherever you last happened
+  // to be facing.
+  function getAbilityAimDirection() {
+    if (aiming) {
+      var alen = Math.sqrt(aimVec.x * aimVec.x + aimVec.y * aimVec.y);
+      if (alen > 0.001) return { x: aimVec.x / alen, z: aimVec.y / alen };
+    }
+    var nearest = null, nearestDist = Infinity;
+    for (var i = 0; i < enemies.length; i++) {
+      var en = enemies[i];
+      var dx = en.x - player.x, dz = en.z - player.z;
+      var d = dx * dx + dz * dz;
+      if (d < nearestDist) { nearestDist = d; nearest = en; }
+    }
+    if (nearest) {
+      var dist = Math.sqrt(nearestDist) || 1;
+      return { x: (nearest.x - player.x) / dist, z: (nearest.z - player.z) / dist };
+    }
+    return { x: Math.sin(player.angle), z: Math.cos(player.angle) };
+  }
+
   var dashCooldownTimer = 0;
   var empCooldownTimer = 0;
   var abilityShakeTime = 0;
@@ -1108,12 +1177,8 @@
     overloadCooldownTimer = OVERLOAD_COOLDOWN;
     abilityShakeTime = ABILITY_SHAKE_DURATION * 2.2;
 
-    var ax, az;
-    if (aiming) {
-      var alen = Math.sqrt(aimVec.x * aimVec.x + aimVec.y * aimVec.y);
-      if (alen > 0.001) { ax = aimVec.x / alen; az = aimVec.y / alen; }
-    }
-    if (ax === undefined) { ax = Math.sin(player.angle); az = Math.cos(player.angle); }
+    var dir = getAbilityAimDirection();
+    var ax = dir.x, az = dir.z;
     player.angle = Math.atan2(ax, az);
 
     for (var ei = enemies.length - 1; ei >= 0; ei--) {
@@ -1166,6 +1231,90 @@
 
   overloadBtn.addEventListener("touchstart", function (e) { e.preventDefault(); useOverloadLaser(); }, { passive: false });
   overloadBtn.addEventListener("mousedown", function (e) { e.preventDefault(); useOverloadLaser(); });
+
+  // ---------- Ability: Supernova (charged orb -> massive explosion ultimate) ----------
+  var supernovaCooldownTimer = 0;
+  var supernovaBtn = document.getElementById("supernovaBtn");
+  var supernovaCooldownLabel = document.getElementById("supernovaCooldownLabel");
+  var supernovaOrbs = [];
+
+  var orbGeo = new THREE.SphereGeometry(0.3, 12, 12);
+  var orbMat = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
+
+  function spawnSupernovaOrb(ax, az) {
+    var mesh = new THREE.Mesh(orbGeo, orbMat.clone());
+    mesh.position.set(player.x, 0.9, player.z);
+    scene.add(mesh);
+    var glow = new THREE.PointLight(0xffaa33, 1.8, 6);
+    mesh.add(glow);
+    supernovaOrbs.push({ mesh: mesh, vx: ax * SUPERNOVA_SPEED, vz: az * SUPERNOVA_SPEED, traveled: 0 });
+  }
+
+  function detonateSupernova(x, z) {
+    for (var ei = enemies.length - 1; ei >= 0; ei--) {
+      var en = enemies[ei];
+      var dx = en.x - x, dz = en.z - z;
+      var dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist <= SUPERNOVA_RADIUS) {
+        en.health -= SUPERNOVA_DAMAGE;
+        spawnBurst(en.x, en.mesh.position.y, en.z, 0xffcc55, 12);
+        if (en.health <= 0) killEnemy(en, ei);
+      }
+    }
+
+    spawnShockwave(x, 0.05, z, 0xffffff, SUPERNOVA_RADIUS * 0.35, 0.35);
+    spawnShockwave(x, 0.06, z, 0xffcc55, SUPERNOVA_RADIUS * 0.7, 0.55);
+    spawnShockwave(x, 0.07, z, 0xff5544, SUPERNOVA_RADIUS, 0.8);
+    for (var b = 0; b < 36; b++) {
+      spawnBurst(x, 0.6 + Math.random() * 1.5, z, b % 2 === 0 ? 0xffdd88 : 0xff6644, 1);
+    }
+
+    spawnTempLight(x, 1.5, z, 0xffaa33, 4, SUPERNOVA_RADIUS * 2.2, 0.5);
+
+    abilityShakeTime = ABILITY_SHAKE_DURATION * 3;
+    sfxSupernovaBlast();
+    flashAbility("flashGold");
+  }
+
+  function updateSupernovaOrbs(dt) {
+    for (var i = supernovaOrbs.length - 1; i >= 0; i--) {
+      var o = supernovaOrbs[i];
+      var stepX = o.vx * dt, stepZ = o.vz * dt;
+      o.mesh.position.x += stepX;
+      o.mesh.position.z += stepZ;
+      o.traveled += Math.sqrt(stepX * stepX + stepZ * stepZ);
+      o.mesh.rotation.y += dt * 10;
+      if (Math.random() < 0.7) {
+        spawnBurst(o.mesh.position.x, o.mesh.position.y, o.mesh.position.z, 0xffaa33, 1);
+      }
+
+      var hit = false;
+      for (var ei = 0; ei < enemies.length; ei++) {
+        var en = enemies[ei];
+        var dx = o.mesh.position.x - en.x, dz = o.mesh.position.z - en.z;
+        if (dx * dx + dz * dz < 1.1 * 1.1) { hit = true; break; }
+      }
+
+      if (hit || o.traveled >= SUPERNOVA_MAX_RANGE) {
+        detonateSupernova(o.mesh.position.x, o.mesh.position.z);
+        scene.remove(o.mesh);
+        supernovaOrbs.splice(i, 1);
+      }
+    }
+  }
+
+  function useSupernova() {
+    if (gameOver || supernovaCooldownTimer > 0) return;
+    supernovaCooldownTimer = SUPERNOVA_COOLDOWN;
+
+    var dir = getAbilityAimDirection();
+    player.angle = Math.atan2(dir.x, dir.z);
+    spawnSupernovaOrb(dir.x, dir.z);
+    sfxSupernovaLaunch();
+  }
+
+  supernovaBtn.addEventListener("touchstart", function (e) { e.preventDefault(); useSupernova(); }, { passive: false });
+  supernovaBtn.addEventListener("mousedown", function (e) { e.preventDefault(); useSupernova(); });
 
   // ---------- Health UI ----------
   var healthWrap = document.getElementById("healthWrap");
@@ -1266,6 +1415,11 @@
     overloadBeamTimer = 0;
     overloadCore.visible = false;
     overloadGlow.visible = false;
+    supernovaCooldownTimer = 0;
+    supernovaOrbs.forEach(function (o) { scene.remove(o.mesh); });
+    supernovaOrbs.length = 0;
+    tempLights.forEach(function (t) { scene.remove(t.light); });
+    tempLights.length = 0;
     score = 0;
     wave = 1;
     gameOver = false;
@@ -1294,6 +1448,8 @@
     updateRings(dt);
     updateBuildings(clock.elapsedTime);
     updateOverloadBeam(dt);
+    updateSupernovaOrbs(dt);
+    updateTempLights(dt);
     groundMat.emissiveIntensity = 0.3 + Math.sin(clock.elapsedTime * 0.8) * 0.08;
 
     if (fireCooldownTimer > 0) fireCooldownTimer -= dt;
@@ -1312,6 +1468,11 @@
       overloadCooldownTimer = Math.max(0, overloadCooldownTimer - dt);
       overloadBtn.classList.toggle("onCooldown", overloadCooldownTimer > 0);
       overloadCooldownLabel.textContent = overloadCooldownTimer > 0 ? overloadCooldownTimer.toFixed(1) : "";
+    }
+    if (supernovaCooldownTimer > 0) {
+      supernovaCooldownTimer = Math.max(0, supernovaCooldownTimer - dt);
+      supernovaBtn.classList.toggle("onCooldown", supernovaCooldownTimer > 0);
+      supernovaCooldownLabel.textContent = supernovaCooldownTimer > 0 ? supernovaCooldownTimer.toFixed(1) : "";
     }
     if (player.invulnTimer > 0) {
       player.invulnTimer = Math.max(0, player.invulnTimer - dt);
