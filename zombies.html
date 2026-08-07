@@ -380,19 +380,19 @@
 
   #plasmaBtn {
     bottom: 215px;
-    background: rgba(20, 210, 190, 0.4);
-    border: 2px solid rgba(140,255,235,0.95);
-    box-shadow: 0 0 14px rgba(70,255,225,0.75);
-    color: #e0fffa;
+    background: rgba(30, 200, 80, 0.4);
+    border: 2px solid rgba(150,255,150,0.95);
+    box-shadow: 0 0 14px rgba(60,255,110,0.75);
+    color: #e0ffe4;
   }
   #plasmaCooldownLabel {
-    color: #d0fff5;
+    color: #d0ffdc;
   }
 
   #plasmaFlash {
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(120,255,235,0.7) 35%, rgba(50,220,200,0.4) 100%);
+    background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(130,255,150,0.7) 35%, rgba(40,220,90,0.4) 100%);
     opacity: 0;
   }
   #plasmaFlash.flash {
@@ -829,7 +829,7 @@
   var PLASMA_COOLDOWN = 13;
   var PLASMA_DAMAGE = 60;
   var PLASMA_RANGE = 40;
-  var PLASMA_NEON_COLOR = 0x4dffe0;
+  var PLASMA_NEON_COLOR = 0x2bff5c;
 
   // ---------- Between-wave upgrades ----------
   // Multiplicative/additive modifiers picked by the player after clearing a wave.
@@ -1088,9 +1088,11 @@
     playTone(50, 20, 1.1, "sine", 0.3);
   }
   function sfxPlasma() {
-    playTone(rand(700, 900), 900, 0.14, "sawtooth", 0.16);
-    playTone(rand(1600, 1900), 220, 0.12, "sine", 0.14);
-    playNoiseBurst(0.18, 2400, 0.14, 500);
+    playTone(rand(650, 850), 950, 0.16, "sawtooth", 0.18);
+    playTone(rand(1700, 2100), 240, 0.13, "sine", 0.15);
+    playTone(rand(3200, 3800), 130, 0.09, "square", 0.09);
+    playNoiseBurst(0.22, 2600, 0.17, 450);
+    playThump(rand(55, 75), 0.24, 0.16);
   }
 
   // ---------- Scene setup ----------
@@ -2054,19 +2056,54 @@
     tracers.push({ mesh: core.mesh, material: core.material, life: 0.09, maxLife: 0.09 });
   }
 
-  // A thicker, brighter, longer-lived beam than a bullet tracer, for the
-  // Plasma Lance ability — reads as a sustained energy discharge rather
-  // than an instant bullet streak.
+  // A thick, triple-layered, longer-lived beam than a bullet tracer, with
+  // jittering crackle arcs riding alongside the straight core and sparks
+  // scattered along its length — reads as a sustained, unstable energy
+  // discharge for the Plasma Lance ability rather than a clean laser line.
   function spawnPlasmaBeam(from, to) {
     var offset = to.clone().sub(from);
     var length = offset.length();
     if (length < 0.001) return;
     var dir = offset.normalize();
 
-    var glow = makeTracerBeam(from, dir, length, PLASMA_NEON_COLOR, 0.13, 0.6);
-    var core = makeTracerBeam(from, dir, length, 0xffffff, 0.035, 1);
-    tracers.push({ mesh: glow.mesh, material: glow.material, life: 0.32, maxLife: 0.32 });
-    tracers.push({ mesh: core.mesh, material: core.material, life: 0.32, maxLife: 0.32 });
+    var outerGlow = makeTracerBeam(from, dir, length, PLASMA_NEON_COLOR, 0.22, 0.25);
+    var glow = makeTracerBeam(from, dir, length, PLASMA_NEON_COLOR, 0.12, 0.65);
+    var core = makeTracerBeam(from, dir, length, 0xe8fff0, 0.04, 1);
+    tracers.push({ mesh: outerGlow.mesh, material: outerGlow.material, life: 0.36, maxLife: 0.36 });
+    tracers.push({ mesh: glow.mesh, material: glow.material, life: 0.34, maxLife: 0.34 });
+    tracers.push({ mesh: core.mesh, material: core.material, life: 0.3, maxLife: 0.3 });
+
+    // jittering crackle arcs woven along the same path, like the beam can't
+    // quite hold a straight line under its own power
+    var right = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0));
+    if (right.lengthSq() < 0.001) right.set(1, 0, 0);
+    right.normalize();
+    var up = new THREE.Vector3().crossVectors(right, dir).normalize();
+    var segments = 7;
+    var points = [];
+    for (var i = 0; i <= segments; i++) {
+      var t = i / segments;
+      var p = from.clone().lerp(to, t);
+      if (i > 0 && i < segments) {
+        p.addScaledVector(right, (Math.random() - 0.5) * 0.22);
+        p.addScaledVector(up, (Math.random() - 0.5) * 0.22);
+      }
+      points.push(p);
+    }
+    for (var s = 0; s < segments; s++) {
+      var segOffset = points[s + 1].clone().sub(points[s]);
+      var segLen = segOffset.length();
+      if (segLen < 0.001) continue;
+      var segDir = segOffset.normalize();
+      var arc = makeTracerBeam(points[s], segDir, segLen, PLASMA_NEON_COLOR, 0.045, 0.85);
+      tracers.push({ mesh: arc.mesh, material: arc.material, life: 0.16 + Math.random() * 0.08, maxLife: 0.24 });
+    }
+
+    // sparks kicking off the beam at a handful of random points along it
+    for (var n = 0; n < 10; n++) {
+      var sparkPos = from.clone().lerp(to, Math.random());
+      spawnImpactBurst(sparkPos, PLASMA_NEON_COLOR, 1, true);
+    }
   }
 
   var PARTICLE_POOL_SIZE = 180;
@@ -3379,8 +3416,8 @@
     plasmaCooldownTimer = PLASMA_COOLDOWN * upgrades.cooldownMult;
     plasmaBtn.classList.add("onCooldown");
     sfxPlasma();
-    triggerRecoil(1.6);
-    triggerShake(2.6);
+    triggerRecoil(2.1);
+    triggerShake(3.4);
 
     plasmaFlashEl.classList.remove("flash");
     void plasmaFlashEl.offsetWidth;
@@ -3415,12 +3452,16 @@
 
     var beamEnd = camera.position.clone().addScaledVector(dir, maxDist);
     spawnPlasmaBeam(origin, beamEnd);
-    flashEnergyLight(origin, PLASMA_NEON_COLOR, 12, 14);
+    flashEnergyLight(origin, PLASMA_NEON_COLOR, 14, 16);
+    spawnImpactBurst(origin, PLASMA_NEON_COLOR, 14, true);
+    spawnExpandingRing(origin, PLASMA_NEON_COLOR, 1.8, 0.26, 0.7, 0);
 
     struckZombies.forEach(function (z) {
       var hitPos = z.group.position.clone().setY(0.9 * z.cfg.scale);
-      spawnImpactBurst(hitPos, PLASMA_NEON_COLOR, 16, true);
-      flashEnergyLight(hitPos, PLASMA_NEON_COLOR, 6, 6);
+      spawnImpactBurst(hitPos, PLASMA_NEON_COLOR, 22, true);
+      spawnImpactBurst(hitPos, 0xffffff, 8, true);
+      spawnExpandingRing(hitPos, PLASMA_NEON_COLOR, 2.2, 0.3, 0.75, 0);
+      flashEnergyLight(hitPos, PLASMA_NEON_COLOR, 8, 8);
       z.hp -= PLASMA_DAMAGE * upgrades.damageMult;
       z.punch = ZOMBIE_PUNCH_DURATION;
       if (z.hp <= 0) {
@@ -3433,7 +3474,7 @@
       }
     });
 
-    if (struckZombies.length === 0) showBigPop("MISS", "#7fffea");
+    if (struckZombies.length === 0) showBigPop("MISS", "#5cff8a");
   }
 
   plasmaBtn.addEventListener("touchstart", function (e) { e.preventDefault(); usePlasmaAbility(); }, { passive: false });
