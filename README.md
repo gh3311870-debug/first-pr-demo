@@ -191,12 +191,26 @@ close in wave after wave:
   shifts from cyan to hot-pink when critical
 - Two enemy types: fast, low-health cyan **Drones** and slower, tougher
   magenta **Brutes** that hit harder in melee range and are worth more score
+- Yellow &#9889; button: **Dash** — a short teleport burst in the direction
+  you're facing, leaving a trail of cyan sparks and a brief window of
+  invulnerability so you can blink out of a crowd. Short cooldown.
+- Pink &#9762; button: **EMP Burst** — a radial shockwave that damages every
+  enemy around you at once, with a screen flash and expanding neon ring.
+  Longer cooldown — save it for when you're surrounded.
 - Clearing a wave pauses the action for a perk pick: choose one of three
   random upgrades — more projectile damage, faster fire rate, more max
   health (plus a full heal), or faster movement — before the next wave
   begins. Perks stack across the run.
-- A glitchy cyberpunk HUD: cyan/magenta chromatic "glitch text" labels,
-  always-on scanlines, and a pulsing vignette flash when you take damage
+- A glitchy cyberpunk HUD: cyan/magenta chromatic "glitch text" labels that
+  flicker on a timer, always-on scanlines, and a pulsing vignette flash when
+  you take damage
+- Heavier neon VFX throughout: glowing spark trails on every bolt, expanding
+  shockwave rings on kills and abilities, a flickering neon skyline where
+  each building pulses its own cyan/magenta/violet glow, a subtly pulsing
+  grid floor, and a cyan spark trail behind your runner while moving
+- If your screen is in portrait, a "rotate your device" prompt appears with
+  a one-tap fullscreen/landscape-lock button — this game is built to be
+  played in landscape
 - The run ends when your health hits zero
 
 Serve it the same way as the other demos and visit
