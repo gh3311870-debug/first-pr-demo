@@ -176,7 +176,33 @@ every side — survive as many waves as you can:
 Serve it the same way as the other demos and visit
 `http://localhost:8000/zombies.html`.
 
-All four demos link to each other via the nav chips in the top-right corner.
+## Netrunner: Grid Breach demo
+
+`netrunner.html` is a mobile-friendly cyberpunk top-down twin-stick shooter,
+also built with Three.js. Defend your position on a neon city grid, ringed by
+glowing skyscraper silhouettes, as security drones and heavier brute bots
+close in wave after wave:
+
+- Left on-screen joystick: move
+- Right on-screen joystick: aim — drag and hold in a direction to continuously
+  fire glowing cyan bolts that way; your runner turns to face wherever you
+  aim
+- Top bar: live score, current wave, and a segmented neon health bar that
+  shifts from cyan to hot-pink when critical
+- Two enemy types: fast, low-health cyan **Drones** and slower, tougher
+  magenta **Brutes** that hit harder in melee range and are worth more score
+- Clearing a wave pauses the action for a perk pick: choose one of three
+  random upgrades — more projectile damage, faster fire rate, more max
+  health (plus a full heal), or faster movement — before the next wave
+  begins. Perks stack across the run.
+- A glitchy cyberpunk HUD: cyan/magenta chromatic "glitch text" labels,
+  always-on scanlines, and a pulsing vignette flash when you take damage
+- The run ends when your health hits zero
+
+Serve it the same way as the other demos and visit
+`http://localhost:8000/netrunner.html`.
+
+All five demos link to each other via the nav chips in the top-right corner.
 
 ### Playing on your phone via GitHub Pages
 
@@ -185,12 +211,14 @@ To play without running a local server, enable GitHub Pages for this repo:
 1. Go to the repo's **Settings > Pages**.
 2. Under "Build and deployment", set **Source** to "Deploy from a branch".
 3. Pick branch `main`, folder `/ (root)`, then **Save**.
-4. After a minute, all four demos will be live at
+4. After a minute, all five demos will be live at
    `https://gh3311870-debug.github.io/first-pr-demo/index.html` (builder),
    `https://gh3311870-debug.github.io/first-pr-demo/fps.html` (shooter),
    `https://gh3311870-debug.github.io/first-pr-demo/powers.html` (flight),
-   and `https://gh3311870-debug.github.io/first-pr-demo/zombies.html`
-   (zombie siege) — open any of them on your phone.
+   `https://gh3311870-debug.github.io/first-pr-demo/zombies.html`
+   (zombie siege), and
+   `https://gh3311870-debug.github.io/first-pr-demo/netrunner.html`
+   (twin-stick shooter) — open any of them on your phone.
 
 Each merge to `main` kicks off a fresh Pages deployment automatically. It
 usually finishes in under a minute, but if a page seems to be missing a
