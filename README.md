@@ -176,6 +176,12 @@ To play without running a local server, enable GitHub Pages for this repo:
    and `https://gh3311870-debug.github.io/first-pr-demo/zombies.html`
    (zombie siege) — open any of them on your phone.
 
+Each merge to `main` kicks off a fresh Pages deployment automatically. It
+usually finishes in under a minute, but if a page seems to be missing a
+change you just merged, check the repo's **Actions** tab — occasionally a
+deployment run stalls or fails and needs a manual "Re-run jobs" to pick up
+the latest commit.
+
 ## License
 
 This project has no license yet — add one if you plan to use this code elsewhere.
