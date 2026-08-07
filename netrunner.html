@@ -64,6 +64,33 @@
     font-weight: 700;
     text-shadow: 1px 0 #ff2e9a, -1px 0 #00e5ff, 0 1px 4px rgba(0,0,0,0.9);
     letter-spacing: 0.5px;
+    animation: glitchFlicker 3.2s steps(1) infinite;
+  }
+  @keyframes glitchFlicker {
+    0%, 92%, 100% { text-shadow: 1px 0 #ff2e9a, -1px 0 #00e5ff, 0 1px 4px rgba(0,0,0,0.9); }
+    93% { text-shadow: 3px 0 #ff2e9a, -3px 0 #00e5ff, 0 1px 4px rgba(0,0,0,0.9); }
+    94% { text-shadow: -2px 0 #ff2e9a, 2px 0 #00e5ff, 0 1px 4px rgba(0,0,0,0.9); }
+    95% { text-shadow: 1px 0 #ff2e9a, -1px 0 #00e5ff, 0 1px 4px rgba(0,0,0,0.9); }
+  }
+
+  #abilityFlash {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    mix-blend-mode: screen;
+  }
+  #abilityFlash.flashCyan {
+    background: radial-gradient(circle, rgba(0,229,255,0.55) 0%, rgba(0,229,255,0) 65%);
+    animation: abilityFlashAnim 350ms ease-out;
+  }
+  #abilityFlash.flashPink {
+    background: radial-gradient(circle, rgba(255,46,154,0.6) 0%, rgba(255,46,154,0) 65%);
+    animation: abilityFlashAnim 450ms ease-out;
+  }
+  @keyframes abilityFlashAnim {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
   }
   #statRow {
     display: flex;
@@ -125,6 +152,81 @@
   .navCurrent {
     background: rgba(0,229,255,0.25);
     font-weight: 700;
+  }
+
+  #rotateOverlay {
+    position: fixed;
+    inset: 0;
+    background: #04030a;
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: #7cf9ff;
+    text-align: center;
+    padding: 24px;
+    pointer-events: auto;
+  }
+  #rotateOverlay .rotateIcon {
+    font-size: 52px;
+    margin-bottom: 14px;
+    animation: rotateHint 1.6s ease-in-out infinite;
+  }
+  @keyframes rotateHint {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(90deg); }
+  }
+  #rotateOverlay p {
+    max-width: 280px;
+    font-size: 15px;
+    text-shadow: 1px 0 #ff2e9a, -1px 0 #00e5ff;
+  }
+  #fullscreenBtn {
+    margin-top: 18px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid rgba(0,229,255,0.7);
+    background: rgba(0,229,255,0.18);
+    color: #eafcff;
+    font-size: 14px;
+  }
+
+  .abilityBtn {
+    position: absolute;
+    right: 150px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    pointer-events: auto;
+    touch-action: none;
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    border: 2px solid;
+    transition: opacity 120ms linear, transform 60ms ease;
+  }
+  .abilityBtn.onCooldown { opacity: 0.35; }
+  .abilityCooldownLabel {
+    font-size: 10px;
+    font-weight: 700;
+    margin-top: 1px;
+  }
+  #dashBtn {
+    bottom: 24px;
+    background: rgba(0,229,255,0.22);
+    border-color: rgba(0,229,255,0.85);
+    box-shadow: 0 0 14px rgba(0,229,255,0.55);
+  }
+  #empBtn {
+    bottom: 96px;
+    background: rgba(255,46,154,0.22);
+    border-color: rgba(255,46,154,0.85);
+    box-shadow: 0 0 14px rgba(255,46,154,0.55);
   }
 
   #moveStick {
@@ -271,9 +373,16 @@
 
 <div id="loading">Booting netrunner...</div>
 
+<div id="rotateOverlay">
+  <div class="rotateIcon">&#8635;</div>
+  <p>Rotate your device to landscape for the full netrunner experience.</p>
+  <button id="fullscreenBtn">Go fullscreen</button>
+</div>
+
 <div id="hud">
   <div id="scanlines"></div>
   <div id="vignette"></div>
+  <div id="abilityFlash"></div>
   <div id="topBar">
     <div class="glitchLabel" id="scoreLabel">SCORE 0</div>
     <div class="statRow" id="statRow">
@@ -281,7 +390,7 @@
       <div id="healthWrap"></div>
     </div>
   </div>
-  <div id="hint">Left pad: move &middot; Right pad: aim &amp; hold to fire</div>
+  <div id="hint">Left pad: move &middot; Right pad: aim &amp; hold to fire &middot; &#9889; Dash &middot; &#9762; EMP Burst</div>
   <div id="gameNav">
     <a class="navLink" href="index.html">Builder</a>
     <a class="navLink" href="fps.html">Range</a>
@@ -292,6 +401,8 @@
 
   <div id="moveStick"><div id="moveKnob"></div></div>
   <div id="aimStick"><div id="aimKnob"></div></div>
+  <div id="dashBtn" class="abilityBtn">&#9889;<span id="dashCooldownLabel" class="abilityCooldownLabel"></span></div>
+  <div id="empBtn" class="abilityBtn">&#9762;<span id="empCooldownLabel" class="abilityCooldownLabel"></span></div>
 </div>
 
 <div id="waveClear">
@@ -323,6 +434,33 @@
   var BOLT_DAMAGE_BASE = 1;
   var ENEMY_CONTACT_COOLDOWN = 0.8;
   var CAMERA_OFFSET = new THREE.Vector3(0, 17, 11);
+  var DASH_DISTANCE = 6;
+  var DASH_COOLDOWN = 4;
+  var DASH_INVULN = 0.35;
+  var EMP_RADIUS = 9;
+  var EMP_DAMAGE = 4;
+  var EMP_COOLDOWN = 10;
+
+  // ---------- Orientation / fullscreen ----------
+  var rotateOverlayEl = document.getElementById("rotateOverlay");
+  function checkOrientation() {
+    rotateOverlayEl.style.display = window.innerHeight > window.innerWidth ? "flex" : "none";
+  }
+  window.addEventListener("resize", checkOrientation);
+  window.addEventListener("orientationchange", checkOrientation);
+  checkOrientation();
+
+  document.getElementById("fullscreenBtn").addEventListener("click", function () {
+    var el = document.documentElement;
+    var req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req) {
+      try { req.call(el); } catch (err) { /* ignore */ }
+    }
+    if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock("landscape").catch(function () { /* ignore: not supported/allowed */ });
+    }
+    setTimeout(checkOrientation, 300);
+  });
 
   // ---------- Sound (synthesized, no audio files) ----------
   var audioCtx = null;
@@ -378,6 +516,8 @@
   function sfxWaveClear() { playTone(400, 800, 0.5, "sine", 0.16); }
   function sfxGameOver() { playTone(300, 40, 0.9, "sawtooth", 0.18); }
   function sfxPerk() { playTone(600, 1200, 0.15, "sine", 0.14); }
+  function sfxDash() { playNoiseBurst(0.12, 3000, 0.15); playTone(1400, 2400, 0.1, "sine", 0.12); }
+  function sfxEmp() { playNoiseBurst(0.3, 900, 0.22); playTone(220, 900, 0.4, "square", 0.16); }
 
   // ---------- Scene setup ----------
   var scene = new THREE.Scene();
@@ -469,14 +609,18 @@
   ground.receiveShadow = true;
   scene.add(ground);
 
-  var buildingMat = new THREE.MeshStandardMaterial({ map: buildingTexture, roughness: 0.7, metalness: 0.3, emissive: 0x1a1040, emissiveIntensity: 0.4 });
+  var buildings = [];
+  var buildingColors = [0x00e5ff, 0xff2e9a, 0x7cf9ff, 0xb84dff];
   function addBuilding(x, z, w, h, d) {
     var geo = new THREE.BoxGeometry(w, h, d);
-    var mesh = new THREE.Mesh(geo, buildingMat);
+    var neonColor = buildingColors[buildings.length % buildingColors.length];
+    var mat = new THREE.MeshStandardMaterial({ map: buildingTexture, roughness: 0.7, metalness: 0.3, emissive: neonColor, emissiveIntensity: 0.35 });
+    var mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(x, h / 2, z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     scene.add(mesh);
+    buildings.push({ mesh: mesh, mat: mat, baseIntensity: 0.35, flickerPhase: Math.random() * 10 });
   }
   var ring = ARENA_HALF - 2;
   for (var a = 0; a < Math.PI * 2; a += Math.PI / 10) {
@@ -484,6 +628,13 @@
     var bz = Math.sin(a) * ring + (Math.random() - 0.5) * 3;
     var bh = 8 + Math.random() * 16;
     addBuilding(bx, bz, 2.5 + Math.random() * 2, bh, 2.5 + Math.random() * 2);
+  }
+  function updateBuildings(t) {
+    for (var i = 0; i < buildings.length; i++) {
+      var b = buildings[i];
+      var flicker = Math.sin(t * 1.5 + b.flickerPhase) * 0.15 + (Math.random() < 0.003 ? -0.3 : 0);
+      b.mat.emissiveIntensity = Math.max(0.1, b.baseIntensity + flicker);
+    }
   }
 
   // ---------- Player ----------
@@ -506,7 +657,8 @@
     maxHealth: MAX_HEALTH,
     fireCooldownMul: 1,
     damageMul: 1,
-    speedMul: 1
+    speedMul: 1,
+    invulnTimer: 0
   };
 
   function clampToArena(p) {
@@ -639,6 +791,59 @@
     }
   }
 
+  // ---------- Shockwave rings (ability + kill VFX) ----------
+  var RING_POOL_SIZE = 8;
+  var ringPool = [];
+  var ringGeo = new THREE.RingGeometry(0.85, 1, 32);
+  for (var ri = 0; ri < RING_POOL_SIZE; ri++) {
+    var rMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
+    var rMesh = new THREE.Mesh(ringGeo, rMat);
+    rMesh.rotation.x = -Math.PI / 2;
+    rMesh.visible = false;
+    vfxGroup.add(rMesh);
+    ringPool.push({ mesh: rMesh, life: 0, maxLife: 1, maxRadius: 1, active: false });
+  }
+  var nextRingIndex = 0;
+  function spawnShockwave(x, y, z, color, maxRadius, duration) {
+    var r = ringPool[nextRingIndex];
+    nextRingIndex = (nextRingIndex + 1) % RING_POOL_SIZE;
+    r.active = true;
+    r.mesh.visible = true;
+    r.mesh.position.set(x, y, z);
+    r.mesh.material.color.setHex(color);
+    r.mesh.material.opacity = 0.85;
+    r.mesh.scale.setScalar(0.05);
+    r.life = duration;
+    r.maxLife = duration;
+    r.maxRadius = maxRadius;
+  }
+  function updateRings(dt) {
+    for (var i = 0; i < ringPool.length; i++) {
+      var r = ringPool[i];
+      if (!r.active) continue;
+      r.life -= dt;
+      if (r.life <= 0) { r.active = false; r.mesh.visible = false; continue; }
+      var t = 1 - r.life / r.maxLife;
+      r.mesh.scale.setScalar(0.05 + t * r.maxRadius);
+      r.mesh.material.opacity = (1 - t) * 0.85;
+    }
+  }
+
+  // ---------- Bolt trail sparks ----------
+  var trailTimer = 0;
+  function spawnBoltTrailSpark(x, y, z) {
+    var p = particlePool[nextParticleIndex];
+    nextParticleIndex = (nextParticleIndex + 1) % PARTICLE_POOL_SIZE;
+    p.active = true;
+    p.mesh.visible = true;
+    p.mesh.position.set(x, y, z);
+    p.mesh.material.color.setHex(0x9df6ff);
+    p.mesh.material.opacity = 0.8;
+    p.vel.set((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4);
+    p.life = 0.18;
+    p.maxLife = 0.18;
+  }
+
   // ---------- Bolts (player projectiles) ----------
   var boltGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.5, 6);
   var boltMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
@@ -702,13 +907,82 @@
   }
 
   function killEnemy(enemy, idx) {
-    spawnBurst(enemy.x, enemy.type === "brute" ? 0.85 : 0.6, enemy.z, enemy.type === "brute" ? 0xff2e9a : 0x00e5ff, 16);
+    var color = enemy.type === "brute" ? 0xff2e9a : 0x00e5ff;
+    spawnBurst(enemy.x, enemy.type === "brute" ? 0.85 : 0.6, enemy.z, color, 16);
+    spawnShockwave(enemy.x, 0.05, enemy.z, color, enemy.type === "brute" ? 2.2 : 1.4, 0.35);
     scene.remove(enemy.mesh);
     enemies.splice(idx, 1);
     score += enemy.type === "brute" ? 30 : 10;
     scoreLabel.textContent = "SCORE " + score;
     sfxDroneDie();
   }
+
+  // ---------- Abilities: Dash + EMP Burst ----------
+  var dashCooldownTimer = 0;
+  var empCooldownTimer = 0;
+  var abilityShakeTime = 0;
+  var ABILITY_SHAKE_DURATION = 0.22;
+  var dashBtn = document.getElementById("dashBtn");
+  var empBtn = document.getElementById("empBtn");
+  var dashCooldownLabel = document.getElementById("dashCooldownLabel");
+  var empCooldownLabel = document.getElementById("empCooldownLabel");
+  var abilityFlashEl = document.getElementById("abilityFlash");
+
+  function flashAbility(cls) {
+    abilityFlashEl.classList.remove("flashCyan", "flashPink");
+    void abilityFlashEl.offsetWidth;
+    abilityFlashEl.classList.add(cls);
+  }
+
+  function useDash() {
+    if (gameOver || dashCooldownTimer > 0) return;
+    dashCooldownTimer = DASH_COOLDOWN;
+
+    var dirAngle = player.angle;
+    var startX = player.x, startZ = player.z;
+    var dx = Math.sin(dirAngle) * DASH_DISTANCE;
+    var dz = Math.cos(dirAngle) * DASH_DISTANCE;
+    player.x += dx;
+    player.z += dz;
+    clampToArena(player);
+    player.invulnTimer = DASH_INVULN;
+    abilityShakeTime = ABILITY_SHAKE_DURATION;
+
+    var steps = 8;
+    for (var s = 0; s <= steps; s++) {
+      var lx = startX + (player.x - startX) * (s / steps);
+      var lz = startZ + (player.z - startZ) * (s / steps);
+      spawnBurst(lx, 0.5, lz, 0x00e5ff, 3);
+    }
+    spawnShockwave(startX, 0.05, startZ, 0x00e5ff, 2.5, 0.3);
+    sfxDash();
+    flashAbility("flashCyan");
+  }
+
+  function useEmpBurst() {
+    if (gameOver || empCooldownTimer > 0) return;
+    empCooldownTimer = EMP_COOLDOWN;
+    abilityShakeTime = ABILITY_SHAKE_DURATION * 1.6;
+
+    for (var ei = enemies.length - 1; ei >= 0; ei--) {
+      var en = enemies[ei];
+      var dx = en.x - player.x, dz = en.z - player.z;
+      var dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist <= EMP_RADIUS) {
+        en.health -= EMP_DAMAGE;
+        spawnBurst(en.x, en.mesh.position.y, en.z, 0xffffff, 8);
+        if (en.health <= 0) killEnemy(en, ei);
+      }
+    }
+    spawnShockwave(player.x, 0.05, player.z, 0xff2e9a, EMP_RADIUS, 0.5);
+    sfxEmp();
+    flashAbility("flashPink");
+  }
+
+  dashBtn.addEventListener("touchstart", function (e) { e.preventDefault(); useDash(); }, { passive: false });
+  dashBtn.addEventListener("mousedown", function (e) { e.preventDefault(); useDash(); });
+  empBtn.addEventListener("touchstart", function (e) { e.preventDefault(); useEmpBurst(); }, { passive: false });
+  empBtn.addEventListener("mousedown", function (e) { e.preventDefault(); useEmpBurst(); });
 
   // ---------- Health UI ----------
   var healthWrap = document.getElementById("healthWrap");
@@ -725,7 +999,7 @@
 
   var vignetteEl = document.getElementById("vignette");
   function damagePlayer(amount) {
-    if (gameOver) return;
+    if (gameOver || player.invulnTimer > 0) return;
     player.health = Math.max(0, player.health - amount);
     renderHealth();
     sfxPlayerHurt();
@@ -798,6 +1072,9 @@
     player.fireCooldownMul = 1;
     player.damageMul = 1;
     player.speedMul = 1;
+    player.invulnTimer = 0;
+    dashCooldownTimer = 0;
+    empCooldownTimer = 0;
     score = 0;
     wave = 1;
     gameOver = false;
@@ -823,8 +1100,29 @@
   function update(dt) {
     dt = Math.min(dt, 0.05);
     updateParticles(dt);
+    updateRings(dt);
+    updateBuildings(clock.elapsedTime);
+    groundMat.emissiveIntensity = 0.3 + Math.sin(clock.elapsedTime * 0.8) * 0.08;
 
     if (fireCooldownTimer > 0) fireCooldownTimer -= dt;
+
+    if (dashCooldownTimer > 0) {
+      dashCooldownTimer = Math.max(0, dashCooldownTimer - dt);
+      dashBtn.classList.toggle("onCooldown", dashCooldownTimer > 0);
+      dashCooldownLabel.textContent = dashCooldownTimer > 0 ? dashCooldownTimer.toFixed(1) : "";
+    }
+    if (empCooldownTimer > 0) {
+      empCooldownTimer = Math.max(0, empCooldownTimer - dt);
+      empBtn.classList.toggle("onCooldown", empCooldownTimer > 0);
+      empCooldownLabel.textContent = empCooldownTimer > 0 ? empCooldownTimer.toFixed(1) : "";
+    }
+    if (player.invulnTimer > 0) {
+      player.invulnTimer = Math.max(0, player.invulnTimer - dt);
+      playerBodyMat.emissiveIntensity = 0.5 + Math.sin(clock.elapsedTime * 40) * 0.5;
+    } else {
+      playerBodyMat.emissiveIntensity = 0.5;
+    }
+    if (abilityShakeTime > 0) abilityShakeTime = Math.max(0, abilityShakeTime - dt);
 
     if (gameOver) {
       updateBolts(dt);
@@ -859,6 +1157,10 @@
 
     playerGroup.position.set(player.x, 0, player.z);
     playerGroup.rotation.y = player.angle;
+
+    if (mlen > 0.08 && Math.random() < 0.6) {
+      spawnBurst(player.x, 0.15, player.z, 0x00e5ff, 1);
+    }
 
     // spawn enemies over time within the wave
     if (waveActive && enemiesRemainingToSpawn > 0) {
@@ -923,15 +1225,27 @@
     // camera follow
     var camTarget = new THREE.Vector3(player.x + CAMERA_OFFSET.x, CAMERA_OFFSET.y, player.z + CAMERA_OFFSET.z);
     camera.position.lerp(camTarget, Math.min(1, dt * 5));
-    camera.lookAt(player.x, 0.5, player.z);
+    var lookX = player.x, lookZ = player.z;
+    if (abilityShakeTime > 0) {
+      var shakeAmt = (abilityShakeTime / ABILITY_SHAKE_DURATION) * 0.6;
+      camera.position.x += (Math.random() - 0.5) * shakeAmt;
+      camera.position.y += (Math.random() - 0.5) * shakeAmt;
+      lookX += (Math.random() - 0.5) * shakeAmt * 0.3;
+      lookZ += (Math.random() - 0.5) * shakeAmt * 0.3;
+    }
+    camera.lookAt(lookX, 0.5, lookZ);
   }
 
   function updateBolts(dt) {
+    trailTimer -= dt;
+    var spawnTrail = trailTimer <= 0;
+    if (spawnTrail) trailTimer = 0.02;
     for (var i = bolts.length - 1; i >= 0; i--) {
       var b = bolts[i];
       b.life -= dt;
       b.mesh.position.x += b.vx * dt;
       b.mesh.position.z += b.vz * dt;
+      if (spawnTrail) spawnBoltTrailSpark(b.mesh.position.x, b.mesh.position.y, b.mesh.position.z);
       if (b.life <= 0 || Math.abs(b.mesh.position.x) > ARENA_HALF + 5 || Math.abs(b.mesh.position.z) > ARENA_HALF + 5) {
         scene.remove(b.mesh);
         bolts.splice(i, 1);
