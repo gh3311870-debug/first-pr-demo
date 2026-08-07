@@ -707,9 +707,14 @@
     var center = { x: 0, y: 0 };
     function start(id, clientX, clientY) {
       touchId = id;
-      var rect = el.getBoundingClientRect();
-      center.x = rect.left + rect.width / 2;
-      center.y = rect.top + rect.height / 2;
+      // Float the neutral point to wherever the finger actually lands,
+      // rather than the pad's exact visual center. A thumb pressing down
+      // to shoot is very rarely on the exact center pixel, and anchoring
+      // to the fixed center meant that offset alone registered as a real
+      // aim direction, snapping the player to face it before any
+      // intentional drag happened.
+      center.x = clientX;
+      center.y = clientY;
       move(clientX, clientY);
     }
     function move(clientX, clientY) {
