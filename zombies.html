@@ -357,6 +357,16 @@
     animation: lightningFlashAnim 340ms ease-out;
   }
 
+  #rocketFlash {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,176,74,0.75) 30%, rgba(90,90,90,0.4) 70%, rgba(40,40,40,0.2) 100%);
+    opacity: 0;
+  }
+  #rocketFlash.flash {
+    animation: lightningFlashAnim 420ms ease-out;
+  }
+
   #supernovaBtn {
     bottom: 216px;
     background: rgba(255, 220, 140, 0.35);
@@ -651,6 +661,7 @@
   <div id="critVignette"></div>
   <div id="lightningFlash"></div>
   <div id="fireballFlash"></div>
+  <div id="rocketFlash"></div>
   <div id="supernovaChargeVignette"></div>
   <div id="supernovaFlash"></div>
   <div id="bloodSplatterOverlay"></div>
@@ -752,10 +763,17 @@
     { name: "SMG", visual: "smg", cooldown: 0.09, damage: 7, pellets: 1, spread: 0.028, range: 55, recoil: 0.5, shakeMult: 0.55, tracerColor: NEON_YELLOW, evaporate: false, sfx: function () { return sfxSMG(); } },
     { name: "Sniper", visual: "sniper", cooldown: 1.05, damage: 55, pellets: 1, spread: 0, range: 90, recoil: 2.4, shakeMult: 2.2, tracerColor: NEON_PINK, evaporate: false, sfx: function () { return sfxSniper(); } },
     { name: "Laser", visual: "laser", cooldown: 0.45, damage: 42, pellets: 1, spread: 0, range: 75, recoil: 0.75, shakeMult: 0.8, tracerColor: NEON_CYAN, evaporate: true, sfx: function () { return sfxLaser(); } },
-    { name: "Sword", visual: "sword", melee: true, cooldown: 0.45, damage: 16, pellets: 0, spread: 0, range: 2.8, recoil: 1.2, shakeMult: 1.1, tracerColor: 0xd8f0ff, evaporate: false, sfx: function () { return sfxSwordSwing(); } }
+    { name: "Sword", visual: "sword", melee: true, cooldown: 0.45, damage: 16, pellets: 0, spread: 0, range: 2.8, recoil: 1.2, shakeMult: 1.1, tracerColor: 0xd8f0ff, evaporate: false, sfx: function () { return sfxSwordSwing(); } },
+    { name: "Rocket", visual: "rocket", projectile: true, cooldown: 1.6, damage: 70, pellets: 0, spread: 0, range: 80, recoil: 3.2, shakeMult: 2.6, tracerColor: 0xffb04a, evaporate: false, sfx: function () { return sfxRocketLaunch(); } }
   ];
   var BULLET_TRACER_COLOR = NEON_GREEN;
   var SWORD_HALF_ANGLE_COS = 0.45; // ~63 degree half-angle swing cone
+
+  // ---------- Rocket Launcher weapon: projectile + big splash explosion ----------
+  var ROCKET_SPEED = 26;
+  var ROCKET_LIFETIME = 3;
+  var ROCKET_HIT_RADIUS = 0.8;
+  var ROCKET_SPLASH_RADIUS = 5.5;
 
   // ---------- Lightning ability ----------
   var LIGHTNING_COOLDOWN = 11;
@@ -1002,6 +1020,15 @@
     playThump(rand(100, 130), 0.14, 0.13);
   }
   function sfxFireballCast() { playTone(300, 700, 0.2, "sawtooth", 0.16); playNoiseBurst(0.15, 1800, 0.12); }
+  function sfxRocketLaunch() {
+    playNoiseBurst(0.24, rand(1400, 1800), 0.26, rand(300, 450));
+    playThump(rand(70, 90), 0.32, 0.24);
+  }
+  function sfxRocketBlast() {
+    playNoiseBurst(0.55, 700, 0.4, 90);
+    playTone(100, 35, 0.55, "sawtooth", 0.32);
+    playThump(rand(45, 60), 0.5, 0.3);
+  }
   function sfxExplosion() {
     playNoiseBurst(0.45, 900, 0.35);
     playTone(140, 40, 0.5, "sawtooth", 0.3);
@@ -1848,10 +1875,27 @@
   swordHilt.visible = false;
   gunGroup.add(swordHilt);
 
+  var rocketTubeMat = new THREE.MeshStandardMaterial({ color: 0x3a3f33, roughness: 0.55, metalness: 0.35 });
+  var rocketTube = new THREE.Mesh(new THREE.BoxGeometry(0.078, 0.078, 0.42), rocketTubeMat);
+  rocketTube.position.set(0, 0.015, -0.18);
+  rocketTube.visible = false;
+  gunGroup.add(rocketTube);
+
+  var rocketSight = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.05, 0.018), gunMetalMat);
+  rocketSight.position.set(0, 0.07, -0.08);
+  rocketSight.visible = false;
+  gunGroup.add(rocketSight);
+
+  var rocketNoseMat = new THREE.MeshStandardMaterial({ color: 0xff5a1f, roughness: 0.4, metalness: 0.2, emissive: 0x5a1500, emissiveIntensity: 0.4 });
+  var rocketNose = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.052, 0.1), rocketNoseMat);
+  rocketNose.position.set(0, 0.015, -0.42);
+  rocketNose.visible = false;
+  gunGroup.add(rocketNose);
+
   function updateGunVisual(visual) {
-    gunBody.visible = visual !== "sword";
-    gunGrip.visible = visual !== "sword";
-    gunSight.visible = visual !== "sword";
+    gunBody.visible = visual !== "sword" && visual !== "rocket";
+    gunGrip.visible = visual !== "sword" && visual !== "rocket";
+    gunSight.visible = visual !== "sword" && visual !== "rocket";
     gunBarrel.visible = visual === "pistol" || visual === "smg";
     smgMag.visible = visual === "smg";
     shotgunBarrel.visible = visual === "shotgun";
@@ -1864,6 +1908,9 @@
     swordBlade.visible = visual === "sword";
     swordGuard.visible = visual === "sword";
     swordHilt.visible = visual === "sword";
+    rocketTube.visible = visual === "rocket";
+    rocketSight.visible = visual === "rocket";
+    rocketNose.visible = visual === "rocket";
   }
 
   var recoilKick = 0;
@@ -2031,7 +2078,7 @@
   }
 
   // ---------- Muzzle smoke ----------
-  var SMOKE_POOL_SIZE = 32;
+  var SMOKE_POOL_SIZE = 64;
   var smokeGeo = new THREE.SphereGeometry(0.05, 6, 6);
   var smokePool = [];
   for (var smi = 0; smi < SMOKE_POOL_SIZE; smi++) {
@@ -2558,6 +2605,158 @@
     }
   }
 
+  // ---------- Rocket Launcher: projectile + big splash explosion ----------
+  var activeRockets = []; // { mesh, material, flameMaterial, vel, life, smokeTimer, damage }
+  var rocketProjGeo = new THREE.BoxGeometry(0.09, 0.09, 0.4);
+
+  function spawnRocket(origin, dir, damage) {
+    var mat = new THREE.MeshStandardMaterial({ color: 0x3a3f33, roughness: 0.5, metalness: 0.4 });
+    var mesh = new THREE.Mesh(rocketProjGeo, mat);
+    mesh.position.copy(origin);
+    mesh.quaternion.setFromUnitVectors(UNIT_Z, dir.clone().normalize());
+    var flameMat = new THREE.MeshBasicMaterial({ color: 0xffb04a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, toneMapped: false, depthWrite: false });
+    var flame = new THREE.Mesh(fireballGlowGeo, flameMat);
+    flame.position.z = -0.24;
+    mesh.add(flame);
+    scene.add(mesh);
+    activeRockets.push({
+      mesh: mesh,
+      material: mat,
+      flameMaterial: flameMat,
+      vel: dir.clone().multiplyScalar(ROCKET_SPEED),
+      life: ROCKET_LIFETIME,
+      smokeTimer: 0,
+      damage: damage
+    });
+  }
+
+  // A bigger, smokier version of the Fireball's explosion — extra dark
+  // debris burst and a slower grey shockwave ring alongside the fire, plus
+  // staggered smoke puffs drifting outward from the blast center.
+  function spawnRocketExplosion(position, radius) {
+    spawnImpactBurst(position, 0xfff2c0, 20, true);
+    spawnImpactBurst(position, 0xffb04a, 30, true);
+    spawnImpactBurst(position, 0xff2f0f, 26, true);
+    spawnImpactBurst(position, 0x2a2a2a, 20, false);
+    flashEnergyLight(position, 0xffb04a, 16, radius + 10);
+    spawnExpandingRing(position, 0xffcf7a, radius * 3.2, 0.45, 0.9, 0);
+    spawnExpandingRing(position, 0xff3010, radius * 2.6, 0.6, 0.65, 60);
+    spawnExpandingRing(position, 0x555555, radius * 2, 0.9, 0.4, 100);
+    for (var i = 0; i < 4; i++) {
+      (function (idx) {
+        setTimeout(function () {
+          spawnMuzzleSmoke(position.clone().add(new THREE.Vector3((Math.random() - 0.5) * radius, 0.3 + Math.random() * 0.6, (Math.random() - 0.5) * radius)));
+        }, idx * 90);
+      })(i);
+    }
+    setTimeout(function () {
+      spawnImpactBurst(position, 0xffcf7a, 16, true);
+      flashEnergyLight(position, 0xffb04a, 7, radius + 5);
+    }, 130);
+  }
+
+  // On top of the normal gore path (blood pool + a chance of dismemberment),
+  // a direct rocket kill always blows every limb off at once for a proper
+  // "exploded" look.
+  function rocketGoreBurst(z) {
+    var scale = z.cfg.scale;
+    var center = z.group.position.clone().setY(1.0 * scale);
+    spawnDetachedGib(z.group.position.clone().setY(1.5 * scale), scale, TYPE_SKIN_COLOR[z.type], headGibGeo);
+    [-1, 1].forEach(function (side) {
+      var armPos = z.group.position.clone().setY(1.02 * scale);
+      armPos.x += side * 0.4 * scale;
+      spawnDetachedGib(armPos, scale, TYPE_SKIN_COLOR[z.type], limbGibGeo);
+      var legPos = z.group.position.clone().setY(0.5 * scale);
+      legPos.x += side * 0.28 * scale;
+      spawnDetachedGib(legPos, scale, TYPE_SKIN_COLOR[z.type], limbGibGeo);
+    });
+    spawnGibs(center, scale * 1.6);
+    spawnBloodMist(center, scale * 1.4);
+    spawnBloodSquirt(center, scale * 1.4);
+    sfxDismember();
+  }
+
+  function explodeRocket(rocket, position) {
+    var idx = activeRockets.indexOf(rocket);
+    if (idx >= 0) activeRockets.splice(idx, 1);
+    scene.remove(rocket.mesh);
+    rocket.material.dispose();
+    rocket.flameMaterial.dispose();
+
+    sfxRocketBlast();
+    triggerShake(5.5);
+    rocketFlashEl.classList.remove("flash");
+    void rocketFlashEl.offsetWidth;
+    rocketFlashEl.classList.add("flash");
+    spawnRocketExplosion(position, ROCKET_SPLASH_RADIUS);
+
+    var struck = 0;
+    zombies.forEach(function (z) {
+      if (z.dead) return;
+      var dist = z.group.position.distanceTo(position);
+      if (dist > ROCKET_SPLASH_RADIUS) return;
+      struck++;
+      z.hp -= rocket.damage * upgrades.damageMult;
+      z.punch = ZOMBIE_PUNCH_DURATION;
+      if (z.hp <= 0) {
+        showScorePop(z.cfg.score + 10);
+        killZombie(z, false, false);
+        rocketGoreBurst(z);
+      } else {
+        showScorePop(5);
+        score += 5;
+        scoreLabel.textContent = "Score: " + score;
+      }
+    });
+    if (struck === 0) showBigPop("MISS", "#ffb04a");
+  }
+
+  function updateRockets(dt) {
+    for (var i = activeRockets.length - 1; i >= 0; i--) {
+      var rk = activeRockets[i];
+      var prevPos = rk.mesh.position.clone();
+      var moveDist = ROCKET_SPEED * dt;
+      var dir = rk.vel.clone().normalize();
+
+      raycaster.set(prevPos, dir);
+      raycaster.far = moveDist + 0.15;
+      var obsHits = raycaster.intersectObjects(obstacles);
+      if (obsHits.length > 0 && obsHits[0].distance <= moveDist + 0.15) {
+        explodeRocket(rk, obsHits[0].point);
+        continue;
+      }
+
+      var newPos = prevPos.clone().addScaledVector(rk.vel, dt);
+      var hitZombiePos = null;
+      for (var zi = 0; zi < zombies.length; zi++) {
+        var z = zombies[zi];
+        if (z.dead) continue;
+        var flatDist = Math.hypot(newPos.x - z.group.position.x, newPos.z - z.group.position.z);
+        if (flatDist < ROCKET_HIT_RADIUS && Math.abs(newPos.y - (z.group.position.y + 0.9 * z.cfg.scale)) < 1.3) {
+          hitZombiePos = newPos;
+          break;
+        }
+      }
+      if (hitZombiePos) {
+        explodeRocket(rk, hitZombiePos);
+        continue;
+      }
+
+      rk.mesh.position.copy(newPos);
+
+      rk.life -= dt;
+      rk.smokeTimer -= dt;
+      if (rk.smokeTimer <= 0) {
+        rk.smokeTimer = 0.06;
+        spawnMuzzleSmoke(rk.mesh.position.clone());
+      }
+
+      if (rk.life <= 0 || newPos.y < -2) {
+        explodeRocket(rk, newPos);
+      }
+    }
+  }
+
   // ---------- Lightning ability VFX ----------
   var lightningBolts = []; // { layers: [{mesh, material, baseOpacity}], life, maxLife }
   var LIGHTNING_NEON_COLOR = NEON_PURPLE;
@@ -2790,6 +2989,20 @@
       return;
     }
 
+    if (weapon.projectile) {
+      triggerShake(weapon.shakeMult);
+      triggerRecoil(weapon.recoil);
+      weapon.sfx();
+      var rocketMuzzlePos = new THREE.Vector3();
+      gunGroup.getWorldPosition(rocketMuzzlePos);
+      flashMuzzleLight(rocketMuzzlePos, weapon.tracerColor, 6);
+      spawnMuzzleSmoke(rocketMuzzlePos);
+      var rocketDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+      var rocketOrigin = camera.position.clone().addScaledVector(rocketDir, 0.4);
+      spawnRocket(rocketOrigin, rocketDir, weapon.damage);
+      return;
+    }
+
     var rgb = hexToRgbString(weapon.tracerColor);
     muzzleFlashEl.style.background = "radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(" + rgb + ",0.65) 30%, rgba(" + rgb + ",0) 68%)";
     muzzleFlashEl.classList.remove("flash");
@@ -2957,6 +3170,7 @@
   var fireballBtn = document.getElementById("fireballBtn");
   var fireballCooldownLabel = document.getElementById("fireballCooldownLabel");
   var fireballFlashEl = document.getElementById("fireballFlash");
+  var rocketFlashEl = document.getElementById("rocketFlash");
 
   function useFireballAbility() {
     if (gameOver || fireballCooldownTimer > 0) return;
@@ -3093,6 +3307,8 @@
     fireballBtn.classList.remove("onCooldown");
     activeFireballs.slice().forEach(function (fb) { scene.remove(fb.mesh); fb.material.dispose(); });
     activeFireballs.length = 0;
+    activeRockets.slice().forEach(function (rk) { scene.remove(rk.mesh); rk.material.dispose(); rk.flameMaterial.dispose(); });
+    activeRockets.length = 0;
     supernovaCooldownTimer = 0;
     supernovaCooldownLabel.textContent = "";
     supernovaBtn.classList.remove("onCooldown");
@@ -3198,6 +3414,7 @@
     updateVfx(dt);
     updateSpits(dt);
     updateFireballs(dt);
+    updateRockets(dt);
     if (shakeTime > 0) shakeTime = Math.max(0, shakeTime - dt);
     if (fireCooldownTimer > 0) {
       fireCooldownTimer = Math.max(0, fireCooldownTimer - dt);
