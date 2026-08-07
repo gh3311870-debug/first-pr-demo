@@ -640,11 +640,36 @@
   // ---------- Player ----------
   var playerGroup = new THREE.Group();
   var playerBodyMat = new THREE.MeshStandardMaterial({ color: 0x101018, roughness: 0.4, metalness: 0.6, emissive: 0x00e5ff, emissiveIntensity: 0.5 });
-  var playerBody = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.2, 4), playerBodyMat);
+  var playerBody = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.1, 4), playerBodyMat);
   playerBody.rotation.x = Math.PI / 2;
-  playerBody.position.y = 0.6;
+  playerBody.position.y = 0.55;
   playerBody.castShadow = true;
   playerGroup.add(playerBody);
+
+  // Bright nose light + dim rear fins so forward direction reads clearly
+  // from any camera angle, not just side-on (a plain cone barely reads as
+  // "pointing" from a near-overhead view, especially head-on/tail-on).
+  var noseMat = new THREE.MeshBasicMaterial({ color: 0xd8fbff });
+  var nose = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 10), noseMat);
+  nose.position.set(0, 0.5, 0.85);
+  playerGroup.add(nose);
+  var noseGlow = new THREE.PointLight(0x00e5ff, 0.9, 3.5);
+  noseGlow.position.copy(nose.position);
+  playerGroup.add(noseGlow);
+
+  var finMat = new THREE.MeshStandardMaterial({ color: 0x1a0a2a, emissive: 0xff2e9a, emissiveIntensity: 0.7, roughness: 0.4, metalness: 0.5 });
+  var finGeo = new THREE.BoxGeometry(0.1, 0.28, 0.42);
+  var finL = new THREE.Mesh(finGeo, finMat);
+  finL.position.set(-0.38, 0.32, -0.32);
+  finL.rotation.y = 0.5;
+  finL.castShadow = true;
+  playerGroup.add(finL);
+  var finR = new THREE.Mesh(finGeo, finMat);
+  finR.position.set(0.38, 0.32, -0.32);
+  finR.rotation.y = -0.5;
+  finR.castShadow = true;
+  playerGroup.add(finR);
+
   var playerGlow = new THREE.PointLight(0x00e5ff, 1.2, 6);
   playerGlow.position.y = 0.8;
   playerGroup.add(playerGlow);
