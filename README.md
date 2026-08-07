@@ -201,6 +201,15 @@ close in wave after wave:
   instant, massive piercing beam in whatever direction you're aiming (or
   facing, if you're not currently aiming), dealing heavy damage to every
   enemy caught in its path, with a blinding white flash and a long cooldown.
+- Gold &#9728;&#65039; button: **Supernova** — launches a slow, glowing
+  energy orb that detonates on the first enemy it touches (or at max
+  range) into a massive explosion: three expanding color-shifting
+  shockwave rings, a burst of embers, a bright dynamic blast light, and
+  heavy damage to every enemy caught in the radius. Long cooldown — your
+  biggest hit in the game.
+- Both directional ultimates (Laser, Supernova) auto-target the nearest
+  enemy if you tap the button without actively holding the aim stick, so
+  you don't have to juggle both thumbs under pressure to land a hit.
 - Clearing a wave pauses the action for a perk pick: choose one of three
   random upgrades — more projectile damage, faster fire rate, more max
   health (plus a full heal), faster movement, **Split Rounds** (fire an
