@@ -10,6 +10,7 @@
     padding: 0;
     overflow: hidden;
     height: 100%;
+    height: 100dvh; /* tracks Safari's actual visible area as its address/tab bar shows or hides, unlike 100% */
     background: #14161c;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     touch-action: none;
@@ -21,6 +22,10 @@
   #hud {
     position: fixed;
     inset: 0;
+    /* keeps bottom-anchored controls clear of Safari's own toolbar and the
+       iPhone home-indicator safe area, both of which can otherwise overlap
+       fixed-position content pinned to the literal screen edge */
+    padding-bottom: env(safe-area-inset-bottom);
     pointer-events: none;
     z-index: 10;
   }
@@ -298,8 +303,8 @@
   .abilityBtn {
     position: absolute;
     left: 150px;
-    width: 50px;
-    height: 50px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -307,7 +312,7 @@
     pointer-events: auto;
     touch-action: none;
     transition: opacity 120ms linear, transform 60ms ease, filter 60ms ease;
-    font-size: 21px;
+    font-size: 15px;
     font-weight: 700;
   }
   .abilityBtn.onCooldown {
@@ -317,9 +322,9 @@
     position: absolute;
     left: 0;
     right: 0;
-    bottom: 2px;
+    bottom: 1px;
     text-align: center;
-    font-size: 9px;
+    font-size: 7px;
     font-weight: 700;
     text-shadow: 0 1px 2px rgba(0,0,0,0.9);
     pointer-events: none;
@@ -337,7 +342,7 @@
   }
 
   #fireballBtn {
-    bottom: 160px;
+    bottom: 141px;
     background: rgba(210, 60, 10, 0.5);
     border: 2px solid rgba(255,170,90,0.9);
     box-shadow: 0 0 12px rgba(255,110,30,0.6);
@@ -368,7 +373,7 @@
   }
 
   #supernovaBtn {
-    bottom: 216px;
+    bottom: 178px;
     background: rgba(255, 220, 140, 0.35);
     border: 2px solid rgba(255,245,210,0.95);
     box-shadow: 0 0 18px rgba(255,225,150,0.85);
@@ -379,7 +384,7 @@
   }
 
   #plasmaBtn {
-    bottom: 272px;
+    bottom: 215px;
     background: rgba(20, 210, 190, 0.4);
     border: 2px solid rgba(140,255,235,0.95);
     box-shadow: 0 0 14px rgba(70,255,225,0.75);
