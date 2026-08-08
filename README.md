@@ -299,7 +299,47 @@ close in wave after wave:
 Serve it the same way as the other demos and visit
 `http://localhost:8000/netrunner.html`.
 
-All five demos link to each other via the nav chips in the top-right corner.
+## Vanguard: City Guardian demo
+
+`hero.html` is a mobile-friendly third-person superhero brawler, also built
+with Three.js. Play as a caped hero defending a sunlit city block from waves
+of security robots:
+
+- Left on-screen joystick: run
+- Drag on the right side of the screen: orbit the camera behind your hero and
+  aim your abilities (vertical drag tilts heat vision up/down)
+- Up-arrow button: jump
+- Red PUNCH button: a close-range melee cone attack with knockback, on a
+  short cooldown so it doubles as your bread-and-butter attack
+- &#128293; button: **Heat Vision** &mdash; a sustained beam that burns
+  everything in a narrow cone in front of you for its short duration
+- &#128165; button: **Ground Pound** &mdash; leap up and slam down for
+  radial damage and knockback around your landing point
+- &#9889; button: **Dash** &mdash; a quick burst in your current movement
+  (or facing) direction with a brief window of invulnerability, good for
+  closing distance or dodging
+- Top bar: live score, current wave, and a health bar
+- Two regular enemy types: ground-bound **Sentry Bots** that close in and
+  melee you, and hovering **Drones** (from wave 2) that keep their distance
+  and snipe you with energy bolts
+- A **Warbot** boss appears every 5th wave &mdash; a hulking mech with its
+  own health bar that closes in and periodically telegraphs (a red ground
+  ring) before a heavy radial slam attack
+- Clearing a wave pauses the action for a power-up pick: more punch/ability
+  damage, more max health (plus a full heal), faster movement, shorter
+  ability cooldowns, or an instant heal &mdash; choose one of three random
+  options before the next wave begins
+- Landing kills in quick succession racks up a combo bonus, with a "Triple
+  Takedown!" callout
+- A daytime city block: painted street-grid asphalt, a ring of colorful
+  brick buildings, and a scattering of street props for cover
+- Your hero has a flowing cape that reacts to movement, glowing eyes during
+  Heat Vision, and a gold chest emblem
+
+Serve it the same way as the other demos and visit
+`http://localhost:8000/hero.html`.
+
+All six demos link to each other via the nav chips in the top-right corner.
 
 ### Playing on your phone via GitHub Pages
 
@@ -308,14 +348,16 @@ To play without running a local server, enable GitHub Pages for this repo:
 1. Go to the repo's **Settings > Pages**.
 2. Under "Build and deployment", set **Source** to "Deploy from a branch".
 3. Pick branch `main`, folder `/ (root)`, then **Save**.
-4. After a minute, all five demos will be live at
+4. After a minute, all six demos will be live at
    `https://gh3311870-debug.github.io/first-pr-demo/index.html` (builder),
    `https://gh3311870-debug.github.io/first-pr-demo/fps.html` (shooter),
    `https://gh3311870-debug.github.io/first-pr-demo/powers.html` (flight),
    `https://gh3311870-debug.github.io/first-pr-demo/zombies.html`
-   (zombie siege), and
+   (zombie siege),
    `https://gh3311870-debug.github.io/first-pr-demo/netrunner.html`
-   (twin-stick shooter) — open any of them on your phone.
+   (twin-stick shooter), and
+   `https://gh3311870-debug.github.io/first-pr-demo/hero.html`
+   (superhero brawler) — open any of them on your phone.
 
 Each merge to `main` kicks off a fresh Pages deployment automatically. It
 usually finishes in under a minute, but if a page seems to be missing a
