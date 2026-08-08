@@ -100,9 +100,54 @@
     background: radial-gradient(circle, rgba(255,240,200,0.9) 0%, rgba(255,140,50,0.7) 35%, rgba(255,60,20,0.35) 65%, rgba(255,60,20,0) 80%);
     animation: abilityFlashAnim 500ms ease-out;
   }
+  #abilityFlash.flashViolet {
+    background: radial-gradient(circle, rgba(230,210,255,0.85) 0%, rgba(184,77,255,0.6) 40%, rgba(184,77,255,0) 75%);
+    animation: abilityFlashAnim 400ms ease-out;
+  }
+  #abilityFlash.flashVoid {
+    background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(160,90,255,0.55) 35%, rgba(20,5,40,0.6) 65%, rgba(20,5,40,0) 85%);
+    animation: abilityFlashAnim 700ms ease-out;
+  }
   @keyframes abilityFlashAnim {
     0% { opacity: 1; }
     100% { opacity: 0; }
+  }
+
+  /* Chain Lightning Glitch's namesake screen-space glitch: a brief burst
+     of RGB-split slices and a horizontal displacement jitter, layered on
+     top of the always-on scanlines rather than replacing them. */
+  #glitchOverlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    mix-blend-mode: screen;
+  }
+  #glitchOverlay.glitching {
+    animation: glitchOverlayAnim 450ms steps(1) both;
+  }
+  @keyframes glitchOverlayAnim {
+    0% { opacity: 0; }
+    4% {
+      opacity: 0.9;
+      background: repeating-linear-gradient(to bottom, rgba(184,77,255,0.35) 0px, rgba(184,77,255,0.35) 3px, rgba(0,229,255,0.3) 3px, rgba(0,229,255,0.3) 6px, transparent 6px, transparent 14px);
+      transform: translateX(-6px);
+    }
+    9% { transform: translateX(5px); }
+    14% {
+      opacity: 0.7;
+      background: repeating-linear-gradient(to bottom, rgba(0,229,255,0.3) 0px, rgba(0,229,255,0.3) 4px, transparent 4px, transparent 10px);
+      transform: translateX(-4px);
+    }
+    20% { transform: translateX(3px); opacity: 0.5; }
+    32% {
+      opacity: 0.8;
+      background: repeating-linear-gradient(to bottom, rgba(184,77,255,0.4) 0px, rgba(184,77,255,0.4) 2px, transparent 2px, transparent 9px);
+      transform: translateX(-3px);
+    }
+    45% { transform: translateX(2px); opacity: 0.3; }
+    60% { opacity: 0.5; transform: translateX(-2px); }
+    100% { opacity: 0; transform: translateX(0); }
   }
   #statRow {
     display: flex;
@@ -239,12 +284,21 @@
     font-size: 14px;
   }
 
-  /* Compact column, badge-style cooldown overlaid on the button itself
-     (rather than a separate stacked label), so all four abilities fit
-     comfortably above the aim stick even on short landscape phones. */
-  .abilityBtn {
+  /* A 2-column grid dock instead of one tall stacked column — scales to
+     more abilities without pushing the top button into the HUD text on
+     short landscape phones. Badge-style cooldown overlaid on the button
+     itself rather than a separate stacked label, same as before. */
+  #abilityDock {
     position: absolute;
     right: 146px;
+    bottom: 24px;
+    display: grid;
+    grid-template-columns: repeat(2, 46px);
+    gap: 8px;
+    pointer-events: none;
+  }
+  .abilityBtn {
+    position: relative;
     width: 46px;
     height: 46px;
     border-radius: 50%;
@@ -272,34 +326,39 @@
     pointer-events: none;
   }
   #dashBtn {
-    bottom: 24px;
     background: rgba(0,229,255,0.22);
     border-color: rgba(0,229,255,0.85);
     box-shadow: 0 0 14px rgba(0,229,255,0.55);
   }
   #empBtn {
-    bottom: 78px;
     background: rgba(255,46,154,0.22);
     border-color: rgba(255,46,154,0.85);
     box-shadow: 0 0 14px rgba(255,46,154,0.55);
   }
   #overloadBtn {
-    bottom: 132px;
     background: rgba(255,255,255,0.22);
     border-color: rgba(216,251,255,0.95);
     box-shadow: 0 0 14px rgba(216,251,255,0.7);
   }
-  #supernovaBtn {
-    bottom: 186px;
-    background: rgba(255,205,90,0.28);
-    border-color: rgba(255,230,150,0.95);
-    box-shadow: 0 0 16px rgba(255,205,90,0.75);
-  }
   #fireballBtn {
-    bottom: 240px;
     background: rgba(255,90,30,0.28);
     border-color: rgba(255,160,90,0.95);
     box-shadow: 0 0 14px rgba(255,110,30,0.65);
+  }
+  #chainBtn {
+    background: rgba(184,77,255,0.28);
+    border-color: rgba(210,150,255,0.95);
+    box-shadow: 0 0 14px rgba(184,77,255,0.7);
+  }
+  #singularityBtn {
+    background: rgba(20,10,35,0.55);
+    border-color: rgba(180,120,255,0.95);
+    box-shadow: 0 0 16px rgba(120,60,220,0.85);
+  }
+  #supernovaBtn {
+    background: rgba(255,205,90,0.28);
+    border-color: rgba(255,230,150,0.95);
+    box-shadow: 0 0 16px rgba(255,205,90,0.75);
   }
 
   #moveStick {
@@ -476,6 +535,7 @@
   <div id="scanlines"></div>
   <div id="vignette"></div>
   <div id="abilityFlash"></div>
+  <div id="glitchOverlay"></div>
   <div id="topBar">
     <div class="glitchLabel" id="scoreLabel">SCORE 0</div>
     <div class="statRow" id="statRow">
@@ -487,7 +547,7 @@
     <div id="bossLabel">SENTINEL</div>
     <div id="bossHealthTrack"><div id="bossHealthFill"></div></div>
   </div>
-  <div id="hint">Left pad: move &middot; Right pad: aim &amp; hold to fire &middot; &#9889; Dash &middot; &#9762; EMP &middot; &#9737; Laser &middot; &#128293; Fireball &middot; &#9728;&#65039; Supernova</div>
+  <div id="hint">Left pad: move &middot; Right pad: aim &amp; hold to fire &middot; &#9889; Dash &middot; &#9762; EMP &middot; &#9737; Laser &middot; &#128293; Fireball &middot; &#127785; Chain &middot; &#128371; Singularity &middot; &#9728;&#65039; Supernova</div>
   <div id="gameNav">
     <a class="navLink" href="index.html">Builder</a>
     <a class="navLink" href="fps.html">Range</a>
@@ -498,11 +558,15 @@
 
   <div id="moveStick"><div id="moveKnob"></div></div>
   <div id="aimStick"><div id="aimKnob"></div></div>
-  <div id="dashBtn" class="abilityBtn">&#9889;<span id="dashCooldownLabel" class="abilityCooldownLabel"></span></div>
-  <div id="empBtn" class="abilityBtn">&#9762;<span id="empCooldownLabel" class="abilityCooldownLabel"></span></div>
-  <div id="overloadBtn" class="abilityBtn">&#9737;<span id="overloadCooldownLabel" class="abilityCooldownLabel"></span></div>
-  <div id="supernovaBtn" class="abilityBtn">&#9728;&#65039;<span id="supernovaCooldownLabel" class="abilityCooldownLabel"></span></div>
-  <div id="fireballBtn" class="abilityBtn">&#128293;<span id="fireballCooldownLabel" class="abilityCooldownLabel"></span></div>
+  <div id="abilityDock">
+    <div id="dashBtn" class="abilityBtn">&#9889;<span id="dashCooldownLabel" class="abilityCooldownLabel"></span></div>
+    <div id="empBtn" class="abilityBtn">&#9762;<span id="empCooldownLabel" class="abilityCooldownLabel"></span></div>
+    <div id="overloadBtn" class="abilityBtn">&#9737;<span id="overloadCooldownLabel" class="abilityCooldownLabel"></span></div>
+    <div id="fireballBtn" class="abilityBtn">&#128293;<span id="fireballCooldownLabel" class="abilityCooldownLabel"></span></div>
+    <div id="chainBtn" class="abilityBtn">&#127785;<span id="chainCooldownLabel" class="abilityCooldownLabel"></span></div>
+    <div id="singularityBtn" class="abilityBtn">&#128371;<span id="singularityCooldownLabel" class="abilityCooldownLabel"></span></div>
+    <div id="supernovaBtn" class="abilityBtn">&#9728;&#65039;<span id="supernovaCooldownLabel" class="abilityCooldownLabel"></span></div>
+  </div>
 </div>
 
 <div id="waveClear">
@@ -561,6 +625,15 @@
   var FIREBALL_MAX_RANGE = 22;
   var FIREBALL_RADIUS = 4.5;
   var FIREBALL_DAMAGE = 10;
+  var CHAIN_COOLDOWN = 11;
+  var CHAIN_MAX_JUMPS = 9;
+  var CHAIN_JUMP_RANGE = 12;
+  var CHAIN_DAMAGE = 6;
+  var SINGULARITY_COOLDOWN = 24;
+  var SINGULARITY_RADIUS = 11;
+  var SINGULARITY_PULL_DURATION = 1.4;
+  var SINGULARITY_DAMAGE = 45;
+  var SINGULARITY_DEBRIS_COUNT = 26;
 
   // ---------- Orientation / fullscreen ----------
   var rotateOverlayEl = document.getElementById("rotateOverlay");
@@ -663,6 +736,17 @@
   }
   function sfxFireballLaunch() { playNoiseBurst(0.1, 3200, 0.14); playTone(500, 900, 0.18, "sawtooth", 0.13); }
   function sfxFireballBlast() { playNoiseBurst(0.4, 1600, 0.26); playTone(140, 400, 0.4, "sawtooth", 0.2); }
+  function sfxChainZap(pitchMul) {
+    var f = 900 * (pitchMul || 1);
+    playNoiseBurst(0.04, 6000, 0.13);
+    playTone(f, f * 0.3, 0.09, "square", 0.14);
+  }
+  function sfxSingularityPull() { playTone(700, 90, SINGULARITY_PULL_DURATION, "sine", 0.14); playNoiseBurst(0.5, 800, 0.1); }
+  function sfxSingularityBlast() {
+    playNoiseBurst(0.5, 900, 0.3);
+    playTone(60, 500, 0.6, "sawtooth", 0.24);
+    setTimeout(function () { playNoiseBurst(0.25, 3000, 0.16); }, 40);
+  }
 
   // ---------- Scene setup ----------
   var scene = new THREE.Scene();
@@ -1354,12 +1438,19 @@
   var dashCooldownLabel = document.getElementById("dashCooldownLabel");
   var empCooldownLabel = document.getElementById("empCooldownLabel");
   var abilityFlashEl = document.getElementById("abilityFlash");
+  var glitchOverlayEl = document.getElementById("glitchOverlay");
   var hudEl = document.getElementById("hud");
 
   function flashAbility(cls) {
-    abilityFlashEl.classList.remove("flashCyan", "flashPink", "flashWhite", "flashGold", "flashFire");
+    abilityFlashEl.classList.remove("flashCyan", "flashPink", "flashWhite", "flashGold", "flashFire", "flashViolet", "flashVoid");
     void abilityFlashEl.offsetWidth;
     abilityFlashEl.classList.add(cls);
+  }
+
+  function triggerGlitch() {
+    glitchOverlayEl.classList.remove("glitching");
+    void glitchOverlayEl.offsetWidth;
+    glitchOverlayEl.classList.add("glitching");
   }
 
   function showAbilityCallout(text) {
@@ -1699,6 +1790,273 @@
   fireballBtn.addEventListener("touchstart", function (e) { e.preventDefault(); useFireball(); }, { passive: false });
   fireballBtn.addEventListener("mousedown", function (e) { e.preventDefault(); useFireball(); });
 
+  // ---------- Ability: Chain Lightning Glitch ----------
+  // Omnidirectional — no aim needed. Arcs from the player to the nearest
+  // un-hit enemy, then from there to the next nearest un-hit enemy, and so
+  // on, so it naturally snakes through a cluster rather than needing to be
+  // pointed at one. Every jump leaves a jagged glowing bolt (the bloom
+  // pipeline turns these thin lines into proper glowing streaks with zero
+  // extra work) plus a whole-screen "glitch" scanline-tear overlay and a
+  // rising-pitch zap per link.
+  var chainCooldownTimer = 0;
+  var chainBtn = document.getElementById("chainBtn");
+  var chainCooldownLabel = document.getElementById("chainCooldownLabel");
+  var chainBolts = [];
+  var chainBoltMat = new THREE.LineBasicMaterial({ color: 0xb84dff, transparent: true, opacity: 0.95 });
+
+  function spawnChainBolt(fromX, fromZ, fromY, toX, toZ, toY) {
+    var segments = 7;
+    var fromV = new THREE.Vector3(fromX, fromY, fromZ);
+    var toV = new THREE.Vector3(toX, toY, toZ);
+    var points = [];
+    for (var i = 0; i <= segments; i++) {
+      var t = i / segments;
+      var p = fromV.clone().lerp(toV, t);
+      if (i > 0 && i < segments) {
+        p.x += (Math.random() - 0.5) * 0.7;
+        p.y += (Math.random() - 0.5) * 0.5 + 0.25;
+        p.z += (Math.random() - 0.5) * 0.7;
+      }
+      points.push(p);
+      if (Math.random() < 0.55) spawnBurst(p.x, p.y, p.z, 0xd2a6ff, 2);
+    }
+    var geo = new THREE.BufferGeometry().setFromPoints(points);
+    var mat = chainBoltMat.clone();
+    var line = new THREE.Line(geo, mat);
+    scene.add(line);
+    chainBolts.push({ line: line, geo: geo, mat: mat, life: 0.3, maxLife: 0.3 });
+  }
+
+  function updateChainBolts(dt) {
+    for (var i = chainBolts.length - 1; i >= 0; i--) {
+      var b = chainBolts[i];
+      b.life -= dt;
+      if (b.life <= 0) {
+        scene.remove(b.line);
+        b.geo.dispose();
+        b.mat.dispose();
+        chainBolts.splice(i, 1);
+        continue;
+      }
+      b.mat.opacity = 0.95 * (b.life / b.maxLife);
+    }
+  }
+
+  function useChainLightning() {
+    if (gameOver || chainCooldownTimer > 0) return;
+    chainCooldownTimer = CHAIN_COOLDOWN;
+    abilityShakeTime = ABILITY_SHAKE_DURATION * 2;
+
+    var chained = [];
+    var fromX = player.x, fromZ = player.z, fromY = 1;
+    var hitCount = 0;
+    for (var j = 0; j < CHAIN_MAX_JUMPS; j++) {
+      var best = null, bestDist = Infinity;
+      for (var ei = 0; ei < enemies.length; ei++) {
+        var en = enemies[ei];
+        if (chained.indexOf(en) !== -1) continue;
+        var dx = en.x - fromX, dz = en.z - fromZ;
+        var d = dx * dx + dz * dz;
+        if (d < bestDist && d <= CHAIN_JUMP_RANGE * CHAIN_JUMP_RANGE) { bestDist = d; best = en; }
+      }
+      if (!best) break;
+      chained.push(best);
+
+      var toY = best.mesh.position.y + 0.35;
+      spawnChainBolt(fromX, fromZ, fromY, best.x, best.z, toY);
+      sfxChainZap(1 + j * 0.09);
+      best.health -= CHAIN_DAMAGE;
+      spawnBurst(best.x, best.mesh.position.y, best.z, 0xb84dff, 6);
+      spawnShockwave(best.x, 0.05, best.z, 0xb84dff, best.type === "boss" ? 1.6 : (best.type === "brute" ? 1.1 : 0.7), 0.25);
+      hitCount++;
+      var deadIdx = enemies.indexOf(best);
+      if (best.health <= 0 && deadIdx !== -1) killEnemy(best, deadIdx);
+      fromX = best.x; fromZ = best.z; fromY = toY;
+    }
+
+    triggerGlitch();
+    flashAbility("flashViolet");
+    if (hitCount > 0) showAbilityCallout("CHAIN LIGHTNING");
+  }
+
+  chainBtn.addEventListener("touchstart", function (e) { e.preventDefault(); useChainLightning(); }, { passive: false });
+  chainBtn.addEventListener("mousedown", function (e) { e.preventDefault(); useChainLightning(); });
+
+  // ---------- Ability: Singularity Core ----------
+  // Pulls every enemy (and a scattering of purely-cosmetic debris chunks)
+  // within range into a tight spiral over a short window, then detonates.
+  // Enemies caught in the pull skip their normal AI entirely for that
+  // stretch (see the `singularityLock` check in the main enemy loop) so
+  // they read as genuinely "held" rather than just wandering nearby.
+  var singularityCooldownTimer = 0;
+  var singularityBtn = document.getElementById("singularityBtn");
+  var singularityCooldownLabel = document.getElementById("singularityCooldownLabel");
+  var singularity = null;
+
+  var debrisGeoPool = [
+    new THREE.BoxGeometry(0.3, 0.3, 0.3),
+    new THREE.TetrahedronGeometry(0.26),
+    new THREE.BoxGeometry(0.5, 0.14, 0.14)
+  ];
+  var debrisMat = new THREE.MeshStandardMaterial({ color: 0x2a1a40, emissive: 0x8844cc, emissiveIntensity: 0.6, roughness: 0.6, metalness: 0.3 });
+
+  function createSingularityMesh() {
+    var group = new THREE.Group();
+    var core = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 16), new THREE.MeshBasicMaterial({ color: 0x0a0018 }));
+    group.add(core);
+
+    var rim = new THREE.Mesh(
+      new THREE.RingGeometry(0.4, 0.55, 32),
+      new THREE.MeshBasicMaterial({ color: 0xb84dff, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false })
+    );
+    rim.rotation.x = -Math.PI / 2;
+    group.add(rim);
+
+    var halo = new THREE.Mesh(
+      new THREE.RingGeometry(0.6, 1.3, 32),
+      new THREE.MeshBasicMaterial({ color: 0x9d5cff, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false })
+    );
+    halo.rotation.x = -Math.PI / 2;
+    group.add(halo);
+
+    group.userData.core = core;
+    group.userData.rim = rim;
+    group.userData.halo = halo;
+    return group;
+  }
+
+  function useSingularity() {
+    if (gameOver || singularityCooldownTimer > 0 || singularity) return;
+    singularityCooldownTimer = SINGULARITY_COOLDOWN;
+
+    var dir = getAbilityAimDirection();
+    var pos = { x: player.x + dir.x * 8, z: player.z + dir.z * 8 };
+    clampToArena(pos);
+
+    var mesh = createSingularityMesh();
+    mesh.position.set(pos.x, 1, pos.z);
+    scene.add(mesh);
+
+    var debris = [];
+    for (var i = 0; i < SINGULARITY_DEBRIS_COUNT; i++) {
+      var ang = Math.random() * Math.PI * 2;
+      var r = 2 + Math.random() * (SINGULARITY_RADIUS - 2);
+      var dx = pos.x + Math.cos(ang) * r, dz = pos.z + Math.sin(ang) * r;
+      var geo = debrisGeoPool[i % debrisGeoPool.length];
+      var dmesh = new THREE.Mesh(geo, debrisMat.clone());
+      var dy = 0.3 + Math.random() * 1.2;
+      dmesh.position.set(dx, dy, dz);
+      dmesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      dmesh.castShadow = true;
+      scene.add(dmesh);
+      debris.push({ mesh: dmesh, x: dx, z: dz, y: dy, spin: (Math.random() - 0.5) * 4 });
+    }
+
+    singularity = { x: pos.x, z: pos.z, timer: SINGULARITY_PULL_DURATION, maxTimer: SINGULARITY_PULL_DURATION, mesh: mesh, debris: debris, angle: 0 };
+    sfxSingularityPull();
+    flashAbility("flashVoid");
+    showAbilityCallout("SINGULARITY");
+  }
+
+  function detonateSingularity() {
+    var sx = singularity.x, sz = singularity.z;
+    var struck = 0;
+    for (var ei = enemies.length - 1; ei >= 0; ei--) {
+      var en = enemies[ei];
+      en.singularityLock = false;
+      var dx = en.x - sx, dz = en.z - sz;
+      var dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist <= SINGULARITY_RADIUS * 0.65) {
+        struck++;
+        en.health -= SINGULARITY_DAMAGE;
+        spawnBurst(en.x, en.mesh.position.y, en.z, 0xd2a6ff, 12);
+        if (en.health <= 0) killEnemy(en, ei);
+      }
+    }
+
+    singularity.debris.forEach(function (d) {
+      scene.remove(d.mesh);
+      d.mesh.material.dispose();
+    });
+    scene.remove(singularity.mesh);
+
+    spawnNovaCore(sx, 1, sz, 0xd2a6ff, SINGULARITY_RADIUS * 0.9, 0.5);
+    spawnShockwave(sx, 0.04, sz, 0xffffff, SINGULARITY_RADIUS * 0.4, 0.3);
+    spawnShockwave(sx, 0.05, sz, 0xb84dff, SINGULARITY_RADIUS * 0.8, 0.5);
+    spawnShockwave(sx, 0.06, sz, 0x6622aa, SINGULARITY_RADIUS * 1.2, 0.75);
+    var colors = [0xffffff, 0xb84dff, 0x6622aa, 0xd2a6ff];
+    for (var b = 0; b < 80; b++) {
+      spawnBurst(sx, 0.5 + Math.random() * 2.4, sz, colors[b % colors.length], 1);
+    }
+    spawnTempLight(sx, 2, sz, 0xb84dff, 9, SINGULARITY_RADIUS * 2.4, 0.8);
+
+    abilityShakeTime = ABILITY_SHAKE_DURATION * 4.5;
+    sfxSingularityBlast();
+    flashAbility("flashVoid");
+    if (struck > 0) showAbilityCallout("SINGULARITY COLLAPSE");
+
+    singularity = null;
+  }
+
+  function updateSingularity(dt) {
+    if (!singularity) return;
+    singularity.timer -= dt;
+    singularity.angle += dt * 6;
+    var t = 1 - singularity.timer / singularity.maxTimer;
+    var pullStrength = 3 + t * 14;
+
+    for (var i = 0; i < enemies.length; i++) {
+      var e = enemies[i];
+      var dx = singularity.x - e.x, dz = singularity.z - e.z;
+      var dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < SINGULARITY_RADIUS && dist > 0.3) {
+        var nx = dx / dist, nz = dz / dist;
+        var tx = -nz, tz = nx;
+        var pull = pullStrength * dt * (1 - dist / SINGULARITY_RADIUS + 0.3);
+        var spin = 3.5 * dt;
+        e.x += nx * pull + tx * spin;
+        e.z += nz * pull + tz * spin;
+        e.singularityLock = true;
+        e.mesh.position.x = e.x;
+        e.mesh.position.z = e.z;
+      } else {
+        e.singularityLock = false;
+      }
+    }
+
+    for (var d = 0; d < singularity.debris.length; d++) {
+      var deb = singularity.debris[d];
+      var ddx = singularity.x - deb.x, ddz = singularity.z - deb.z;
+      var ddist = Math.sqrt(ddx * ddx + ddz * ddz) || 0.01;
+      var dnx = ddx / ddist, dnz = ddz / ddist;
+      var dtx = -dnz, dtz = dnx;
+      var dpull = pullStrength * dt * 1.3;
+      deb.x += dnx * dpull + dtx * (4 * dt);
+      deb.z += dnz * dpull + dtz * (4 * dt);
+      deb.mesh.position.x = deb.x;
+      deb.mesh.position.z = deb.z;
+      deb.mesh.rotation.x += deb.spin * dt;
+      deb.mesh.rotation.y += deb.spin * dt * 0.7;
+    }
+
+    var core = singularity.mesh.userData.core, rim = singularity.mesh.userData.rim, halo = singularity.mesh.userData.halo;
+    core.scale.setScalar(1 + t * 0.6);
+    rim.rotation.z += dt * 8;
+    halo.rotation.z -= dt * 5;
+    rim.scale.setScalar(1 + Math.sin(singularity.angle * 3) * 0.1);
+
+    if (Math.random() < 0.7) {
+      var pang = Math.random() * Math.PI * 2;
+      var pr = 0.6 + Math.random() * 1.5;
+      spawnBurst(singularity.x + Math.cos(pang) * pr, 0.5 + Math.random() * 1.5, singularity.z + Math.sin(pang) * pr, 0xb84dff, 1);
+    }
+
+    if (singularity.timer <= 0) detonateSingularity();
+  }
+
+  singularityBtn.addEventListener("touchstart", function (e) { e.preventDefault(); useSingularity(); }, { passive: false });
+  singularityBtn.addEventListener("mousedown", function (e) { e.preventDefault(); useSingularity(); });
+
   // ---------- Health UI ----------
   var healthWrap = document.getElementById("healthWrap");
   function renderHealth() {
@@ -1804,6 +2162,15 @@
     fireballCooldownTimer = 0;
     fireballs.forEach(function (f) { scene.remove(f.mesh); });
     fireballs.length = 0;
+    chainCooldownTimer = 0;
+    chainBolts.forEach(function (b) { scene.remove(b.line); b.geo.dispose(); b.mat.dispose(); });
+    chainBolts.length = 0;
+    singularityCooldownTimer = 0;
+    if (singularity) {
+      singularity.debris.forEach(function (d) { scene.remove(d.mesh); d.mesh.material.dispose(); });
+      scene.remove(singularity.mesh);
+      singularity = null;
+    }
     tempLights.forEach(function (t) { scene.remove(t.light); });
     tempLights.length = 0;
     novaCores.forEach(function (c) { scene.remove(c.mesh); c.mat.dispose(); });
@@ -1843,6 +2210,8 @@
     updateOverloadBeam(dt);
     updateSupernovaOrbs(dt);
     updateFireballs(dt);
+    updateChainBolts(dt);
+    updateSingularity(dt);
     updateTempLights(dt);
     updateNovaCores(dt);
     groundMat.emissiveIntensity = 0.3 + Math.sin(clock.elapsedTime * 0.8) * 0.08;
@@ -1873,6 +2242,16 @@
       fireballCooldownTimer = Math.max(0, fireballCooldownTimer - dt);
       fireballBtn.classList.toggle("onCooldown", fireballCooldownTimer > 0);
       fireballCooldownLabel.textContent = fireballCooldownTimer > 0 ? fireballCooldownTimer.toFixed(1) : "";
+    }
+    if (chainCooldownTimer > 0) {
+      chainCooldownTimer = Math.max(0, chainCooldownTimer - dt);
+      chainBtn.classList.toggle("onCooldown", chainCooldownTimer > 0);
+      chainCooldownLabel.textContent = chainCooldownTimer > 0 ? chainCooldownTimer.toFixed(1) : "";
+    }
+    if (singularityCooldownTimer > 0) {
+      singularityCooldownTimer = Math.max(0, singularityCooldownTimer - dt);
+      singularityBtn.classList.toggle("onCooldown", singularityCooldownTimer > 0);
+      singularityCooldownLabel.textContent = singularityCooldownTimer > 0 ? singularityCooldownTimer.toFixed(1) : "";
     }
     if (player.invulnTimer > 0) {
       player.invulnTimer = Math.max(0, player.invulnTimer - dt);
@@ -1939,6 +2318,15 @@
     // enemy AI
     for (var i = enemies.length - 1; i >= 0; i--) {
       var e = enemies[i];
+
+      // Held by an active Singularity Core: position/rotation are driven
+      // entirely by updateSingularity's pull code, so skip normal
+      // movement/contact/attack logic for this enemy while locked.
+      if (e.singularityLock) {
+        e.mesh.rotation.y += dt * 8;
+        continue;
+      }
+
       var dx = player.x - e.x, dz = player.z - e.z;
       var dist = Math.sqrt(dx * dx + dz * dz);
 

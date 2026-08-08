@@ -213,20 +213,35 @@ close in wave after wave:
   (or at max range) into a fiery blast with its own shockwave rings and
   ember burst. Short cooldown — your bread-and-butter crowd-clearer between
   the bigger ultimates.
+- Violet &#127785; button: **Chain Lightning Glitch** — omnidirectional, no
+  aim needed. Arcs a jagged, glowing bolt from you to the nearest enemy,
+  then from there to the next nearest un-hit enemy, snaking through up to
+  9 targets in one cast. Every jump cracks a whole-screen "glitch" — a
+  brief burst of RGB-tinted scanline tearing and displacement — plus a
+  rising-pitch electrical zap. Moderate cooldown.
+- Dark &#128371; button: **Singularity Core** — drops a small event horizon
+  that spends over a second pulling in every nearby enemy (and a scattering
+  of glowing debris chunks, purely for spectacle) into a tightening spiral
+  orbit — anything caught skips its normal AI entirely while held — before
+  collapsing into the biggest single detonation in the game: an expanding
+  core, three staggered violet/white shockwave rings, a huge ember burst,
+  and a massive dynamic blast light. Long cooldown, huge payoff.
 - Gold &#9728;&#65039; button: **Supernova** — launches a slow, glowing
   energy orb that detonates on the first enemy it touches (or at max
-  range) into the biggest hit in the game: a blinding expanding white-hot
-  core, four staggered color-shifting shockwave rings sweeping outward,
-  a huge multi-color ember burst, a massive dynamic blast light, a
-  glitchy "SUPERNOVA" callout, and a punchy two-part boom. Heavy damage
-  to everything caught in the radius. Long cooldown.
-- All three directional ultimates (Laser, Fireball, Supernova) auto-target
-  the nearest enemy if you tap the button without actively holding the aim
+  range) into a massive hit: a blinding expanding white-hot core, four
+  staggered color-shifting shockwave rings sweeping outward, a huge
+  multi-color ember burst, a massive dynamic blast light, a glitchy
+  "SUPERNOVA" callout, and a punchy two-part boom. Heavy damage to
+  everything caught in the radius. Long cooldown.
+- All directional ultimates (Laser, Fireball, Supernova) auto-target the
+  nearest enemy if you tap the button without actively holding the aim
   stick, so you don't have to juggle both thumbs under pressure to land a
   hit. Dash and EMP Burst also got a VFX pass to match: Dash now leaves a
   glowing light at both ends of the blink, and EMP fires a staggered
   double-pulse ring with its own dynamic light and callout instead of one
-  flat circle.
+  flat circle. All seven abilities now live in a compact 2-column grid dock
+  next to the aim stick, so the button count can keep growing without
+  crowding a short landscape phone screen.
 - Clearing a wave pauses the action for a perk pick: choose one of three
   random upgrades — more projectile damage, faster fire rate, more max
   health (plus a full heal), faster movement, **Split Rounds** (fire an
