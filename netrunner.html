@@ -604,6 +604,19 @@
   var BOSS_BOLT_SPEED = 10;
   var BOSS_BOLT_DAMAGE = 1.5;
   var BOSS_CONTACT_DAMAGE = 2;
+  var SPITTER_KEEP_DISTANCE = 6.5;
+  var SPITTER_ATTACK_INTERVAL = 2.2;
+  var SPITTER_TELEGRAPH_TIME = 0.4;
+  var SPITTER_BOLT_SPEED = 8;
+  var SPITTER_BOLT_DAMAGE = 0.75;
+  var SPITTER_CONTACT_DAMAGE = 0.75;
+  var JUGGERNAUT_CHARGE_COOLDOWN = 4.5;
+  var JUGGERNAUT_TELEGRAPH_TIME = 0.6;
+  var JUGGERNAUT_CHARGE_SPEED = 15;
+  var JUGGERNAUT_CHARGE_DURATION = 0.45;
+  var JUGGERNAUT_RECOVER_TIME = 0.8;
+  var JUGGERNAUT_CHARGE_DAMAGE = 3;
+  var JUGGERNAUT_CONTACT_DAMAGE = 2;
   var CAMERA_OFFSET = new THREE.Vector3(0, 17, 11);
   var DASH_DISTANCE = 6;
   var DASH_COOLDOWN = 4;
@@ -714,6 +727,9 @@
     playTone(100, 30, 0.8, "sawtooth", 0.24);
     setTimeout(function () { playNoiseBurst(0.3, 2200, 0.2); }, 120);
   }
+  function sfxSpitterAttack() { playTone(500, 220, 0.2, "sawtooth", 0.13); }
+  function sfxJuggernautCharge() { playNoiseBurst(0.15, 900, 0.2); playTone(80, 260, 0.4, "sawtooth", 0.2); }
+  function sfxJuggernautImpact() { playNoiseBurst(0.3, 700, 0.28); playTone(60, 30, 0.4, "square", 0.24); }
   function sfxPlayerHurt() { playTone(180, 60, 0.22, "sawtooth", 0.18); }
   function sfxWaveClear() { playTone(400, 800, 0.5, "sine", 0.16); }
   function sfxGameOver() { playTone(300, 40, 0.9, "sawtooth", 0.18); }
@@ -851,7 +867,33 @@
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     scene.add(mesh);
-    buildings.push({ mesh: mesh, mat: mat, baseIntensity: 0.55, flickerPhase: Math.random() * 10 });
+
+    // Occasional second, smaller tier stacked on top breaks up an
+    // otherwise uniform skyline of plain boxes.
+    if (Math.random() < 0.4) {
+      var tierW = w * (0.4 + Math.random() * 0.3), tierH = h * (0.25 + Math.random() * 0.3), tierD = d * (0.4 + Math.random() * 0.3);
+      var tier = new THREE.Mesh(new THREE.BoxGeometry(tierW, tierH, tierD), mat);
+      tier.position.set(x, h + tierH / 2, z);
+      tier.castShadow = true;
+      scene.add(tier);
+    }
+
+    // Occasional rooftop antenna with a blinking tip light, for a
+    // "living city" feel from a distance.
+    var antennaTip = null, antennaPhase = 0;
+    if (Math.random() < 0.5) {
+      var antennaMat = new THREE.MeshBasicMaterial({ color: neonColor });
+      var antennaHeight = 2 + Math.random() * 3;
+      var antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, antennaHeight, 5), antennaMat);
+      antenna.position.set(x, h + antennaHeight / 2, z);
+      scene.add(antenna);
+      antennaTip = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      antennaTip.position.set(x, h + antennaHeight, z);
+      scene.add(antennaTip);
+      antennaPhase = Math.random() * 10;
+    }
+
+    buildings.push({ mesh: mesh, mat: mat, baseIntensity: 0.55, flickerPhase: Math.random() * 10, antennaTip: antennaTip, antennaPhase: antennaPhase });
   }
   var ring = ARENA_HALF - 2;
   for (var a = 0; a < Math.PI * 2; a += Math.PI / 10) {
@@ -865,6 +907,70 @@
       var b = buildings[i];
       var flicker = Math.sin(t * 1.5 + b.flickerPhase) * 0.15 + (Math.random() < 0.003 ? -0.3 : 0);
       b.mat.emissiveIntensity = Math.max(0.1, b.baseIntensity + flicker);
+      if (b.antennaTip) b.antennaTip.visible = Math.sin(t * 3 + b.antennaPhase) > 0.3;
+    }
+  }
+
+  // ---------- Ground props: sparse decorative set-dressing scattered
+  // inside the play area (non-colliding, matching the buildings, which
+  // already have no collision either — the arena boundary clamp is the
+  // only movement constraint in this game). ----------
+  var groundProps = [];
+  var propColors = [0x00e5ff, 0xff2e9a, 0xb84dff, 0x8aff4d];
+  function addGroundProp(x, z) {
+    if (Math.random() < 0.55) {
+      var h = 1.2 + Math.random() * 1.3;
+      var color = propColors[groundProps.length % propColors.length];
+      var mat = new THREE.MeshStandardMaterial({ color: 0x150c28, emissive: color, emissiveIntensity: 0.7, roughness: 0.5, metalness: 0.4 });
+      var mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, h, 6), mat);
+      mesh.position.set(x, h / 2, z);
+      mesh.castShadow = true;
+      scene.add(mesh);
+      groundProps.push({ mesh: mesh, mat: mat, baseIntensity: 0.7, phase: Math.random() * 10 });
+    } else {
+      var mat2 = new THREE.MeshStandardMaterial({ color: 0x1a1a22, roughness: 0.8, metalness: 0.2 });
+      var ch = 0.5 + Math.random() * 0.3;
+      var mesh2 = new THREE.Mesh(new THREE.BoxGeometry(0.9 + Math.random() * 0.6, ch, 0.7 + Math.random() * 0.5), mat2);
+      mesh2.position.set(x, ch / 2, z);
+      mesh2.rotation.y = Math.random() * Math.PI;
+      mesh2.castShadow = true;
+      scene.add(mesh2);
+      groundProps.push({ mesh: mesh2, mat: null });
+    }
+  }
+  for (var p = 0; p < 16; p++) {
+    var pang = Math.random() * Math.PI * 2;
+    var pr = 6 + Math.random() * (PLAY_HALF - 8);
+    addGroundProp(Math.cos(pang) * pr, Math.sin(pang) * pr);
+  }
+  function updateGroundProps(t) {
+    for (var i = 0; i < groundProps.length; i++) {
+      var gp = groundProps[i];
+      if (gp.mat) gp.mat.emissiveIntensity = Math.max(0.2, gp.baseIntensity + Math.sin(t * 2 + gp.phase) * 0.2);
+    }
+  }
+
+  // ---------- Ambient digital rain ----------
+  var RAIN_COUNT = 60;
+  var rainDrops = [];
+  var rainGeo = new THREE.BoxGeometry(0.03, 0.55, 0.03);
+  var rainColors = [0x66d9ff, 0xff6ec7];
+  for (var r = 0; r < RAIN_COUNT; r++) {
+    var rainMat = new THREE.MeshBasicMaterial({ color: rainColors[r % rainColors.length], transparent: true, opacity: 0.3 });
+    var rmesh = new THREE.Mesh(rainGeo, rainMat);
+    rmesh.position.set((Math.random() * 2 - 1) * ARENA_HALF, Math.random() * 18, (Math.random() * 2 - 1) * ARENA_HALF);
+    scene.add(rmesh);
+    rainDrops.push({ mesh: rmesh, speed: 9 + Math.random() * 6 });
+  }
+  function updateRain(dt) {
+    for (var i = 0; i < rainDrops.length; i++) {
+      var d = rainDrops[i];
+      d.mesh.position.y -= d.speed * dt;
+      if (d.mesh.position.y < 0) {
+        d.mesh.position.y = 16 + Math.random() * 6;
+        d.mesh.position.x = (Math.random() * 2 - 1) * ARENA_HALF;
+        d.mesh.position.z = (Math.random() * 2 - 1) * ARENA_HALF;
+      }
     }
   }
 
@@ -1217,6 +1323,9 @@
   var enemies = [];
   var enemyGeoDrone = new THREE.OctahedronGeometry(0.5, 0);
   var enemyGeoBrute = new THREE.OctahedronGeometry(0.85, 0);
+  var enemyGeoSpitter = new THREE.TetrahedronGeometry(0.55, 0);
+  var enemyEyeGeo = new THREE.SphereGeometry(0.08, 8, 8);
+  var enemyEyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
   function spawnEnemy(type) {
     var angle = Math.random() * Math.PI * 2;
@@ -1224,25 +1333,39 @@
     var x = Math.cos(angle) * dist;
     var z = Math.sin(angle) * dist;
     var isBrute = type === "brute";
+    var isSpitter = type === "spitter";
+    var neonColor = isBrute ? 0xff2e9a : (isSpitter ? 0x8aff4d : 0x00e5ff);
+    var geo = isBrute ? enemyGeoBrute : (isSpitter ? enemyGeoSpitter : enemyGeoDrone);
     var mat = new THREE.MeshStandardMaterial({
-      color: isBrute ? 0x2a0a20 : 0x0a1a2a,
-      emissive: isBrute ? 0xff2e9a : 0x00e5ff,
+      color: isBrute ? 0x2a0a20 : (isSpitter ? 0x0a2a10 : 0x0a1a2a),
+      emissive: neonColor,
       emissiveIntensity: 0.9,
       roughness: 0.35,
       metalness: 0.5
     });
-    var mesh = new THREE.Mesh(isBrute ? enemyGeoBrute : enemyGeoDrone, mat);
-    mesh.position.set(x, isBrute ? 0.85 : 0.6, z);
+    var mesh = new THREE.Mesh(geo, mat);
+    var baseY = isBrute ? 0.85 : (isSpitter ? 0.65 : 0.6);
+    mesh.position.set(x, baseY, z);
     mesh.castShadow = true;
+
+    // A small glowing "eye" facing outward gives every regular enemy a bit
+    // more menace/polish without needing a bespoke model per type.
+    var eye = new THREE.Mesh(enemyEyeGeo, enemyEyeMat);
+    eye.position.set(0, 0, isSpitter ? 0.5 : (isBrute ? 0.6 : 0.35));
+    mesh.add(eye);
+
     scene.add(mesh);
     enemies.push({
       mesh: mesh,
       x: x, z: z,
-      health: isBrute ? 5 : 2,
-      maxHealth: isBrute ? 5 : 2,
-      speed: (isBrute ? 2.2 : 3.6) + wave * 0.08,
+      health: isBrute ? 5 : (isSpitter ? 3 : 2),
+      maxHealth: isBrute ? 5 : (isSpitter ? 3 : 2),
+      speed: (isBrute ? 2.2 : (isSpitter ? 3.0 : 3.6)) + wave * 0.08,
       contactTimer: 0,
-      type: type
+      type: type,
+      attackTimer: 1 + Math.random(),
+      telegraphTimer: 0,
+      telegraphDir: null
     });
   }
 
@@ -1282,9 +1405,11 @@
     return group;
   }
 
+  var bossLabelEl = document.getElementById("bossLabel");
   function updateBossHealthUI(boss) {
     if (!boss) { bossBarEl.classList.remove("active"); return; }
     bossBarEl.classList.add("active");
+    bossLabelEl.textContent = boss.type === "juggernaut" ? "JUGGERNAUT" : "SENTINEL";
     bossHealthFillEl.style.width = Math.max(0, (boss.health / boss.maxHealth) * 100) + "%";
   }
 
@@ -1317,37 +1442,104 @@
     sfxBossWarning();
   }
 
-  // ---------- Boss projectiles ----------
-  var bossBolts = [];
-  var bossBoltGeo = new THREE.SphereGeometry(0.22, 10, 10);
-  var bossBoltMat = new THREE.MeshBasicMaterial({ color: 0xff2e9a });
+  // ---------- Boss: "Juggernaut" — the melee counterpart to the Sentinel.
+  // Never backs off: it relentlessly closes in, and periodically winds up
+  // (a red telegraph ring) before slamming through a fast charge in a
+  // straight line. Getting clipped by the charge hurts a lot more than its
+  // regular contact damage, so it rewards dodging on read rather than just
+  // kiting at a fixed distance the way the Sentinel fight does.
+  function createJuggernautMesh() {
+    var group = new THREE.Group();
+    var coreMat = new THREE.MeshStandardMaterial({ color: 0x2a1005, emissive: 0xff5522, emissiveIntensity: 1, roughness: 0.4, metalness: 0.7 });
+    var core = new THREE.Mesh(new THREE.DodecahedronGeometry(1.3, 0), coreMat);
+    core.castShadow = true;
+    group.add(core);
 
-  function spawnBossBolt(x, z, dirX, dirZ) {
-    var mesh = new THREE.Mesh(bossBoltGeo, bossBoltMat.clone());
-    mesh.position.set(x, 1, z);
-    scene.add(mesh);
-    var glow = new THREE.PointLight(0xff2e9a, 1.2, 4);
-    mesh.add(glow);
-    bossBolts.push({ mesh: mesh, vx: dirX * BOSS_BOLT_SPEED, vz: dirZ * BOSS_BOLT_SPEED, life: 4 });
+    var eye = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 12), new THREE.MeshBasicMaterial({ color: 0xffee88 }));
+    eye.position.set(0, 0.15, 1.15);
+    group.add(eye);
+
+    var spikeMat = new THREE.MeshStandardMaterial({ color: 0x1a0a05, emissive: 0xff8833, emissiveIntensity: 0.8, roughness: 0.5, metalness: 0.6 });
+    var spikes = [];
+    for (var i = 0; i < 5; i++) {
+      var spike = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.95, 5), spikeMat);
+      var ang = (i / 5) * Math.PI * 2;
+      var spikePos = new THREE.Vector3(Math.cos(ang) * 1.15, 0.15 + Math.sin(i * 1.7) * 0.35, Math.sin(ang) * 1.15);
+      spike.position.copy(spikePos);
+      spike.lookAt(spikePos.clone().multiplyScalar(2));
+      spike.rotateX(Math.PI / 2);
+      spike.castShadow = true;
+      group.add(spike);
+      spikes.push(spike);
+    }
+
+    group.userData.core = core;
+    group.userData.spikes = spikes;
+    return group;
   }
 
-  function updateBossBolts(dt) {
-    for (var i = bossBolts.length - 1; i >= 0; i--) {
-      var b = bossBolts[i];
+  function spawnJuggernaut(waveNum) {
+    var angle = Math.random() * Math.PI * 2;
+    var dist = PLAY_HALF + 2;
+    var x = Math.cos(angle) * dist;
+    var z = Math.sin(angle) * dist;
+    var mesh = createJuggernautMesh();
+    mesh.position.set(x, 1.3, z);
+    scene.add(mesh);
+    var bossHealth = 75 + waveNum * 8;
+    var boss = {
+      mesh: mesh,
+      x: x, z: z,
+      health: bossHealth,
+      maxHealth: bossHealth,
+      speed: 2.4,
+      contactTimer: 0,
+      type: "juggernaut",
+      state: "chase",
+      stateTimer: 2.2,
+      chargeDir: { x: 0, z: 0 }
+    };
+    enemies.push(boss);
+    bossActive = true;
+    currentBoss = boss;
+    updateBossHealthUI(boss);
+    showAbilityCallout("WARNING: JUGGERNAUT");
+    sfxBossWarning();
+  }
+
+  // ---------- Enemy projectiles ----------
+  // Shared by any ranged enemy (the Sentinel boss, the Spitter) rather than
+  // a boss-only system, so adding another ranged enemy type is just a
+  // spawnEnemyBolt call away.
+  var enemyBolts = [];
+  var enemyBoltGeo = new THREE.SphereGeometry(0.22, 10, 10);
+
+  function spawnEnemyBolt(x, z, dirX, dirZ, speed, damage, color) {
+    var mesh = new THREE.Mesh(enemyBoltGeo, new THREE.MeshBasicMaterial({ color: color }));
+    mesh.position.set(x, 1, z);
+    scene.add(mesh);
+    var glow = new THREE.PointLight(color, 1.2, 4);
+    mesh.add(glow);
+    enemyBolts.push({ mesh: mesh, vx: dirX * speed, vz: dirZ * speed, life: 4, damage: damage, color: color });
+  }
+
+  function updateEnemyBolts(dt) {
+    for (var i = enemyBolts.length - 1; i >= 0; i--) {
+      var b = enemyBolts[i];
       b.life -= dt;
       b.mesh.position.x += b.vx * dt;
       b.mesh.position.z += b.vz * dt;
       var pdx = b.mesh.position.x - player.x, pdz = b.mesh.position.z - player.z;
       if (pdx * pdx + pdz * pdz < 0.6 * 0.6) {
-        damagePlayer(BOSS_BOLT_DAMAGE);
-        spawnBurst(b.mesh.position.x, b.mesh.position.y, b.mesh.position.z, 0xff2e9a, 8);
+        damagePlayer(b.damage);
+        spawnBurst(b.mesh.position.x, b.mesh.position.y, b.mesh.position.z, b.color, 8);
         scene.remove(b.mesh);
-        bossBolts.splice(i, 1);
+        enemyBolts.splice(i, 1);
         continue;
       }
       if (b.life <= 0 || Math.abs(b.mesh.position.x) > ARENA_HALF + 5 || Math.abs(b.mesh.position.z) > ARENA_HALF + 5) {
         scene.remove(b.mesh);
-        bossBolts.splice(i, 1);
+        enemyBolts.splice(i, 1);
       }
     }
   }
@@ -1364,24 +1556,33 @@
     enemiesRemainingToSpawn = count;
     spawnTimer = 0;
     waveLabel.textContent = "WAVE " + wave;
-    if (isBossWave) spawnBoss(wave);
+    if (isBossWave) {
+      // Alternate boss types on successive boss waves: Sentinel (ranged
+      // kiter) on the 1st, 3rd, 5th... boss wave, Juggernaut (melee
+      // charger) on the 2nd, 4th, 6th...
+      var bossIndex = wave / BOSS_WAVE_INTERVAL;
+      if (bossIndex % 2 === 1) spawnBoss(wave); else spawnJuggernaut(wave);
+    }
   }
 
   function killEnemy(enemy, idx) {
-    if (enemy.type === "boss") {
-      spawnNovaCore(enemy.x, 1.1, enemy.z, 0xff2e9a, 5, 0.5);
+    if (enemy.type === "boss" || enemy.type === "juggernaut") {
+      var isJuggernaut = enemy.type === "juggernaut";
+      var primary = isJuggernaut ? 0xff5522 : 0xff2e9a;
+      var secondary = isJuggernaut ? 0xffcc55 : 0x00e5ff;
+      spawnNovaCore(enemy.x, 1.1, enemy.z, primary, 5, 0.5);
       spawnShockwave(enemy.x, 0.04, enemy.z, 0xffffff, 2.2, 0.3);
-      spawnShockwave(enemy.x, 0.05, enemy.z, 0xff2e9a, 4, 0.55);
-      spawnShockwave(enemy.x, 0.06, enemy.z, 0x00e5ff, 5.5, 0.8);
-      var bc = [0xff2e9a, 0x00e5ff, 0xffffff];
+      spawnShockwave(enemy.x, 0.05, enemy.z, primary, 4, 0.55);
+      spawnShockwave(enemy.x, 0.06, enemy.z, secondary, 5.5, 0.8);
+      var bc = [primary, secondary, 0xffffff];
       for (var b = 0; b < 60; b++) {
         spawnBurst(enemy.x, 0.6 + Math.random() * 2, enemy.z, bc[b % bc.length], 1);
       }
-      spawnTempLight(enemy.x, 1.6, enemy.z, 0xff2e9a, 8, 16, 0.6);
+      spawnTempLight(enemy.x, 1.6, enemy.z, primary, 8, 16, 0.6);
       abilityShakeTime = Math.max(abilityShakeTime, ABILITY_SHAKE_DURATION * 3.5);
       scene.remove(enemy.mesh);
       enemies.splice(idx, 1);
-      score += 200;
+      score += isJuggernaut ? 220 : 200;
       scoreLabel.textContent = "SCORE " + score;
       player.health = Math.min(player.maxHealth, player.health + 2);
       renderHealth();
@@ -1389,16 +1590,17 @@
       currentBoss = null;
       updateBossHealthUI(null);
       sfxBossDie();
-      showAbilityCallout("SENTINEL DESTROYED");
+      showAbilityCallout(isJuggernaut ? "JUGGERNAUT DESTROYED" : "SENTINEL DESTROYED");
       return;
     }
 
-    var color = enemy.type === "brute" ? 0xff2e9a : 0x00e5ff;
-    spawnBurst(enemy.x, enemy.type === "brute" ? 0.85 : 0.6, enemy.z, color, 16);
+    var color = enemy.type === "brute" ? 0xff2e9a : (enemy.type === "spitter" ? 0x8aff4d : 0x00e5ff);
+    var baseY = enemy.type === "brute" ? 0.85 : (enemy.type === "spitter" ? 0.65 : 0.6);
+    spawnBurst(enemy.x, baseY, enemy.z, color, 16);
     spawnShockwave(enemy.x, 0.05, enemy.z, color, enemy.type === "brute" ? 2.2 : 1.4, 0.35);
     scene.remove(enemy.mesh);
     enemies.splice(idx, 1);
-    score += enemy.type === "brute" ? 30 : 10;
+    score += enemy.type === "brute" ? 30 : (enemy.type === "spitter" ? 15 : 10);
     scoreLabel.textContent = "SCORE " + score;
     sfxDroneDie();
   }
@@ -1867,7 +2069,7 @@
       sfxChainZap(1 + j * 0.09);
       best.health -= CHAIN_DAMAGE;
       spawnBurst(best.x, best.mesh.position.y, best.z, 0xb84dff, 6);
-      spawnShockwave(best.x, 0.05, best.z, 0xb84dff, best.type === "boss" ? 1.6 : (best.type === "brute" ? 1.1 : 0.7), 0.25);
+      spawnShockwave(best.x, 0.05, best.z, 0xb84dff, (best.type === "boss" || best.type === "juggernaut") ? 1.6 : (best.type === "brute" ? 1.1 : 0.7), 0.25);
       hitCount++;
       var deadIdx = enemies.indexOf(best);
       if (best.health <= 0 && deadIdx !== -1) killEnemy(best, deadIdx);
@@ -2184,8 +2386,8 @@
     enemies.length = 0;
     bolts.forEach(function (b) { scene.remove(b.mesh); });
     bolts.length = 0;
-    bossBolts.forEach(function (b) { scene.remove(b.mesh); });
-    bossBolts.length = 0;
+    enemyBolts.forEach(function (b) { scene.remove(b.mesh); });
+    enemyBolts.length = 0;
     bossActive = false;
     currentBoss = null;
     updateBossHealthUI(null);
@@ -2207,6 +2409,8 @@
     updateParticles(dt);
     updateRings(dt);
     updateBuildings(clock.elapsedTime);
+    updateGroundProps(clock.elapsedTime);
+    updateRain(dt);
     updateOverloadBeam(dt);
     updateSupernovaOrbs(dt);
     updateFireballs(dt);
@@ -2309,7 +2513,11 @@
     if (waveActive && enemiesRemainingToSpawn > 0) {
       spawnTimer -= dt;
       if (spawnTimer <= 0) {
-        spawnEnemy(Math.random() < 0.22 + wave * 0.02 ? "brute" : "drone");
+        var spitterChance = wave >= 3 ? Math.min(0.35, 0.15 + wave * 0.015) : 0;
+        var bruteChance = 0.22 + wave * 0.02;
+        var typeRoll = Math.random();
+        var enemyType = typeRoll < spitterChance ? "spitter" : (typeRoll < spitterChance + bruteChance ? "brute" : "drone");
+        spawnEnemy(enemyType);
         enemiesRemainingToSpawn--;
         spawnTimer = 0.5;
       }
@@ -2354,7 +2562,7 @@
         if (e.telegraphTimer > 0) {
           e.telegraphTimer -= dt;
           if (e.telegraphTimer <= 0) {
-            spawnBossBolt(e.x, e.z, e.telegraphDir.x, e.telegraphDir.z);
+            spawnEnemyBolt(e.x, e.z, e.telegraphDir.x, e.telegraphDir.z, BOSS_BOLT_SPEED, BOSS_BOLT_DAMAGE, 0xff2e9a);
             sfxBossAttack();
             e.attackTimer = BOSS_ATTACK_INTERVAL;
           }
@@ -2372,6 +2580,105 @@
         e.mesh.userData.ring2.rotation.z -= dt * 1.1;
         e.mesh.userData.core.rotation.y += dt * 0.6;
         e.mesh.position.set(e.x, 1.3 + Math.sin(clock.elapsedTime * 1.5) * 0.08, e.z);
+        continue;
+      }
+
+      if (e.type === "juggernaut") {
+        e.stateTimer -= dt;
+        var jnx = dist > 0.01 ? dx / dist : 0, jnz = dist > 0.01 ? dz / dist : 0;
+
+        if (e.state === "chase") {
+          if (dist > 1.6) {
+            e.x += jnx * e.speed * dt;
+            e.z += jnz * e.speed * dt;
+          } else {
+            e.contactTimer -= dt;
+            if (e.contactTimer <= 0) {
+              damagePlayer(JUGGERNAUT_CONTACT_DAMAGE);
+              e.contactTimer = ENEMY_CONTACT_COOLDOWN;
+            }
+          }
+          if (e.stateTimer <= 0) {
+            e.state = "telegraph";
+            e.stateTimer = JUGGERNAUT_TELEGRAPH_TIME;
+            var jtdist = dist || 1;
+            e.chargeDir = { x: dx / jtdist, z: dz / jtdist };
+            spawnShockwave(e.x, 0.06, e.z, 0xff5522, 1.8, JUGGERNAUT_TELEGRAPH_TIME);
+          }
+        } else if (e.state === "telegraph") {
+          if (e.stateTimer <= 0) {
+            e.state = "charging";
+            e.stateTimer = JUGGERNAUT_CHARGE_DURATION;
+            sfxJuggernautCharge();
+          }
+        } else if (e.state === "charging") {
+          e.x += e.chargeDir.x * JUGGERNAUT_CHARGE_SPEED * dt;
+          e.z += e.chargeDir.z * JUGGERNAUT_CHARGE_SPEED * dt;
+          clampToArena(e);
+          spawnBurst(e.x, 1, e.z, 0xff5522, 1);
+          var jpdx = player.x - e.x, jpdz = player.z - e.z;
+          if (jpdx * jpdx + jpdz * jpdz < 2 * 2) {
+            damagePlayer(JUGGERNAUT_CHARGE_DAMAGE);
+            e.state = "recover";
+            e.stateTimer = JUGGERNAUT_RECOVER_TIME;
+            spawnShockwave(e.x, 0.05, e.z, 0xff5522, 2.4, 0.3);
+            spawnBurst(e.x, 1, e.z, 0xffcc88, 14);
+            abilityShakeTime = Math.max(abilityShakeTime, ABILITY_SHAKE_DURATION * 1.8);
+            sfxJuggernautImpact();
+          } else if (e.stateTimer <= 0) {
+            e.state = "recover";
+            e.stateTimer = JUGGERNAUT_RECOVER_TIME;
+            spawnBurst(e.x, 1, e.z, 0xff5522, 10);
+          }
+        } else if (e.state === "recover") {
+          if (e.stateTimer <= 0) {
+            e.state = "chase";
+            e.stateTimer = JUGGERNAUT_CHARGE_COOLDOWN;
+          }
+        }
+
+        e.mesh.userData.core.rotation.y += dt * (e.state === "charging" ? 6 : 1.2);
+        e.mesh.position.set(e.x, 1.3 + Math.sin(clock.elapsedTime * 1.3) * 0.06, e.z);
+        continue;
+      }
+
+      if (e.type === "spitter") {
+        var snx = dist > 0.01 ? dx / dist : 0, snz = dist > 0.01 ? dz / dist : 0;
+        if (dist > SPITTER_KEEP_DISTANCE + 1) {
+          e.x += snx * e.speed * dt;
+          e.z += snz * e.speed * dt;
+        } else if (dist < SPITTER_KEEP_DISTANCE - 1) {
+          e.x -= snx * e.speed * dt;
+          e.z -= snz * e.speed * dt;
+        }
+
+        if (dist < 1.2) {
+          e.contactTimer -= dt;
+          if (e.contactTimer <= 0) {
+            damagePlayer(SPITTER_CONTACT_DAMAGE);
+            e.contactTimer = ENEMY_CONTACT_COOLDOWN;
+          }
+        }
+
+        if (e.telegraphTimer > 0) {
+          e.telegraphTimer -= dt;
+          if (e.telegraphTimer <= 0) {
+            spawnEnemyBolt(e.x, e.z, e.telegraphDir.x, e.telegraphDir.z, SPITTER_BOLT_SPEED, SPITTER_BOLT_DAMAGE, 0x8aff4d);
+            sfxSpitterAttack();
+            e.attackTimer = SPITTER_ATTACK_INTERVAL;
+          }
+        } else {
+          e.attackTimer -= dt;
+          if (e.attackTimer <= 0) {
+            e.telegraphTimer = SPITTER_TELEGRAPH_TIME;
+            var stdist = dist || 1;
+            e.telegraphDir = { x: dx / stdist, z: dz / stdist };
+            spawnShockwave(e.x, 0.05, e.z, 0x8aff4d, 0.8, SPITTER_TELEGRAPH_TIME);
+          }
+        }
+
+        e.mesh.rotation.y += dt * 2;
+        e.mesh.position.set(e.x, 0.65 + Math.sin(clock.elapsedTime * 4 + i) * 0.06, e.z);
         continue;
       }
 
@@ -2393,7 +2700,7 @@
     }
 
     if (currentBoss) updateBossHealthUI(currentBoss);
-    updateBossBolts(dt);
+    updateEnemyBolts(dt);
     updateBolts(dt);
 
     // bolt-enemy collisions
@@ -2404,7 +2711,7 @@
         if (bolt.hitEnemies.indexOf(en) !== -1) continue;
         var bdx = bolt.mesh.position.x - en.x;
         var bdz = bolt.mesh.position.z - en.z;
-        var r = en.type === "boss" ? 1.9 : (en.type === "brute" ? 0.9 : 0.55);
+        var r = (en.type === "boss" || en.type === "juggernaut") ? 1.9 : (en.type === "brute" ? 0.9 : (en.type === "spitter" ? 0.6 : 0.55));
         if (bdx * bdx + bdz * bdz < r * r) {
           en.health -= bolt.damage;
           sfxDroneHit();
