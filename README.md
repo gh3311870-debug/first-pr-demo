@@ -200,7 +200,13 @@ close in wave after wave:
 - White &#9737; button: **Overload Laser** — an ultimate that fires an
   instant, massive piercing beam in whatever direction you're aiming (or
   facing, if you're not currently aiming), dealing heavy damage to every
-  enemy caught in its path, with a blinding white flash and a long cooldown.
+  enemy caught in its path, with a blinding white flash, a dynamic light
+  along the beam, an "OVERLOAD" callout, and a long cooldown.
+- Orange &#128293; button: **Fireball** — a fast, cheap splash-damage
+  projectile that streaks out with an ember trail and detonates on contact
+  (or at max range) into a fiery blast with its own shockwave rings and
+  ember burst. Short cooldown — your bread-and-butter crowd-clearer between
+  the bigger ultimates.
 - Gold &#9728;&#65039; button: **Supernova** — launches a slow, glowing
   energy orb that detonates on the first enemy it touches (or at max
   range) into the biggest hit in the game: a blinding expanding white-hot
@@ -208,9 +214,13 @@ close in wave after wave:
   a huge multi-color ember burst, a massive dynamic blast light, a
   glitchy "SUPERNOVA" callout, and a punchy two-part boom. Heavy damage
   to everything caught in the radius. Long cooldown.
-- Both directional ultimates (Laser, Supernova) auto-target the nearest
-  enemy if you tap the button without actively holding the aim stick, so
-  you don't have to juggle both thumbs under pressure to land a hit.
+- All three directional ultimates (Laser, Fireball, Supernova) auto-target
+  the nearest enemy if you tap the button without actively holding the aim
+  stick, so you don't have to juggle both thumbs under pressure to land a
+  hit. Dash and EMP Burst also got a VFX pass to match: Dash now leaves a
+  glowing light at both ends of the blink, and EMP fires a staggered
+  double-pulse ring with its own dynamic light and callout instead of one
+  flat circle.
 - Clearing a wave pauses the action for a perk pick: choose one of three
   random upgrades — more projectile damage, faster fire rate, more max
   health (plus a full heal), faster movement, **Split Rounds** (fire an
