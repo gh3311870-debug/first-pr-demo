@@ -96,6 +96,10 @@
     background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,215,120,0.75) 30%, rgba(255,120,60,0.35) 60%, rgba(255,120,60,0) 80%);
     animation: abilityFlashAnim 900ms ease-out;
   }
+  #abilityFlash.flashFire {
+    background: radial-gradient(circle, rgba(255,240,200,0.9) 0%, rgba(255,140,50,0.7) 35%, rgba(255,60,20,0.35) 65%, rgba(255,60,20,0) 80%);
+    animation: abilityFlashAnim 500ms ease-out;
+  }
   @keyframes abilityFlashAnim {
     0% { opacity: 1; }
     100% { opacity: 0; }
@@ -255,6 +259,12 @@
     background: rgba(255,205,90,0.28);
     border-color: rgba(255,230,150,0.95);
     box-shadow: 0 0 16px rgba(255,205,90,0.75);
+  }
+  #fireballBtn {
+    bottom: 240px;
+    background: rgba(255,90,30,0.28);
+    border-color: rgba(255,160,90,0.95);
+    box-shadow: 0 0 14px rgba(255,110,30,0.65);
   }
 
   #moveStick {
@@ -438,7 +448,7 @@
       <div id="healthWrap"></div>
     </div>
   </div>
-  <div id="hint">Left pad: move &middot; Right pad: aim &amp; hold to fire &middot; &#9889; Dash &middot; &#9762; EMP &middot; &#9737; Laser &middot; &#9728;&#65039; Supernova</div>
+  <div id="hint">Left pad: move &middot; Right pad: aim &amp; hold to fire &middot; &#9889; Dash &middot; &#9762; EMP &middot; &#9737; Laser &middot; &#128293; Fireball &middot; &#9728;&#65039; Supernova</div>
   <div id="gameNav">
     <a class="navLink" href="index.html">Builder</a>
     <a class="navLink" href="fps.html">Range</a>
@@ -453,6 +463,7 @@
   <div id="empBtn" class="abilityBtn">&#9762;<span id="empCooldownLabel" class="abilityCooldownLabel"></span></div>
   <div id="overloadBtn" class="abilityBtn">&#9737;<span id="overloadCooldownLabel" class="abilityCooldownLabel"></span></div>
   <div id="supernovaBtn" class="abilityBtn">&#9728;&#65039;<span id="supernovaCooldownLabel" class="abilityCooldownLabel"></span></div>
+  <div id="fireballBtn" class="abilityBtn">&#128293;<span id="fireballCooldownLabel" class="abilityCooldownLabel"></span></div>
 </div>
 
 <div id="waveClear">
@@ -499,6 +510,11 @@
   var SUPERNOVA_MAX_RANGE = 24;
   var SUPERNOVA_RADIUS = 10;
   var SUPERNOVA_DAMAGE = 30;
+  var FIREBALL_COOLDOWN = 8;
+  var FIREBALL_SPEED = 17;
+  var FIREBALL_MAX_RANGE = 22;
+  var FIREBALL_RADIUS = 4.5;
+  var FIREBALL_DAMAGE = 10;
 
   // ---------- Orientation / fullscreen ----------
   var rotateOverlayEl = document.getElementById("rotateOverlay");
@@ -591,6 +607,8 @@
       playTone(900, 60, 0.55, "sine", 0.16);
     }, 60);
   }
+  function sfxFireballLaunch() { playNoiseBurst(0.1, 3200, 0.14); playTone(500, 900, 0.18, "sawtooth", 0.13); }
+  function sfxFireballBlast() { playNoiseBurst(0.4, 1600, 0.26); playTone(140, 400, 0.4, "sawtooth", 0.2); }
 
   // ---------- Scene setup ----------
   var scene = new THREE.Scene();
@@ -899,7 +917,7 @@
   }
 
   // ---------- Shockwave rings (ability + kill VFX) ----------
-  var RING_POOL_SIZE = 18;
+  var RING_POOL_SIZE = 26;
   var ringPool = [];
   var ringGeo = new THREE.RingGeometry(0.85, 1, 32);
   for (var ri = 0; ri < RING_POOL_SIZE; ri++) {
@@ -1152,7 +1170,7 @@
   var hudEl = document.getElementById("hud");
 
   function flashAbility(cls) {
-    abilityFlashEl.classList.remove("flashCyan", "flashPink", "flashWhite", "flashGold");
+    abilityFlashEl.classList.remove("flashCyan", "flashPink", "flashWhite", "flashGold", "flashFire");
     void abilityFlashEl.offsetWidth;
     abilityFlashEl.classList.add(cls);
   }
@@ -1186,6 +1204,9 @@
       spawnBurst(lx, 0.5, lz, 0x00e5ff, 3);
     }
     spawnShockwave(startX, 0.05, startZ, 0x00e5ff, 2.5, 0.3);
+    spawnShockwave(player.x, 0.05, player.z, 0x9df7ff, 1.6, 0.25);
+    spawnTempLight(startX, 0.8, startZ, 0x00e5ff, 3, 6, 0.3);
+    spawnTempLight(player.x, 0.8, player.z, 0x9df7ff, 3, 6, 0.25);
     sfxDash();
     flashAbility("flashCyan");
   }
@@ -1195,19 +1216,28 @@
     empCooldownTimer = EMP_COOLDOWN;
     abilityShakeTime = ABILITY_SHAKE_DURATION * 1.6;
 
+    var struck = 0;
     for (var ei = enemies.length - 1; ei >= 0; ei--) {
       var en = enemies[ei];
       var dx = en.x - player.x, dz = en.z - player.z;
       var dist = Math.sqrt(dx * dx + dz * dz);
       if (dist <= EMP_RADIUS) {
+        struck++;
         en.health -= EMP_DAMAGE;
-        spawnBurst(en.x, en.mesh.position.y, en.z, 0xffffff, 8);
+        spawnBurst(en.x, en.mesh.position.y, en.z, 0xffffff, 10);
+        spawnShockwave(en.x, 0.06, en.z, 0xff2e9a, 1, 0.25);
         if (en.health <= 0) killEnemy(en, ei);
       }
     }
+    // Double pulse instead of a single flat ring, so the shockwave reads
+    // as an expanding EM field rather than one static circle.
+    spawnShockwave(player.x, 0.04, player.z, 0xffffff, EMP_RADIUS * 0.4, 0.3);
     spawnShockwave(player.x, 0.05, player.z, 0xff2e9a, EMP_RADIUS, 0.5);
+    spawnShockwave(player.x, 0.06, player.z, 0xff2e9a, EMP_RADIUS * 1.3, 0.7);
+    spawnTempLight(player.x, 1.2, player.z, 0xff2e9a, 6, EMP_RADIUS * 2, 0.5);
     sfxEmp();
     flashAbility("flashPink");
+    if (struck > 0) showAbilityCallout("EMP BURST");
   }
 
   dashBtn.addEventListener("touchstart", function (e) { e.preventDefault(); useDash(); }, { passive: false });
@@ -1240,6 +1270,7 @@
     var ax = dir.x, az = dir.z;
     player.angle = Math.atan2(ax, az);
 
+    var struck = 0;
     for (var ei = enemies.length - 1; ei >= 0; ei--) {
       var en = enemies[ei];
       var dx = en.x - player.x, dz = en.z - player.z;
@@ -1248,9 +1279,11 @@
       var perpX = dx - ax * proj, perpZ = dz - az * proj;
       var perpDist = Math.sqrt(perpX * perpX + perpZ * perpZ);
       if (perpDist <= OVERLOAD_WIDTH) {
+        struck++;
         en.health -= OVERLOAD_DAMAGE;
         spawnBurst(en.x, en.mesh.position.y, en.z, 0xffffff, 10);
         spawnShockwave(en.x, 0.05, en.z, 0xd8fbff, en.type === "brute" ? 2 : 1.3, 0.3);
+        spawnTempLight(en.x, en.mesh.position.y, en.z, 0x9df7ff, 3, 5, 0.3);
         if (en.health <= 0) killEnemy(en, ei);
       }
     }
@@ -1271,8 +1304,10 @@
     overloadGlow.scale.set(0.42, OVERLOAD_RANGE, 0.42);
 
     spawnShockwave(player.x, 0.05, player.z, 0xffffff, 3, 0.4);
+    spawnTempLight(player.x, 1, player.z, 0xd8fbff, 6, 10, 0.35);
     sfxOverloadFire();
     flashAbility("flashWhite");
+    if (struck > 0) showAbilityCallout("OVERLOAD");
   }
 
   function updateOverloadBeam(dt) {
@@ -1388,6 +1423,95 @@
   supernovaBtn.addEventListener("touchstart", function (e) { e.preventDefault(); useSupernova(); }, { passive: false });
   supernovaBtn.addEventListener("mousedown", function (e) { e.preventDefault(); useSupernova(); });
 
+  // ---------- Ability: Fireball (fast splash-damage projectile) ----------
+  // A cheaper, faster-cooldown sibling to Supernova: same travel-then-
+  // detonate shape, smaller radius, quicker to throw, meant for clearing a
+  // cluster rather than being the run's one big panic button.
+  var fireballCooldownTimer = 0;
+  var fireballBtn = document.getElementById("fireballBtn");
+  var fireballCooldownLabel = document.getElementById("fireballCooldownLabel");
+  var fireballs = [];
+
+  var fireballOrbGeo = new THREE.SphereGeometry(0.28, 12, 12);
+  var fireballOrbMat = new THREE.MeshBasicMaterial({ color: 0xff5522 });
+
+  function spawnFireball(ax, az) {
+    var mesh = new THREE.Mesh(fireballOrbGeo, fireballOrbMat.clone());
+    mesh.position.set(player.x, 0.85, player.z);
+    scene.add(mesh);
+    var glow = new THREE.PointLight(0xff6a2a, 1.6, 5);
+    mesh.add(glow);
+    fireballs.push({ mesh: mesh, vx: ax * FIREBALL_SPEED, vz: az * FIREBALL_SPEED, traveled: 0 });
+  }
+
+  function detonateFireball(x, z) {
+    var struck = 0;
+    for (var ei = enemies.length - 1; ei >= 0; ei--) {
+      var en = enemies[ei];
+      var dx = en.x - x, dz = en.z - z;
+      var dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist <= FIREBALL_RADIUS) {
+        struck++;
+        en.health -= FIREBALL_DAMAGE;
+        spawnBurst(en.x, en.mesh.position.y, en.z, 0xff7a33, 8);
+        if (en.health <= 0) killEnemy(en, ei);
+      }
+    }
+
+    spawnNovaCore(x, 0.7, z, 0xffb066, FIREBALL_RADIUS * 0.9, 0.32);
+    spawnShockwave(x, 0.05, z, 0xffe6b0, FIREBALL_RADIUS * 0.5, 0.28);
+    spawnShockwave(x, 0.06, z, 0xff5522, FIREBALL_RADIUS * 0.95, 0.45);
+    var emberColors = [0xffcc55, 0xff7a33, 0xff3311];
+    for (var b = 0; b < 30; b++) {
+      spawnBurst(x, 0.4 + Math.random() * 1.4, z, emberColors[b % emberColors.length], 1);
+    }
+    spawnTempLight(x, 1.4, z, 0xff6a2a, 5, FIREBALL_RADIUS * 2, 0.4);
+
+    abilityShakeTime = ABILITY_SHAKE_DURATION * 1.8;
+    sfxFireballBlast();
+    flashAbility("flashFire");
+    if (struck > 0) showAbilityCallout("FIREBALL");
+  }
+
+  function updateFireballs(dt) {
+    for (var i = fireballs.length - 1; i >= 0; i--) {
+      var f = fireballs[i];
+      var stepX = f.vx * dt, stepZ = f.vz * dt;
+      f.mesh.position.x += stepX;
+      f.mesh.position.z += stepZ;
+      f.traveled += Math.sqrt(stepX * stepX + stepZ * stepZ);
+      if (Math.random() < 0.8) {
+        spawnBurst(f.mesh.position.x, f.mesh.position.y, f.mesh.position.z, 0xff7a33, 1);
+      }
+
+      var hit = false;
+      for (var ei = 0; ei < enemies.length; ei++) {
+        var en = enemies[ei];
+        var dx = f.mesh.position.x - en.x, dz = f.mesh.position.z - en.z;
+        if (dx * dx + dz * dz < 1.0 * 1.0) { hit = true; break; }
+      }
+
+      if (hit || f.traveled >= FIREBALL_MAX_RANGE) {
+        detonateFireball(f.mesh.position.x, f.mesh.position.z);
+        scene.remove(f.mesh);
+        fireballs.splice(i, 1);
+      }
+    }
+  }
+
+  function useFireball() {
+    if (gameOver || fireballCooldownTimer > 0) return;
+    fireballCooldownTimer = FIREBALL_COOLDOWN;
+
+    var dir = getAbilityAimDirection();
+    player.angle = Math.atan2(dir.x, dir.z);
+    spawnFireball(dir.x, dir.z);
+    sfxFireballLaunch();
+  }
+
+  fireballBtn.addEventListener("touchstart", function (e) { e.preventDefault(); useFireball(); }, { passive: false });
+  fireballBtn.addEventListener("mousedown", function (e) { e.preventDefault(); useFireball(); });
+
   // ---------- Health UI ----------
   var healthWrap = document.getElementById("healthWrap");
   function renderHealth() {
@@ -1490,6 +1614,9 @@
     supernovaCooldownTimer = 0;
     supernovaOrbs.forEach(function (o) { scene.remove(o.mesh); });
     supernovaOrbs.length = 0;
+    fireballCooldownTimer = 0;
+    fireballs.forEach(function (f) { scene.remove(f.mesh); });
+    fireballs.length = 0;
     tempLights.forEach(function (t) { scene.remove(t.light); });
     tempLights.length = 0;
     novaCores.forEach(function (c) { scene.remove(c.mesh); c.mat.dispose(); });
@@ -1523,6 +1650,7 @@
     updateBuildings(clock.elapsedTime);
     updateOverloadBeam(dt);
     updateSupernovaOrbs(dt);
+    updateFireballs(dt);
     updateTempLights(dt);
     updateNovaCores(dt);
     groundMat.emissiveIntensity = 0.3 + Math.sin(clock.elapsedTime * 0.8) * 0.08;
@@ -1548,6 +1676,11 @@
       supernovaCooldownTimer = Math.max(0, supernovaCooldownTimer - dt);
       supernovaBtn.classList.toggle("onCooldown", supernovaCooldownTimer > 0);
       supernovaCooldownLabel.textContent = supernovaCooldownTimer > 0 ? supernovaCooldownTimer.toFixed(1) : "";
+    }
+    if (fireballCooldownTimer > 0) {
+      fireballCooldownTimer = Math.max(0, fireballCooldownTimer - dt);
+      fireballBtn.classList.toggle("onCooldown", fireballCooldownTimer > 0);
+      fireballCooldownLabel.textContent = fireballCooldownTimer > 0 ? fireballCooldownTimer.toFixed(1) : "";
     }
     if (player.invulnTimer > 0) {
       player.invulnTimer = Math.max(0, player.invulnTimer - dt);
