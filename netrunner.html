@@ -129,6 +129,41 @@
     border-color: rgba(255,255,255,0.15);
   }
 
+  #bossBar {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(360px, 60vw);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+  }
+  #bossBar.active { display: flex; }
+  #bossLabel {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #ffb0d8;
+    text-shadow: 1px 0 #ff2e9a, -1px 0 #00e5ff, 0 1px 4px rgba(0,0,0,0.9);
+  }
+  #bossHealthTrack {
+    width: 100%;
+    height: 10px;
+    border-radius: 5px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,46,154,0.6);
+    overflow: hidden;
+  }
+  #bossHealthFill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #ff2e9a, #ff6ec7);
+    box-shadow: 0 0 10px rgba(255,46,154,0.8);
+    transition: width 150ms linear;
+  }
+
   #hint {
     position: absolute;
     top: 46px;
@@ -448,6 +483,10 @@
       <div id="healthWrap"></div>
     </div>
   </div>
+  <div id="bossBar">
+    <div id="bossLabel">SENTINEL</div>
+    <div id="bossHealthTrack"><div id="bossHealthFill"></div></div>
+  </div>
   <div id="hint">Left pad: move &middot; Right pad: aim &amp; hold to fire &middot; &#9889; Dash &middot; &#9762; EMP &middot; &#9737; Laser &middot; &#128293; Fireball &middot; &#9728;&#65039; Supernova</div>
   <div id="gameNav">
     <a class="navLink" href="index.html">Builder</a>
@@ -494,6 +533,13 @@
   var BOLT_LIFE = 1.4;
   var BOLT_DAMAGE_BASE = 1;
   var ENEMY_CONTACT_COOLDOWN = 0.8;
+  var BOSS_WAVE_INTERVAL = 5;
+  var BOSS_KEEP_DISTANCE = 9;
+  var BOSS_ATTACK_INTERVAL = 2.6;
+  var BOSS_TELEGRAPH_TIME = 0.55;
+  var BOSS_BOLT_SPEED = 10;
+  var BOSS_BOLT_DAMAGE = 1.5;
+  var BOSS_CONTACT_DAMAGE = 2;
   var CAMERA_OFFSET = new THREE.Vector3(0, 17, 11);
   var DASH_DISTANCE = 6;
   var DASH_COOLDOWN = 4;
@@ -587,6 +633,14 @@
   function sfxShoot() { playTone(1000, 400, 0.08, "sawtooth", 0.1); }
   function sfxDroneHit() { playTone(500, 900, 0.05, "square", 0.12); }
   function sfxDroneDie() { playNoiseBurst(0.18, 1800, 0.18); playTone(300, 60, 0.2, "sawtooth", 0.14); }
+  function sfxBossWarning() { playTone(180, 90, 0.6, "sawtooth", 0.2); playTone(90, 45, 0.8, "sine", 0.18); }
+  function sfxBossAttack() { playTone(700, 200, 0.25, "sawtooth", 0.16); }
+  function sfxBossHit() { playTone(400, 700, 0.06, "square", 0.14); }
+  function sfxBossDie() {
+    playNoiseBurst(0.5, 1000, 0.3);
+    playTone(100, 30, 0.8, "sawtooth", 0.24);
+    setTimeout(function () { playNoiseBurst(0.3, 2200, 0.2); }, 120);
+  }
   function sfxPlayerHurt() { playTone(180, 60, 0.22, "sawtooth", 0.18); }
   function sfxWaveClear() { playTone(400, 800, 0.5, "sine", 0.16); }
   function sfxGameOver() { playTone(300, 40, 0.9, "sawtooth", 0.18); }
@@ -1108,6 +1162,112 @@
     });
   }
 
+  // ---------- Boss: "Sentinel" — spawns every BOSS_WAVE_INTERVAL waves.
+  // Unlike every other enemy, it doesn't chase into contact: it hovers at
+  // range and fires telegraphed projectiles back at the player, which is
+  // the game's only ranged enemy threat so far.
+  var bossActive = false;
+  var currentBoss = null;
+  var bossBarEl = document.getElementById("bossBar");
+  var bossHealthFillEl = document.getElementById("bossHealthFill");
+
+  function createBossMesh() {
+    var group = new THREE.Group();
+    var coreMat = new THREE.MeshStandardMaterial({ color: 0x2a0a30, emissive: 0xff2e9a, emissiveIntensity: 1, roughness: 0.3, metalness: 0.6 });
+    var core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.1, 0), coreMat);
+    core.castShadow = true;
+    group.add(core);
+
+    var eye = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    group.add(eye);
+
+    var ring1Mat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.8 });
+    var ring1 = new THREE.Mesh(new THREE.TorusGeometry(1.6, 0.06, 8, 32), ring1Mat);
+    ring1.rotation.x = Math.PI / 2.3;
+    group.add(ring1);
+
+    var ring2Mat = new THREE.MeshBasicMaterial({ color: 0xff2e9a, transparent: true, opacity: 0.8 });
+    var ring2 = new THREE.Mesh(new THREE.TorusGeometry(1.9, 0.05, 8, 32), ring2Mat);
+    ring2.rotation.x = Math.PI / 1.7;
+    ring2.rotation.y = Math.PI / 4;
+    group.add(ring2);
+
+    group.userData.core = core;
+    group.userData.ring1 = ring1;
+    group.userData.ring2 = ring2;
+    return group;
+  }
+
+  function updateBossHealthUI(boss) {
+    if (!boss) { bossBarEl.classList.remove("active"); return; }
+    bossBarEl.classList.add("active");
+    bossHealthFillEl.style.width = Math.max(0, (boss.health / boss.maxHealth) * 100) + "%";
+  }
+
+  function spawnBoss(waveNum) {
+    var angle = Math.random() * Math.PI * 2;
+    var dist = PLAY_HALF + 2;
+    var x = Math.cos(angle) * dist;
+    var z = Math.sin(angle) * dist;
+    var mesh = createBossMesh();
+    mesh.position.set(x, 1.3, z);
+    scene.add(mesh);
+    var bossHealth = 55 + waveNum * 6;
+    var boss = {
+      mesh: mesh,
+      x: x, z: z,
+      health: bossHealth,
+      maxHealth: bossHealth,
+      speed: 1.9,
+      contactTimer: 0,
+      type: "boss",
+      attackTimer: 1.5,
+      telegraphTimer: 0,
+      telegraphDir: null
+    };
+    enemies.push(boss);
+    bossActive = true;
+    currentBoss = boss;
+    updateBossHealthUI(boss);
+    showAbilityCallout("WARNING: SENTINEL");
+    sfxBossWarning();
+  }
+
+  // ---------- Boss projectiles ----------
+  var bossBolts = [];
+  var bossBoltGeo = new THREE.SphereGeometry(0.22, 10, 10);
+  var bossBoltMat = new THREE.MeshBasicMaterial({ color: 0xff2e9a });
+
+  function spawnBossBolt(x, z, dirX, dirZ) {
+    var mesh = new THREE.Mesh(bossBoltGeo, bossBoltMat.clone());
+    mesh.position.set(x, 1, z);
+    scene.add(mesh);
+    var glow = new THREE.PointLight(0xff2e9a, 1.2, 4);
+    mesh.add(glow);
+    bossBolts.push({ mesh: mesh, vx: dirX * BOSS_BOLT_SPEED, vz: dirZ * BOSS_BOLT_SPEED, life: 4 });
+  }
+
+  function updateBossBolts(dt) {
+    for (var i = bossBolts.length - 1; i >= 0; i--) {
+      var b = bossBolts[i];
+      b.life -= dt;
+      b.mesh.position.x += b.vx * dt;
+      b.mesh.position.z += b.vz * dt;
+      var pdx = b.mesh.position.x - player.x, pdz = b.mesh.position.z - player.z;
+      if (pdx * pdx + pdz * pdz < 0.6 * 0.6) {
+        damagePlayer(BOSS_BOLT_DAMAGE);
+        spawnBurst(b.mesh.position.x, b.mesh.position.y, b.mesh.position.z, 0xff2e9a, 8);
+        scene.remove(b.mesh);
+        bossBolts.splice(i, 1);
+        continue;
+      }
+      if (b.life <= 0 || Math.abs(b.mesh.position.x) > ARENA_HALF + 5 || Math.abs(b.mesh.position.z) > ARENA_HALF + 5) {
+        scene.remove(b.mesh);
+        bossBolts.splice(i, 1);
+      }
+    }
+  }
+
   var wave = 1;
   var enemiesRemainingToSpawn = 0;
   var spawnTimer = 0;
@@ -1115,13 +1275,40 @@
 
   function startWave() {
     waveActive = true;
-    var count = 4 + wave * 2;
+    var isBossWave = wave % BOSS_WAVE_INTERVAL === 0;
+    var count = isBossWave ? Math.max(2, Math.floor((4 + wave * 2) * 0.5)) : (4 + wave * 2);
     enemiesRemainingToSpawn = count;
     spawnTimer = 0;
     waveLabel.textContent = "WAVE " + wave;
+    if (isBossWave) spawnBoss(wave);
   }
 
   function killEnemy(enemy, idx) {
+    if (enemy.type === "boss") {
+      spawnNovaCore(enemy.x, 1.1, enemy.z, 0xff2e9a, 5, 0.5);
+      spawnShockwave(enemy.x, 0.04, enemy.z, 0xffffff, 2.2, 0.3);
+      spawnShockwave(enemy.x, 0.05, enemy.z, 0xff2e9a, 4, 0.55);
+      spawnShockwave(enemy.x, 0.06, enemy.z, 0x00e5ff, 5.5, 0.8);
+      var bc = [0xff2e9a, 0x00e5ff, 0xffffff];
+      for (var b = 0; b < 60; b++) {
+        spawnBurst(enemy.x, 0.6 + Math.random() * 2, enemy.z, bc[b % bc.length], 1);
+      }
+      spawnTempLight(enemy.x, 1.6, enemy.z, 0xff2e9a, 8, 16, 0.6);
+      abilityShakeTime = Math.max(abilityShakeTime, ABILITY_SHAKE_DURATION * 3.5);
+      scene.remove(enemy.mesh);
+      enemies.splice(idx, 1);
+      score += 200;
+      scoreLabel.textContent = "SCORE " + score;
+      player.health = Math.min(player.maxHealth, player.health + 2);
+      renderHealth();
+      bossActive = false;
+      currentBoss = null;
+      updateBossHealthUI(null);
+      sfxBossDie();
+      showAbilityCallout("SENTINEL DESTROYED");
+      return;
+    }
+
     var color = enemy.type === "brute" ? 0xff2e9a : 0x00e5ff;
     spawnBurst(enemy.x, enemy.type === "brute" ? 0.85 : 0.6, enemy.z, color, 16);
     spawnShockwave(enemy.x, 0.05, enemy.z, color, enemy.type === "brute" ? 2.2 : 1.4, 0.35);
@@ -1630,6 +1817,11 @@
     enemies.length = 0;
     bolts.forEach(function (b) { scene.remove(b.mesh); });
     bolts.length = 0;
+    bossBolts.forEach(function (b) { scene.remove(b.mesh); });
+    bossBolts.length = 0;
+    bossActive = false;
+    currentBoss = null;
+    updateBossHealthUI(null);
     endScreen.style.display = "none";
     waveClearEl.style.display = "none";
     startWave();
@@ -1749,6 +1941,52 @@
       var e = enemies[i];
       var dx = player.x - e.x, dz = player.z - e.z;
       var dist = Math.sqrt(dx * dx + dz * dz);
+
+      if (e.type === "boss") {
+        // Hovers at range instead of closing in, and periodically fires a
+        // telegraphed projectile — the only ranged enemy attack in the game.
+        var bnx = dist > 0.01 ? dx / dist : 0, bnz = dist > 0.01 ? dz / dist : 0;
+        if (dist > BOSS_KEEP_DISTANCE + 1.5) {
+          e.x += bnx * e.speed * dt;
+          e.z += bnz * e.speed * dt;
+        } else if (dist < BOSS_KEEP_DISTANCE - 1.5) {
+          e.x -= bnx * e.speed * dt;
+          e.z -= bnz * e.speed * dt;
+        }
+        clampToArena(e);
+
+        if (dist < 1.9) {
+          e.contactTimer -= dt;
+          if (e.contactTimer <= 0) {
+            damagePlayer(BOSS_CONTACT_DAMAGE);
+            e.contactTimer = ENEMY_CONTACT_COOLDOWN;
+          }
+        }
+
+        if (e.telegraphTimer > 0) {
+          e.telegraphTimer -= dt;
+          if (e.telegraphTimer <= 0) {
+            spawnBossBolt(e.x, e.z, e.telegraphDir.x, e.telegraphDir.z);
+            sfxBossAttack();
+            e.attackTimer = BOSS_ATTACK_INTERVAL;
+          }
+        } else {
+          e.attackTimer -= dt;
+          if (e.attackTimer <= 0) {
+            e.telegraphTimer = BOSS_TELEGRAPH_TIME;
+            var tdist = dist || 1;
+            e.telegraphDir = { x: dx / tdist, z: dz / tdist };
+            spawnShockwave(e.x, 0.06, e.z, 0xff2e9a, 1.3, BOSS_TELEGRAPH_TIME);
+          }
+        }
+
+        e.mesh.userData.ring1.rotation.z += dt * 1.4;
+        e.mesh.userData.ring2.rotation.z -= dt * 1.1;
+        e.mesh.userData.core.rotation.y += dt * 0.6;
+        e.mesh.position.set(e.x, 1.3 + Math.sin(clock.elapsedTime * 1.5) * 0.08, e.z);
+        continue;
+      }
+
       var contactRange = e.type === "brute" ? 1.4 : 1.0;
       if (dist > contactRange) {
         var nx = dx / dist, nz = dz / dist;
@@ -1766,6 +2004,8 @@
       e.mesh.position.y = (e.type === "brute" ? 0.85 : 0.6) + Math.sin(clock.elapsedTime * 4 + i) * 0.06;
     }
 
+    if (currentBoss) updateBossHealthUI(currentBoss);
+    updateBossBolts(dt);
     updateBolts(dt);
 
     // bolt-enemy collisions
@@ -1776,7 +2016,7 @@
         if (bolt.hitEnemies.indexOf(en) !== -1) continue;
         var bdx = bolt.mesh.position.x - en.x;
         var bdz = bolt.mesh.position.z - en.z;
-        var r = en.type === "brute" ? 0.9 : 0.55;
+        var r = en.type === "boss" ? 1.9 : (en.type === "brute" ? 0.9 : 0.55);
         if (bdx * bdx + bdz * bdz < r * r) {
           en.health -= bolt.damage;
           sfxDroneHit();
