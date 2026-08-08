@@ -203,10 +203,11 @@ close in wave after wave:
   enemy caught in its path, with a blinding white flash and a long cooldown.
 - Gold &#9728;&#65039; button: **Supernova** — launches a slow, glowing
   energy orb that detonates on the first enemy it touches (or at max
-  range) into a massive explosion: three expanding color-shifting
-  shockwave rings, a burst of embers, a bright dynamic blast light, and
-  heavy damage to every enemy caught in the radius. Long cooldown — your
-  biggest hit in the game.
+  range) into the biggest hit in the game: a blinding expanding white-hot
+  core, four staggered color-shifting shockwave rings sweeping outward,
+  a huge multi-color ember burst, a massive dynamic blast light, a
+  glitchy "SUPERNOVA" callout, and a punchy two-part boom. Heavy damage
+  to everything caught in the radius. Long cooldown.
 - Both directional ultimates (Laser, Supernova) auto-target the nearest
   enemy if you tap the button without actively holding the aim stick, so
   you don't have to juggle both thumbs under pressure to land a hit.
