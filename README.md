@@ -271,6 +271,10 @@ close in wave after wave:
 - Your best score (and the wave you reached it on) is saved locally in the
   browser and shown in the HUD and on the death screen, with a "NEW BEST!"
   callout when you beat it — no account or backend needed.
+- The game auto-pauses if you background the tab or switch apps mid-run,
+  so you can't come back to find yourself dead from enemies that kept
+  attacking while you were away. There's also a manual pause button and a
+  mute toggle in the top-right corner.
 - A glitchy cyberpunk HUD: cyan/magenta chromatic "glitch text" labels that
   flicker on a timer, always-on scanlines, and a pulsing vignette flash when
   you take damage

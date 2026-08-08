@@ -250,6 +250,50 @@
     border-radius: 6px;
     padding: 4px 7px;
   }
+
+  #utilityRow {
+    position: absolute;
+    top: 44px;
+    right: 12px;
+    display: flex;
+    gap: 6px;
+    pointer-events: auto;
+  }
+  .utilityBtn {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(0,229,255,0.5);
+    color: #eafcff;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .utilityBtn.muted { opacity: 0.4; }
+
+  #pauseOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(2,2,10,0.78);
+    z-index: 60;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: #eafcff;
+    text-align: center;
+    pointer-events: auto;
+  }
+  #pauseOverlay.show { display: flex; }
+  #pauseOverlay h1 {
+    font-size: 26px;
+    margin: 0 0 6px;
+    color: #7cf9ff;
+    text-shadow: 1px 0 #ff2e9a, -1px 0 #00e5ff;
+  }
+  #pauseOverlay p { font-size: 13px; opacity: 0.75; margin: 0; }
   .navCurrent {
     background: rgba(0,229,255,0.25);
     font-weight: 700;
@@ -575,6 +619,10 @@
     <a class="navLink" href="zombies.html">Zombies</a>
     <span class="navCurrent">Netrunner</span>
   </div>
+  <div id="utilityRow">
+    <div id="pauseBtn" class="utilityBtn">&#9208;</div>
+    <div id="muteBtn" class="utilityBtn">&#128266;</div>
+  </div>
 
   <div id="moveStick"><div id="moveKnob"></div></div>
   <div id="aimStick"><div id="aimKnob"></div></div>
@@ -592,6 +640,11 @@
 <div id="waveClear">
   <h1 id="waveClearTitle">WAVE 1 CLEARED</h1>
   <div id="perkList"></div>
+</div>
+
+<div id="pauseOverlay">
+  <h1>PAUSED</h1>
+  <p id="pauseReason">Tap to resume</p>
 </div>
 
 <div id="endScreen">
@@ -693,6 +746,7 @@
 
   // ---------- Sound (synthesized, no audio files) ----------
   var audioCtx = null;
+  var audioMuted = false;
   function ensureAudio() {
     if (!audioCtx) {
       var Ctx = window.AudioContext || window.webkitAudioContext;
@@ -703,6 +757,7 @@
     return audioCtx;
   }
   function playTone(freq, freqEnd, duration, type, volume) {
+    if (audioMuted) return;
     var ctx = ensureAudio();
     if (!ctx) return;
     var t0 = ctx.currentTime;
@@ -720,6 +775,7 @@
     osc.stop(t0 + duration + 0.02);
   }
   function playNoiseBurst(duration, filterFreq, volume) {
+    if (audioMuted) return;
     var ctx = ensureAudio();
     if (!ctx) return;
     var bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
@@ -2941,10 +2997,49 @@
     renderer.render(postScene, postCamera);
   }
 
+  // ---------- Pause: auto-pauses on tab/app blur so a backgrounded game
+  // doesn't keep taking enemy hits while you're away, plus a manual pause
+  // button for pausing on purpose. ----------
+  var tabHidden = false;
+  var manuallyPaused = false;
+  var pauseOverlayEl = document.getElementById("pauseOverlay");
+  var pauseReasonEl = document.getElementById("pauseReason");
+  var pauseBtnEl = document.getElementById("pauseBtn");
+
+  function isPaused() {
+    return tabHidden || manuallyPaused;
+  }
+  function updatePauseUI() {
+    pauseOverlayEl.classList.toggle("show", isPaused());
+    pauseReasonEl.textContent = tabHidden ? "Game paused while you were away" : "Tap to resume";
+    pauseBtnEl.innerHTML = manuallyPaused ? "&#9654;" : "&#9208;";
+  }
+  document.addEventListener("visibilitychange", function () {
+    tabHidden = document.hidden;
+    updatePauseUI();
+  });
+  pauseBtnEl.addEventListener("click", function () {
+    manuallyPaused = !manuallyPaused;
+    updatePauseUI();
+  });
+  pauseOverlayEl.addEventListener("click", function () {
+    if (manuallyPaused) {
+      manuallyPaused = false;
+      updatePauseUI();
+    }
+  });
+
+  var muteBtnEl = document.getElementById("muteBtn");
+  muteBtnEl.addEventListener("click", function () {
+    audioMuted = !audioMuted;
+    muteBtnEl.classList.toggle("muted", audioMuted);
+    muteBtnEl.innerHTML = audioMuted ? "&#128263;" : "&#128266;";
+  });
+
   function animate() {
     requestAnimationFrame(animate);
     var dt = clock.getDelta();
-    update(dt);
+    if (!isPaused()) update(dt);
     renderBloomPipeline();
   }
 
