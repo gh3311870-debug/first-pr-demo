@@ -149,6 +149,15 @@
     60% { opacity: 0.5; transform: translateX(-2px); }
     100% { opacity: 0; transform: translateX(0); }
   }
+  #bestLabel {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: #9be9ff;
+    opacity: 0.75;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+    margin: 1px 0 4px;
+  }
   #statRow {
     display: flex;
     gap: 18px;
@@ -497,6 +506,16 @@
     text-shadow: 0 0 12px rgba(255,46,154,0.7);
   }
   #endScreen p { font-size: 16px; margin: 4px 0; opacity: 0.85; }
+  #bestScoreLine { opacity: 0.6; font-size: 13px; }
+  #newBestLine {
+    display: none;
+    color: #ffe066;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(255,224,102,0.8);
+    margin-top: 10px !important;
+  }
+  #newBestLine.show { display: block; }
   #restartBtn {
     margin-top: 20px;
     padding: 12px 28px;
@@ -538,6 +557,7 @@
   <div id="glitchOverlay"></div>
   <div id="topBar">
     <div class="glitchLabel" id="scoreLabel">SCORE 0</div>
+    <div id="bestLabel">BEST 0</div>
     <div class="statRow" id="statRow">
       <div class="glitchLabel" id="waveLabel">WAVE 1</div>
       <div id="healthWrap"></div>
@@ -578,6 +598,8 @@
   <h1>CONNECTION TERMINATED</h1>
   <p id="finalScore">Final score: 0</p>
   <p id="finalWave">Reached wave: 1</p>
+  <p id="bestScoreLine">Best score: 0</p>
+  <p id="newBestLine">NEW BEST!</p>
   <button id="restartBtn">Reconnect</button>
 </div>
 
@@ -1022,7 +1044,9 @@
     speedMul: 1,
     invulnTimer: 0,
     pelletCount: 1,
-    pierceCount: 0
+    pierceCount: 0,
+    abilityCooldownMul: 1,
+    abilityDamageMul: 1
   };
 
   function clampToArena(p) {
@@ -1665,7 +1689,7 @@
 
   function useDash() {
     if (gameOver || dashCooldownTimer > 0) return;
-    dashCooldownTimer = DASH_COOLDOWN;
+    dashCooldownTimer = DASH_COOLDOWN * player.abilityCooldownMul;
 
     var dirAngle = player.angle;
     var startX = player.x, startZ = player.z;
@@ -1693,7 +1717,7 @@
 
   function useEmpBurst() {
     if (gameOver || empCooldownTimer > 0) return;
-    empCooldownTimer = EMP_COOLDOWN;
+    empCooldownTimer = EMP_COOLDOWN * player.abilityCooldownMul;
     abilityShakeTime = ABILITY_SHAKE_DURATION * 1.6;
 
     var struck = 0;
@@ -1703,7 +1727,7 @@
       var dist = Math.sqrt(dx * dx + dz * dz);
       if (dist <= EMP_RADIUS) {
         struck++;
-        en.health -= EMP_DAMAGE;
+        en.health -= EMP_DAMAGE * player.abilityDamageMul;
         spawnBurst(en.x, en.mesh.position.y, en.z, 0xffffff, 10);
         spawnShockwave(en.x, 0.06, en.z, 0xff2e9a, 1, 0.25);
         if (en.health <= 0) killEnemy(en, ei);
@@ -1743,7 +1767,7 @@
 
   function useOverloadLaser() {
     if (gameOver || overloadCooldownTimer > 0) return;
-    overloadCooldownTimer = OVERLOAD_COOLDOWN;
+    overloadCooldownTimer = OVERLOAD_COOLDOWN * player.abilityCooldownMul;
     abilityShakeTime = ABILITY_SHAKE_DURATION * 2.2;
 
     var dir = getAbilityAimDirection();
@@ -1760,7 +1784,7 @@
       var perpDist = Math.sqrt(perpX * perpX + perpZ * perpZ);
       if (perpDist <= OVERLOAD_WIDTH) {
         struck++;
-        en.health -= OVERLOAD_DAMAGE;
+        en.health -= OVERLOAD_DAMAGE * player.abilityDamageMul;
         spawnBurst(en.x, en.mesh.position.y, en.z, 0xffffff, 10);
         spawnShockwave(en.x, 0.05, en.z, 0xd8fbff, en.type === "brute" ? 2 : 1.3, 0.3);
         spawnTempLight(en.x, en.mesh.position.y, en.z, 0x9df7ff, 3, 5, 0.3);
@@ -1836,7 +1860,7 @@
       var dist = Math.sqrt(dx * dx + dz * dz);
       if (dist <= SUPERNOVA_RADIUS) {
         struck++;
-        en.health -= SUPERNOVA_DAMAGE;
+        en.health -= SUPERNOVA_DAMAGE * player.abilityDamageMul;
         spawnBurst(en.x, en.mesh.position.y, en.z, 0xffcc55, 14);
         spawnShockwave(en.x, 0.06, en.z, 0xffffff, en.type === "brute" ? 1.6 : 1, 0.3);
         if (en.health <= 0) killEnemy(en, ei);
@@ -1892,7 +1916,7 @@
 
   function useSupernova() {
     if (gameOver || supernovaCooldownTimer > 0) return;
-    supernovaCooldownTimer = SUPERNOVA_COOLDOWN;
+    supernovaCooldownTimer = SUPERNOVA_COOLDOWN * player.abilityCooldownMul;
 
     var dir = getAbilityAimDirection();
     player.angle = Math.atan2(dir.x, dir.z);
@@ -1932,7 +1956,7 @@
       var dist = Math.sqrt(dx * dx + dz * dz);
       if (dist <= FIREBALL_RADIUS) {
         struck++;
-        en.health -= FIREBALL_DAMAGE;
+        en.health -= FIREBALL_DAMAGE * player.abilityDamageMul;
         spawnBurst(en.x, en.mesh.position.y, en.z, 0xff7a33, 8);
         if (en.health <= 0) killEnemy(en, ei);
       }
@@ -1981,7 +2005,7 @@
 
   function useFireball() {
     if (gameOver || fireballCooldownTimer > 0) return;
-    fireballCooldownTimer = FIREBALL_COOLDOWN;
+    fireballCooldownTimer = FIREBALL_COOLDOWN * player.abilityCooldownMul;
 
     var dir = getAbilityAimDirection();
     player.angle = Math.atan2(dir.x, dir.z);
@@ -2046,7 +2070,7 @@
 
   function useChainLightning() {
     if (gameOver || chainCooldownTimer > 0) return;
-    chainCooldownTimer = CHAIN_COOLDOWN;
+    chainCooldownTimer = CHAIN_COOLDOWN * player.abilityCooldownMul;
     abilityShakeTime = ABILITY_SHAKE_DURATION * 2;
 
     var chained = [];
@@ -2067,7 +2091,7 @@
       var toY = best.mesh.position.y + 0.35;
       spawnChainBolt(fromX, fromZ, fromY, best.x, best.z, toY);
       sfxChainZap(1 + j * 0.09);
-      best.health -= CHAIN_DAMAGE;
+      best.health -= CHAIN_DAMAGE * player.abilityDamageMul;
       spawnBurst(best.x, best.mesh.position.y, best.z, 0xb84dff, 6);
       spawnShockwave(best.x, 0.05, best.z, 0xb84dff, (best.type === "boss" || best.type === "juggernaut") ? 1.6 : (best.type === "brute" ? 1.1 : 0.7), 0.25);
       hitCount++;
@@ -2129,7 +2153,7 @@
 
   function useSingularity() {
     if (gameOver || singularityCooldownTimer > 0 || singularity) return;
-    singularityCooldownTimer = SINGULARITY_COOLDOWN;
+    singularityCooldownTimer = SINGULARITY_COOLDOWN * player.abilityCooldownMul;
 
     var dir = getAbilityAimDirection();
     var pos = { x: player.x + dir.x * 8, z: player.z + dir.z * 8 };
@@ -2170,7 +2194,7 @@
       var dist = Math.sqrt(dx * dx + dz * dz);
       if (dist <= SINGULARITY_RADIUS * 0.65) {
         struck++;
-        en.health -= SINGULARITY_DAMAGE;
+        en.health -= SINGULARITY_DAMAGE * player.abilityDamageMul;
         spawnBurst(en.x, en.mesh.position.y, en.z, 0xd2a6ff, 12);
         if (en.health <= 0) killEnemy(en, ei);
       }
@@ -2290,7 +2314,9 @@
     { name: "Reinforced Shell", desc: "+1 max health, full heal", apply: function () { player.maxHealth += 1; player.health = player.maxHealth; renderHealth(); } },
     { name: "Servo Boost", desc: "+15% move speed", apply: function () { player.speedMul *= 1.15; } },
     { name: "Split Rounds", desc: "+1 bolt fired per shot, in a spread", apply: function () { player.pelletCount += 1; } },
-    { name: "Piercing Rounds", desc: "Bolts punch through +1 extra enemy", apply: function () { player.pierceCount += 1; } }
+    { name: "Piercing Rounds", desc: "Bolts punch through +1 extra enemy", apply: function () { player.pierceCount += 1; } },
+    { name: "Ability Overclock", desc: "-15% cooldown on all 7 abilities", apply: function () { player.abilityCooldownMul *= 0.85; } },
+    { name: "Ability Amplifier", desc: "+20% damage on all 7 abilities", apply: function () { player.abilityDamageMul *= 1.2; } }
   ];
 
   function shuffle(arr) {
@@ -2334,10 +2360,34 @@
   var waveLabel = document.getElementById("waveLabel");
   var endScreen = document.getElementById("endScreen");
 
+  // ---------- Best score (persisted locally, no backend) ----------
+  var BEST_STORAGE_KEY = "netrunner-best-v1";
+  var bestLabelEl = document.getElementById("bestLabel");
+  var best = { score: 0, wave: 1 };
+  (function loadBest() {
+    try {
+      var saved = JSON.parse(localStorage.getItem(BEST_STORAGE_KEY) || "null");
+      if (saved && typeof saved.score === "number") best = saved;
+    } catch (err) { /* corrupt/unavailable storage — just start fresh */ }
+    bestLabelEl.textContent = "BEST " + best.score;
+  })();
+
   function endRun() {
     gameOver = true;
     document.getElementById("finalScore").textContent = "Final score: " + score;
     document.getElementById("finalWave").textContent = "Reached wave: " + wave;
+
+    var newBestLineEl = document.getElementById("newBestLine");
+    if (score > best.score) {
+      best = { score: score, wave: wave };
+      try { localStorage.setItem(BEST_STORAGE_KEY, JSON.stringify(best)); } catch (err) { /* storage unavailable — best just won't persist */ }
+      bestLabelEl.textContent = "BEST " + best.score;
+      newBestLineEl.classList.add("show");
+    } else {
+      newBestLineEl.classList.remove("show");
+    }
+    document.getElementById("bestScoreLine").textContent = "Best score: " + best.score + " (wave " + best.wave + ")";
+
     endScreen.style.display = "flex";
     sfxGameOver();
   }
@@ -2352,6 +2402,8 @@
     player.invulnTimer = 0;
     player.pelletCount = 1;
     player.pierceCount = 0;
+    player.abilityCooldownMul = 1;
+    player.abilityDamageMul = 1;
     dashCooldownTimer = 0;
     empCooldownTimer = 0;
     overloadCooldownTimer = 0;
