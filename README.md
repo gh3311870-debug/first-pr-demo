@@ -305,9 +305,11 @@ Serve it the same way as the other demos and visit
 with Three.js. Play as a caped hero defending a sunlit city block from waves
 of security robots:
 
-- Left on-screen joystick: run
-- Drag on the right side of the screen: orbit the camera behind your hero and
-  aim your abilities (vertical drag tilts heat vision up/down)
+- Left on-screen joystick: run. Movement is camera-relative — push the stick
+  away from you and the hero runs away from the camera, into the scene,
+  turning to face whichever way it's actually moving
+- Drag on the right side of the screen: swing the chase camera around the
+  hero and aim your abilities (vertical drag tilts heat vision up/down)
 - Up-arrow button: jump
 - Red PUNCH button: a close-range melee cone attack with knockback, on a
   short cooldown so it doubles as your bread-and-butter attack
@@ -329,12 +331,22 @@ of security robots:
   damage, more max health (plus a full heal), faster movement, shorter
   ability cooldowns, or an instant heal &mdash; choose one of three random
   options before the next wave begins
-- Landing kills in quick succession racks up a combo bonus, with a "Triple
-  Takedown!" callout
-- A daytime city block: painted street-grid asphalt, a ring of colorful
-  brick buildings, and a scattering of street props for cover
-- Your hero has a flowing cape that reacts to movement, glowing eyes during
-  Heat Vision, and a gold chest emblem
+- Landing kills in quick succession racks up a combo that both multiplies
+  score and fires "Triple Takedown!" / "Rampage!" / "Unstoppable!" callouts
+- Your best score is saved locally in the browser and shown on the death
+  screen, with a "New best!" callout when you beat it
+- A daytime city block rendered with real shadows, filmic tone mapping and a
+  reflection environment: a gradient sky with drifting clouds and sun glow,
+  painted asphalt, a ring of windowed buildings (some windows lit), street
+  lamps, crates and barriers for cover
+- An articulated hero with a run cycle, jump/landing squash-and-stretch, a
+  cape that lifts and trails as you move, glowing eyes during Heat Vision,
+  and a gold chest emblem
+- Heavy feedback throughout: screen shake, brief hit-stop on solid
+  connections, floating damage numbers, hit flashes, sparks and metal debris
+  on impact, bots that burst apart into physics-driven chunks and smoke,
+  expanding shockwave rings, scorch decals, and dust kicked outward by a
+  ground pound
 
 Serve it the same way as the other demos and visit
 `http://localhost:8000/hero.html`.
