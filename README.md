@@ -263,10 +263,14 @@ close in wave after wave:
 - Clearing a wave pauses the action for a perk pick: choose one of three
   random upgrades — more projectile damage, faster fire rate, more max
   health (plus a full heal), faster movement, **Split Rounds** (fire an
-  extra bolt per shot in a spread), or **Piercing Rounds** (bolts punch
-  through an extra enemy instead of stopping) — before the next wave
-  begins. Perks stack across the run, so a long survival snowballs into a
-  real wall of fire.
+  extra bolt per shot in a spread), **Piercing Rounds** (bolts punch
+  through an extra enemy instead of stopping), **Ability Overclock**
+  (-15% cooldown on all 7 abilities), or **Ability Amplifier** (+20%
+  damage on all 7 abilities) — before the next wave begins. Perks stack
+  across the run, so a long survival snowballs into a real wall of fire.
+- Your best score (and the wave you reached it on) is saved locally in the
+  browser and shown in the HUD and on the death screen, with a "NEW BEST!"
+  callout when you beat it — no account or backend needed.
 - A glitchy cyberpunk HUD: cyan/magenta chromatic "glitch text" labels that
   flicker on a timer, always-on scanlines, and a pulsing vignette flash when
   you take damage
