@@ -189,14 +189,32 @@ close in wave after wave:
   aim
 - Top bar: live score, current wave, and a segmented neon health bar that
   shifts from cyan to hot-pink when critical
-- Two enemy types: fast, low-health cyan **Drones** and slower, tougher
-  magenta **Brutes** that hit harder in melee range and are worth more score
-- A boss wave every 5th wave: the **Sentinel**, a hovering multi-ring
-  construct that never closes into contact — instead it keeps its distance
-  and periodically telegraphs (a pulsing ring wind-up) before firing a
-  tracked energy bolt at you, the game's only ranged enemy attack. It has a
-  dedicated health bar up top, a big multi-ring detonation on death, and
-  rewards a chunky score bonus plus a partial heal for taking it down.
+- Three regular enemy types, each with a small glowing "eye" for a bit more
+  menace: fast, low-health cyan **Drones**; slower, tougher magenta
+  **Brutes** that hit harder in melee; and (from wave 3 on) toxic-green
+  **Spitters** that hang back at range and lob slow acid bolts instead of
+  closing in — the first ranged threat below boss tier.
+- A boss wave every 5th wave, alternating between two very different
+  fights:
+  - The **Sentinel** (odd boss waves): a hovering multi-ring construct that
+    never closes into contact — it keeps its distance and periodically
+    telegraphs (a pulsing ring wind-up) before firing a tracked energy bolt
+    at you.
+  - The **Juggernaut** (even boss waves): a spiked, armored brawler that
+    relentlessly closes in, then periodically winds up (a red telegraph
+    ring) before slamming through a fast charge in a straight line —
+    getting clipped hurts a lot more than its regular contact damage, so
+    it rewards dodging on read rather than just kiting.
+
+  Both get a dedicated health bar up top with the boss's name, a big
+  multi-ring detonation on death (color-matched to the boss — magenta/cyan
+  for the Sentinel, orange/red for the Juggernaut), and a chunky score
+  bonus plus a partial heal for taking them down.
+- The arena itself got denser: buildings now occasionally stack a second
+  tier or sprout a rooftop antenna with a blinking tip light, a scattering
+  of glowing pillars and low wreckage/crate props dot the play area for
+  set dressing, and faint cyan/magenta digital rain falls through the
+  whole scene for atmosphere.
 - Yellow &#9889; button: **Dash** — a short teleport burst in the direction
   you're facing, leaving a trail of cyan sparks and a brief window of
   invulnerability so you can blink out of a crowd. Short cooldown.
