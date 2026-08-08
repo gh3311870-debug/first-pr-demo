@@ -1701,17 +1701,145 @@
   camera.position.copy(CAMERA_OFFSET);
   camera.lookAt(0, 0.5, 0);
 
+  // ---------- Hand-rolled bloom post-process pipeline ----------
+  // The vendored build here is three.js core only — no examples/jsm, so no
+  // EffectComposer/UnrealBloomPass to reach for. Every neon glow up to this
+  // point has been faked per-object with emissive materials and additive
+  // sprites; this instead does the real thing once, globally: render the
+  // scene to a target, extract the bright pixels, blur them in two
+  // separable passes, and add that back over the original image. Every
+  // light in the scene — bolts, the nova core, building strips, the
+  // player's nose light — genuinely bleeds glow into its surroundings now,
+  // instead of only the specific meshes that were hand-built to fake it.
+  function makeFullscreenTarget(scale) {
+    var pr = renderer.getPixelRatio();
+    var w = Math.max(1, Math.floor(window.innerWidth * pr * scale));
+    var h = Math.max(1, Math.floor(window.innerHeight * pr * scale));
+    var rt = new THREE.WebGLRenderTarget(w, h, {
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
+      format: THREE.RGBAFormat,
+      generateMipmaps: false,
+      depthBuffer: false,
+      stencilBuffer: false
+    });
+    // Keep every intermediate buffer in an explicitly linear, unencoded
+    // working space — the only correct output encoding step happens once,
+    // by hand, in the final composite shader below (see toSRGB). Trying to
+    // lean on the renderer's automatic per-target sRGB behavior here was a
+    // real bug: it left the pipeline about 3x darker than a direct render
+    // (measured), because that automatic path is easy to mismatch against
+    // custom shader passes that don't carry three's own encoding chunks.
+    // Explicit beats implicit for something this easy to get quietly wrong.
+    rt.texture.colorSpace = THREE.LinearSRGBColorSpace;
+    return rt;
+  }
+
+  var BLOOM_SCALE = 0.5; // bright/blur passes run at half resolution
+  var sceneRT = makeFullscreenTarget(1);
+  var brightRT = makeFullscreenTarget(BLOOM_SCALE);
+  var blurRT_A = makeFullscreenTarget(BLOOM_SCALE);
+  var blurRT_B = makeFullscreenTarget(BLOOM_SCALE);
+
+  var postScene = new THREE.Scene();
+  var postCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  var postQuadGeo = new THREE.PlaneGeometry(2, 2);
+  var postQuad = new THREE.Mesh(postQuadGeo, new THREE.MeshBasicMaterial());
+  postScene.add(postQuad);
+
+  var brightPassMat = new THREE.ShaderMaterial({
+    uniforms: { tDiffuse: { value: null }, threshold: { value: 0.65 } },
+    vertexShader: "varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }",
+    fragmentShader:
+      "uniform sampler2D tDiffuse; uniform float threshold; varying vec2 vUv;" +
+      "void main() {" +
+      "  vec3 c = texture2D(tDiffuse, vUv).rgb;" +
+      "  float lum = dot(c, vec3(0.2126, 0.7152, 0.0722));" +
+      "  float w = smoothstep(threshold, threshold + 0.25, lum);" +
+      "  gl_FragColor = vec4(c * w, 1.0);" +
+      "}"
+  });
+
+  var blurMat = new THREE.ShaderMaterial({
+    uniforms: { tDiffuse: { value: null }, direction: { value: new THREE.Vector2(1, 0) } },
+    vertexShader: "varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }",
+    fragmentShader:
+      "uniform sampler2D tDiffuse; uniform vec2 direction; varying vec2 vUv;" +
+      "void main() {" +
+      "  vec4 sum = texture2D(tDiffuse, vUv) * 0.227027;" +
+      "  sum += texture2D(tDiffuse, vUv + direction * 1.384615) * 0.316216 * 2.0;" +
+      "  sum += texture2D(tDiffuse, vUv - direction * 1.384615) * 0.316216 * 2.0;" +
+      "  sum += texture2D(tDiffuse, vUv + direction * 3.230769) * 0.070270 * 2.0;" +
+      "  sum += texture2D(tDiffuse, vUv - direction * 3.230769) * 0.070270 * 2.0;" +
+      "  gl_FragColor = sum;" +
+      "}"
+  });
+
+  var compositeMat = new THREE.ShaderMaterial({
+    uniforms: { tBase: { value: null }, tBloom: { value: null }, bloomStrength: { value: 1.1 } },
+    vertexShader: "varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }",
+    fragmentShader:
+      "uniform sampler2D tBase; uniform sampler2D tBloom; uniform float bloomStrength; varying vec2 vUv;" +
+      // Standard piecewise linear-to-sRGB transfer function, applied once,
+      // explicitly, right before the pixel hits the canvas.
+      "vec3 toSRGB(vec3 c) {" +
+      "  vec3 lo = c * 12.92;" +
+      "  vec3 hi = 1.055 * pow(clamp(c, 0.0, 1.0), vec3(1.0 / 2.4)) - 0.055;" +
+      "  return mix(lo, hi, step(vec3(0.0031308), c));" +
+      "}" +
+      "void main() {" +
+      "  vec3 base = texture2D(tBase, vUv).rgb;" +
+      "  vec3 bloom = texture2D(tBloom, vUv).rgb;" +
+      "  gl_FragColor = vec4(toSRGB(base + bloom * bloomStrength), 1.0);" +
+      "}"
+  });
+
+  function renderBloomPipeline() {
+    renderer.setRenderTarget(sceneRT);
+    renderer.render(scene, camera);
+
+    postQuad.material = brightPassMat;
+    brightPassMat.uniforms.tDiffuse.value = sceneRT.texture;
+    renderer.setRenderTarget(brightRT);
+    renderer.render(postScene, postCamera);
+
+    postQuad.material = blurMat;
+    blurMat.uniforms.tDiffuse.value = brightRT.texture;
+    blurMat.uniforms.direction.value.set(1 / brightRT.width, 0);
+    renderer.setRenderTarget(blurRT_A);
+    renderer.render(postScene, postCamera);
+
+    blurMat.uniforms.tDiffuse.value = blurRT_A.texture;
+    blurMat.uniforms.direction.value.set(0, 1 / brightRT.height);
+    renderer.setRenderTarget(blurRT_B);
+    renderer.render(postScene, postCamera);
+
+    postQuad.material = compositeMat;
+    compositeMat.uniforms.tBase.value = sceneRT.texture;
+    compositeMat.uniforms.tBloom.value = blurRT_B.texture;
+    renderer.setRenderTarget(null);
+    renderer.render(postScene, postCamera);
+  }
+
   function animate() {
     requestAnimationFrame(animate);
     var dt = clock.getDelta();
     update(dt);
-    renderer.render(scene, camera);
+    renderBloomPipeline();
   }
 
   window.addEventListener("resize", function () {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    sceneRT.dispose();
+    brightRT.dispose();
+    blurRT_A.dispose();
+    blurRT_B.dispose();
+    sceneRT = makeFullscreenTarget(1);
+    brightRT = makeFullscreenTarget(BLOOM_SCALE);
+    blurRT_A = makeFullscreenTarget(BLOOM_SCALE);
+    blurRT_B = makeFullscreenTarget(BLOOM_SCALE);
   });
 
   document.getElementById("loading").style.display = "none";

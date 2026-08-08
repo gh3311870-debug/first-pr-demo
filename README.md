@@ -226,6 +226,14 @@ close in wave after wave:
   rings on kills and abilities, a flickering neon skyline where each
   building pulses its own cyan/magenta/violet glow, a subtly pulsing grid
   floor, and a cyan spark trail behind your runner while moving
+- A real bloom post-processing pass (hand-written — the vendored three.js
+  build here has no EffectComposer/UnrealBloomPass to reach for): the scene
+  renders to an offscreen buffer, bright pixels get extracted and blurred in
+  two separable passes, then added back over the original image. Every
+  light source in the scene genuinely bleeds glow into its surroundings now
+  — bolts, the aim laser, the nova core, building neon strips, your
+  runner's nose light — instead of only the specific effects that were
+  hand-built to fake a glow.
 - If your screen is in portrait, a "rotate your device" prompt appears with
   a one-tap fullscreen/landscape-lock button — this game is built to be
   played in landscape
