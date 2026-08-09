@@ -374,7 +374,34 @@ of security robots:
 Serve it the same way as the other demos and visit
 `http://localhost:8000/hero.html`.
 
-All six demos link to each other via the nav chips in the top-right corner.
+## Web-Slinger: Skyline Run demo
+
+`swinger.html` is a mobile-friendly web-swinging endless runner, also built
+with Three.js. Play as a masked hero swinging between rooftops across a
+scrolling city skyline:
+
+- The city scrolls toward you automatically, and speed slowly ramps up the
+  further you get
+- Left on-screen joystick: steer left/right, and pull up/down to climb or
+  dive while airborne or mid-swing
+- Hold the right side of the screen to fire a web at the nearest building
+  ahead (auto-aimed) and swing from it &mdash; release to let go and fly
+  onward with your momentum. A red marker highlights the anchor point
+  you'll grab next
+- **ZIP BOOST** button: a short-cooldown burst of upward and forward
+  velocity to clear a gap or gain height
+- Yellow tokens floating in the canyon add bonus points when you swing
+  through them
+- Falling into the street below ends the run; your best distance is saved
+  locally in the browser and shown on the death screen
+- Procedurally generated buildings with lit-window facades, streamed in
+  ahead of you and culled behind, so the run never repeats and never runs
+  out of world
+
+Serve it the same way as the other demos and visit
+`http://localhost:8000/swinger.html`.
+
+All seven demos link to each other via the nav chips in the top-right corner.
 
 ### Playing on your phone via GitHub Pages
 
@@ -383,16 +410,18 @@ To play without running a local server, enable GitHub Pages for this repo:
 1. Go to the repo's **Settings > Pages**.
 2. Under "Build and deployment", set **Source** to "Deploy from a branch".
 3. Pick branch `main`, folder `/ (root)`, then **Save**.
-4. After a minute, all six demos will be live at
+4. After a minute, all seven demos will be live at
    `https://gh3311870-debug.github.io/first-pr-demo/index.html` (builder),
    `https://gh3311870-debug.github.io/first-pr-demo/fps.html` (shooter),
    `https://gh3311870-debug.github.io/first-pr-demo/powers.html` (flight),
    `https://gh3311870-debug.github.io/first-pr-demo/zombies.html`
    (zombie siege),
    `https://gh3311870-debug.github.io/first-pr-demo/netrunner.html`
-   (twin-stick shooter), and
+   (twin-stick shooter),
    `https://gh3311870-debug.github.io/first-pr-demo/hero.html`
-   (superhero brawler) — open any of them on your phone.
+   (superhero brawler), and
+   `https://gh3311870-debug.github.io/first-pr-demo/swinger.html`
+   (web-swinging runner) — open any of them on your phone.
 
 Each merge to `main` kicks off a fresh Pages deployment automatically. It
 usually finishes in under a minute, but if a page seems to be missing a

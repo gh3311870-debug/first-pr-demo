@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Web-Slinger: Skyline Run</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100%;
+    background: #1b2740;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  canvas { display: block; }
+
+  #hud {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  #topBar {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  }
+  #scoreLine { font-size: 22px; font-weight: 700; }
+  #bestLine { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+
+  #muteBtn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.35);
+    border: 2px solid rgba(255,255,255,0.5);
+    color: #fff;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+  }
+
+  #gameNav {
+    position: absolute;
+    top: 56px;
+    right: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+    max-width: 205px;
+    pointer-events: auto;
+  }
+  .navLink, .navCurrent {
+    color: #fff;
+    text-decoration: none;
+    font-size: 12px;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 6px;
+    padding: 4px 7px;
+  }
+  .navCurrent {
+    background: rgba(255,255,255,0.28);
+    font-weight: 700;
+  }
+
+  #joystick {
+    position: absolute;
+    left: 24px;
+    bottom: 24px;
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    border: 2px solid rgba(255,255,255,0.4);
+    pointer-events: auto;
+    touch-action: none;
+  }
+  #joystickKnob {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 46px;
+    height: 46px;
+    margin-left: -23px;
+    margin-top: -23px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.55);
+    border: 2px solid rgba(255,255,255,0.8);
+  }
+
+  #webPad {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 60%;
+    height: 100%;
+    pointer-events: auto;
+    touch-action: none;
+  }
+
+  #boostBtn {
+    position: absolute;
+    right: 24px;
+    bottom: 24px;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: rgba(220,40,40,0.45);
+    border: 2px solid rgba(255,255,255,0.7);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    touch-action: none;
+  }
+  #boostBtn.onCooldown {
+    opacity: 0.35;
+  }
+
+  #webIndicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.85);
+    box-shadow: 0 0 6px rgba(255,255,255,0.6);
+    transition: opacity 0.1s;
+  }
+
+  #hint {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    font-size: 13px;
+    text-align: center;
+    max-width: 80%;
+  }
+
+  #overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 14, 26, 0.82);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    text-align: center;
+    z-index: 50;
+    pointer-events: auto;
+  }
+  #overlay h1 {
+    font-size: 30px;
+    margin: 0 0 8px;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.7);
+  }
+  #overlay p {
+    font-size: 14px;
+    opacity: 0.85;
+    max-width: 320px;
+    line-height: 1.5;
+    margin: 4px 0;
+  }
+  #overlayScore { font-size: 20px; margin: 14px 0 4px; font-weight: 700; }
+  #overlayBest { font-size: 13px; opacity: 0.8; margin-bottom: 18px; }
+  #startBtn {
+    background: #d62828;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 28px;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  #loading {
+    position: fixed;
+    inset: 0;
+    background: #1b2740;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 18px;
+    z-index: 100;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">Loading city...</div>
+
+<div id="hud">
+  <div id="topBar">
+    <div id="scoreLine">0 m</div>
+    <div id="bestLine">Best: 0 m</div>
+  </div>
+  <div id="hint">Left pad: steer &middot; Hold right side: shoot &amp; hold web &middot; Release to let go</div>
+  <div id="muteBtn">&#128266;</div>
+  <div id="gameNav">
+    <a class="navLink" href="index.html">Builder</a>
+    <a class="navLink" href="fps.html">Range</a>
+    <a class="navLink" href="powers.html">Powers</a>
+    <a class="navLink" href="zombies.html">Zombies</a>
+    <a class="navLink" href="netrunner.html">Netrunner</a>
+    <a class="navLink" href="hero.html">Vanguard</a>
+    <span class="navCurrent">Slinger</span>
+  </div>
+
+  <div id="webIndicator" style="opacity:0;"></div>
+
+  <div id="joystick"><div id="joystickKnob"></div></div>
+  <div id="webPad"></div>
+  <div id="boostBtn">ZIP<br>BOOST</div>
+</div>
+
+<div id="overlay">
+  <h1>Web-Slinger</h1>
+  <p>Swing between rooftops across an endless city skyline. Hold the right
+     side of the screen to fire a web at the nearest building ahead and swing
+     from it &mdash; release to let go and fly. Steer with the left pad and
+     don't fall into the street below.</p>
+  <div id="overlayScore"></div>
+  <div id="overlayBest"></div>
+  <button id="startBtn">Start Swinging</button>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Config ----------
+  var GRAVITY = -22;
+  var AIR_ACCEL = 16;
+  var MAX_AIR_SPEED = 14;
+  var BASE_FORWARD_SPEED = 12;
+  var MAX_FORWARD_SPEED = 21;
+  var MAX_WEB_RANGE = 30;
+  var MIN_WEB_RANGE = 3;
+  var ROPE_SLACK = 0.92; // fraction of measured distance used as rope length, gives a little initial swing
+  var DEATH_Y = -8;
+  var CANYON_HALF = 21; // soft x clamp
+  var SPAWN_AHEAD = 90;
+  var DESPAWN_BEHIND = 24;
+  var CHUNK_LENGTH = 15;
+  var BOOST_COOLDOWN = 2.2;
+  var BEST_KEY = "webslinger_best_distance";
+
+  // ---------- Sound (synthesized) ----------
+  var audioCtx = null;
+  var muted = false;
+  function ensureAudio() {
+    if (muted) return null;
+    if (!audioCtx) {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      audioCtx = new Ctx();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+  function playTone(freq, freqEnd, duration, type, volume) {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var t0 = ctx.currentTime;
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(1, freqEnd), t0 + duration);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(volume, t0 + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.02);
+  }
+  function playNoiseBurst(duration, filterFreq, volume) {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+    var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    var data = buffer.getChannelData(0);
+    for (var i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    var noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    var filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = filterFreq;
+    var gain = ctx.createGain();
+    gain.gain.value = volume;
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start();
+  }
+  function sfxWeb() { playTone(700, 260, 0.12, "triangle", 0.16); }
+  function sfxRelease() { playTone(340, 520, 0.08, "sine", 0.12); }
+  function sfxBoost() { playTone(180, 620, 0.22, "sawtooth", 0.14); }
+  function sfxCollect() { playTone(520, 900, 0.12, "square", 0.14); }
+  function sfxFail() { playTone(300, 90, 0.14, "square", 0.12); }
+  function sfxDeath() { playNoiseBurst(0.4, 500, 0.22); }
+
+  document.getElementById("muteBtn").addEventListener("click", function () {
+    muted = !muted;
+    document.getElementById("muteBtn").innerHTML = muted ? "&#128263;" : "&#128266;";
+  });
+
+  // ---------- Scene setup ----------
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1b2740);
+  scene.fog = new THREE.Fog(0x1b2740, 40, 130);
+
+  var camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 300);
+
+  var renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  var hemi = new THREE.HemisphereLight(0x8fa8d6, 0x14151f, 0.85);
+  scene.add(hemi);
+  var sun = new THREE.DirectionalLight(0xffe6c2, 0.9);
+  sun.position.set(-20, 40, -10);
+  scene.add(sun);
+
+  function makeCanvasTexture(size, draw) {
+    var c = document.createElement("canvas");
+    c.width = size; c.height = size;
+    var ctx = c.getContext("2d");
+    draw(ctx, size);
+    var tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  var facadePalette = [
+    ["#7a5a45", "#4c3a2c"], ["#4c5f78", "#33455c"], ["#6b6456", "#494439"],
+    ["#5c4d63", "#3c3242"], ["#59684f", "#3b4636"], ["#6e5245", "#48342c"]
+  ];
+  var facadeTextures = facadePalette.map(function (pair) {
+    return makeCanvasTexture(64, function (ctx, s) {
+      ctx.fillStyle = pair[0];
+      ctx.fillRect(0, 0, s, s);
+      ctx.fillStyle = pair[1];
+      for (var y = 0; y < s; y += 16) ctx.fillRect(0, y, s, 2);
+      for (var wy = 4; wy < s - 6; wy += 16) {
+        for (var wx = 5; wx < s - 6; wx += 15) {
+          var lit = Math.random() < 0.3;
+          ctx.fillStyle = lit ? "rgba(255,220,140,0.95)" : "rgba(20,26,36,0.85)";
+          ctx.fillRect(wx, wy, 9, 10);
+        }
+      }
+    });
+  });
+
+  var groundTexture = makeCanvasTexture(64, function (ctx, s) {
+    ctx.fillStyle = "#20222a";
+    ctx.fillRect(0, 0, s, s);
+    ctx.fillStyle = "#2a2d38";
+    ctx.fillRect(0, s / 2 - 1, s, 2);
+  });
+  groundTexture.repeat.set(40, 400);
+  var ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(400, 4000),
+    new THREE.MeshStandardMaterial({ map: groundTexture, roughness: 0.95 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = DEATH_Y - 4;
+  scene.add(ground);
+
+  // ---------- Player ----------
+  var playerGroup = new THREE.Group();
+  var bodyMat = new THREE.MeshStandardMaterial({ color: 0xd62828, roughness: 0.6 });
+  var trimMat = new THREE.MeshStandardMaterial({ color: 0x1b3a8f, roughness: 0.6 });
+  var body = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.7, 4, 8), bodyMat);
+  playerGroup.add(body);
+  var head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 10), bodyMat);
+  head.position.y = 0.65;
+  playerGroup.add(head);
+  var legs = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.3), trimMat);
+  legs.position.y = -0.55;
+  playerGroup.add(legs);
+  scene.add(playerGroup);
+
+  var webLineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+  var webLine = new THREE.Line(webLineGeo, new THREE.LineBasicMaterial({ color: 0xf2f2f2 }));
+  webLine.visible = false;
+  scene.add(webLine);
+
+  var anchorMarkerGeo = new THREE.SphereGeometry(0.35, 10, 8);
+  var anchorMarkerMat = new THREE.MeshBasicMaterial({ color: 0xff3b3b });
+  var anchorMarker = new THREE.Mesh(anchorMarkerGeo, anchorMarkerMat);
+  anchorMarker.visible = false;
+  scene.add(anchorMarker);
+
+  // ---------- City generation ----------
+  var buildings = []; // { mesh, x, zStart, zEnd, w, h }
+  var anchors = [];   // { x, y, z, used }
+  var tokens = [];    // { mesh, x, y, z, taken }
+  var nextChunkZ = 6;
+
+  function spawnBuilding(xCenter, zStart, difficulty) {
+    var w = 5 + Math.random() * 4;
+    var depth = 9 + Math.random() * 7;
+    var h = 9 + Math.random() * (14 + difficulty * 10);
+    var texIndex = Math.floor(Math.random() * facadeTextures.length);
+    var tex = facadeTextures[texIndex].clone();
+    tex.needsUpdate = true;
+    tex.repeat.set(Math.max(1, Math.round(w / 3)), Math.max(1, Math.round(h / 3)));
+    var mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 });
+    var mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, depth), mat);
+    mesh.position.set(xCenter, h / 2, zStart + depth / 2);
+    scene.add(mesh);
+
+    var b = { mesh: mesh, x: xCenter, zStart: zStart, zEnd: zStart + depth, w: w, h: h };
+    buildings.push(b);
+
+    // inner edge (facing the canyon center) gives the swing anchor
+    var innerX = xCenter + (xCenter < 0 ? w / 2 : -w / 2);
+    anchors.push({ x: innerX, y: h + 0.4, z: zStart + depth * 0.3, used: false });
+    anchors.push({ x: innerX, y: h + 0.4, z: zStart + depth * 0.7, used: false });
+
+    // occasional collectible token floating in the canyon near this building
+    if (Math.random() < 0.6) {
+      var tx = (xCenter < 0 ? 1 : -1) * (2 + Math.random() * 6);
+      var ty = h * (0.4 + Math.random() * 0.5);
+      var tz = zStart + depth * 0.5;
+      var tGeo = new THREE.IcosahedronGeometry(0.4, 0);
+      var tMat = new THREE.MeshStandardMaterial({ color: 0xffd23f, emissive: 0x664400, roughness: 0.4 });
+      var tMesh = new THREE.Mesh(tGeo, tMat);
+      tMesh.position.set(tx, ty, tz);
+      scene.add(tMesh);
+      tokens.push({ mesh: tMesh, x: tx, y: ty, z: tz, taken: false });
+    }
+  }
+
+  function spawnChunk(z, difficulty) {
+    var leftX = -(10 + Math.random() * 10);
+    var rightX = 10 + Math.random() * 10;
+    if (Math.random() > 0.15) spawnBuilding(leftX, z, difficulty);
+    if (Math.random() > 0.15) spawnBuilding(rightX, z + Math.random() * 6, difficulty);
+  }
+
+  function cullBehind(playerZ) {
+    for (var i = buildings.length - 1; i >= 0; i--) {
+      if (buildings[i].zEnd < playerZ - DESPAWN_BEHIND) {
+        scene.remove(buildings[i].mesh);
+        buildings.splice(i, 1);
+      }
+    }
+    for (var j = anchors.length - 1; j >= 0; j--) {
+      if (anchors[j].z < playerZ - DESPAWN_BEHIND) anchors.splice(j, 1);
+    }
+    for (var k = tokens.length - 1; k >= 0; k--) {
+      if (tokens[k].z < playerZ - DESPAWN_BEHIND) {
+        scene.remove(tokens[k].mesh);
+        tokens.splice(k, 1);
+      }
+    }
+  }
+
+  // ---------- Game state ----------
+  var state = "ready"; // ready | playing | dead
+  var startZ = 0;
+  var distance = 0;
+  var tokenScore = 0;
+  var bestDistance = 0;
+  try { bestDistance = parseInt(window.localStorage.getItem(BEST_KEY) || "0", 10) || 0; } catch (e) { bestDistance = 0; }
+  document.getElementById("bestLine").textContent = "Best: " + bestDistance + " m";
+
+  var player = {
+    pos: new THREE.Vector3(0, 20, 0),
+    vel: new THREE.Vector3(0, 0, BASE_FORWARD_SPEED),
+    swinging: false,
+    anchor: null
+  };
+  var boostReadyAt = 0;
+
+  function resetGame() {
+    buildings.forEach(function (b) { scene.remove(b.mesh); });
+    tokens.forEach(function (t) { scene.remove(t.mesh); });
+    buildings = []; anchors = []; tokens = [];
+    nextChunkZ = 6;
+    for (var z = 6; z < SPAWN_AHEAD; z += CHUNK_LENGTH) spawnChunk(z, 0);
+    nextChunkZ = z;
+
+    player.pos.set(0, 20, 0);
+    player.vel.set(0, 0, BASE_FORWARD_SPEED);
+    player.swinging = false;
+    player.anchor = null;
+    webLine.visible = false;
+    anchorMarker.visible = false;
+    startZ = 0;
+    distance = 0;
+    tokenScore = 0;
+    boostReadyAt = 0;
+  }
+
+  function currentForwardSpeed() {
+    return Math.min(MAX_FORWARD_SPEED, BASE_FORWARD_SPEED + distance * 0.02);
+  }
+
+  function findBestAnchor() {
+    var best = null, bestScore = Infinity;
+    for (var i = 0; i < anchors.length; i++) {
+      var a = anchors[i];
+      var dz = a.z - player.pos.z;
+      if (dz < 2 || dz > MAX_WEB_RANGE) continue;
+      var dx = a.x - player.pos.x;
+      var dy = a.y - player.pos.y;
+      if (dy < 0.5) continue; // must be above to swing from
+      var planarDist = Math.sqrt(dx * dx + dy * dy);
+      if (planarDist > MAX_WEB_RANGE || planarDist < MIN_WEB_RANGE) continue;
+      var dist3 = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      var score = dist3 + Math.abs(dx) * 0.3;
+      if (score < bestScore) { bestScore = score; best = a; }
+    }
+    return best;
+  }
+
+  // ---------- Input ----------
+  var moveVec = { x: 0, y: 0 };
+  var joystickEl = document.getElementById("joystick");
+  var joystickKnob = document.getElementById("joystickKnob");
+  var joystickTouchId = null;
+  var joystickCenter = { x: 0, y: 0 };
+  var JOYSTICK_MAX = 40;
+
+  function joystickStart(id, clientX, clientY) {
+    joystickTouchId = id;
+    var rect = joystickEl.getBoundingClientRect();
+    joystickCenter.x = rect.left + rect.width / 2;
+    joystickCenter.y = rect.top + rect.height / 2;
+    joystickMove(clientX, clientY);
+  }
+  function joystickMove(clientX, clientY) {
+    var dx = clientX - joystickCenter.x;
+    var dy = clientY - joystickCenter.y;
+    var dist = Math.min(JOYSTICK_MAX, Math.sqrt(dx * dx + dy * dy));
+    var angle = Math.atan2(dy, dx);
+    var kx = Math.cos(angle) * dist;
+    var ky = Math.sin(angle) * dist;
+    joystickKnob.style.transform = "translate(" + kx + "px," + ky + "px)";
+    moveVec.x = kx / JOYSTICK_MAX;
+    moveVec.y = ky / JOYSTICK_MAX;
+  }
+  function joystickEnd() {
+    joystickTouchId = null;
+    moveVec.x = 0; moveVec.y = 0;
+    joystickKnob.style.transform = "translate(0,0)";
+  }
+  joystickEl.addEventListener("touchstart", function (e) {
+    e.preventDefault();
+    var t = e.changedTouches[0];
+    joystickStart(t.identifier, t.clientX, t.clientY);
+  }, { passive: false });
+  joystickEl.addEventListener("touchmove", function (e) {
+    e.preventDefault();
+    for (var i = 0; i < e.changedTouches.length; i++) {
+      var t = e.changedTouches[i];
+      if (t.identifier === joystickTouchId) joystickMove(t.clientX, t.clientY);
+    }
+  }, { passive: false });
+  joystickEl.addEventListener("touchend", function (e) { e.preventDefault(); joystickEnd(); }, { passive: false });
+  joystickEl.addEventListener("touchcancel", joystickEnd);
+
+  var mouseJoystickDown = false;
+  joystickEl.addEventListener("mousedown", function (e) { mouseJoystickDown = true; joystickStart("mouse", e.clientX, e.clientY); });
+  window.addEventListener("mousemove", function (e) { if (mouseJoystickDown) joystickMove(e.clientX, e.clientY); });
+  window.addEventListener("mouseup", function () { if (mouseJoystickDown) { mouseJoystickDown = false; joystickEnd(); } });
+
+  function attachWeb() {
+    var a = findBestAnchor();
+    if (!a) { sfxFail(); return; }
+    var dx = a.x - player.pos.x, dy = a.y - player.pos.y, dz = a.z - player.pos.z;
+    var dist3 = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    player.anchor = a;
+    player.ropeLength = Math.sqrt(dx * dx + dy * dy) * ROPE_SLACK;
+    player.swinging = true;
+    sfxWeb();
+  }
+  function releaseWeb() {
+    if (player.swinging) sfxRelease();
+    player.swinging = false;
+    player.anchor = null;
+    webLine.visible = false;
+  }
+
+  var webPad = document.getElementById("webPad");
+  webPad.addEventListener("touchstart", function (e) {
+    e.preventDefault();
+    if (state !== "playing") return;
+    attachWeb();
+  }, { passive: false });
+  webPad.addEventListener("touchend", function (e) {
+    e.preventDefault();
+    releaseWeb();
+  }, { passive: false });
+  webPad.addEventListener("touchcancel", releaseWeb);
+  webPad.addEventListener("mousedown", function () { if (state === "playing") attachWeb(); });
+  webPad.addEventListener("mouseup", releaseWeb);
+
+  var boostBtn = document.getElementById("boostBtn");
+  function doBoost() {
+    if (state !== "playing") return;
+    var now = performance.now() / 1000;
+    if (now < boostReadyAt) return;
+    boostReadyAt = now + BOOST_COOLDOWN;
+    player.vel.y += 8;
+    player.vel.z += 4;
+    sfxBoost();
+  }
+  boostBtn.addEventListener("touchstart", function (e) { e.preventDefault(); doBoost(); }, { passive: false });
+  boostBtn.addEventListener("mousedown", doBoost);
+
+  document.getElementById("startBtn").addEventListener("click", function () {
+    ensureAudio();
+    resetGame();
+    state = "playing";
+    document.getElementById("overlay").style.display = "none";
+  });
+
+  function endGame() {
+    state = "dead";
+    releaseWeb();
+    sfxDeath();
+    var finalScore = Math.floor(distance) + tokenScore;
+    if (Math.floor(distance) > bestDistance) {
+      bestDistance = Math.floor(distance);
+      try { window.localStorage.setItem(BEST_KEY, String(bestDistance)); } catch (e) { /* storage unavailable */ }
+    }
+    document.getElementById("bestLine").textContent = "Best: " + bestDistance + " m";
+    document.getElementById("overlay").querySelector("h1").textContent = "You fell!";
+    document.getElementById("overlay").querySelector("p").textContent =
+      "Buildings scroll faster the further you swing. Time your web shots and steer through the gaps.";
+    document.getElementById("overlayScore").textContent = "Distance: " + Math.floor(distance) + " m  +  " + tokenScore + " bonus";
+    document.getElementById("overlayBest").textContent = "Best distance: " + bestDistance + " m";
+    document.getElementById("startBtn").textContent = "Swing Again";
+    document.getElementById("overlay").style.display = "flex";
+  }
+
+  // ---------- Update ----------
+  function update(dt) {
+    if (state !== "playing") return;
+    dt = Math.min(dt, 0.05);
+
+    var fwd = currentForwardSpeed();
+
+    // steering
+    player.vel.x += moveVec.x * AIR_ACCEL * dt;
+    player.vel.y -= moveVec.y * AIR_ACCEL * 0.6 * dt; // pushing pad up climbs, down dives
+    player.vel.x = Math.max(-MAX_AIR_SPEED, Math.min(MAX_AIR_SPEED, player.vel.x));
+
+    // gravity
+    player.vel.y += GRAVITY * dt;
+
+    // integrate
+    player.pos.x += player.vel.x * dt;
+    player.pos.y += player.vel.y * dt;
+    player.pos.z += fwd * dt;
+
+    if (player.swinging && player.anchor) {
+      var a = player.anchor;
+      var dx = player.pos.x - a.x;
+      var dy = player.pos.y - a.y;
+      var planar = Math.sqrt(dx * dx + dy * dy);
+      if (planar > player.ropeLength && planar > 0.0001) {
+        var nx = dx / planar, ny = dy / planar;
+        player.pos.x = a.x + nx * player.ropeLength;
+        player.pos.y = a.y + ny * player.ropeLength;
+        var radial = player.vel.x * nx + player.vel.y * ny;
+        if (radial > 0) {
+          player.vel.x -= nx * radial;
+          player.vel.y -= ny * radial;
+        }
+      }
+      // release automatically once the anchor is passed behind us
+      if (player.pos.z > a.z + 3) releaseWeb();
+    }
+
+    // soft canyon walls
+    if (player.pos.x > CANYON_HALF) { player.pos.x = CANYON_HALF; player.vel.x = Math.min(0, player.vel.x); }
+    if (player.pos.x < -CANYON_HALF) { player.pos.x = -CANYON_HALF; player.vel.x = Math.max(0, player.vel.x); }
+
+    distance = player.pos.z - startZ;
+
+    // collectibles
+    for (var i = 0; i < tokens.length; i++) {
+      var tk = tokens[i];
+      if (tk.taken) continue;
+      var ddx = tk.x - player.pos.x, ddy = tk.y - player.pos.y, ddz = tk.z - player.pos.z;
+      if (ddx * ddx + ddy * ddy + ddz * ddz < 2.4) {
+        tk.taken = true;
+        tk.mesh.visible = false;
+        tokenScore += 25;
+        sfxCollect();
+      } else {
+        tk.mesh.rotation.y += dt * 2;
+      }
+    }
+
+    // world streaming
+    while (nextChunkZ < player.pos.z + SPAWN_AHEAD) {
+      spawnChunk(nextChunkZ, distance / 250);
+      nextChunkZ += CHUNK_LENGTH;
+    }
+    cullBehind(player.pos.z);
+
+    // visuals
+    playerGroup.position.copy(player.pos);
+    var lean = Math.max(-0.6, Math.min(0.6, -player.vel.x * 0.04));
+    playerGroup.rotation.z = lean;
+    playerGroup.rotation.x = Math.max(-0.5, Math.min(0.5, player.vel.y * 0.02));
+
+    if (player.swinging && player.anchor) {
+      var pts = [player.pos.clone(), new THREE.Vector3(player.anchor.x, player.anchor.y, player.anchor.z)];
+      webLine.geometry.setFromPoints(pts);
+      webLine.visible = true;
+    } else {
+      webLine.visible = false;
+    }
+
+    var target = findBestAnchor();
+    if (target && !player.swinging) {
+      anchorMarker.position.set(target.x, target.y, target.z);
+      anchorMarker.visible = true;
+    } else {
+      anchorMarker.visible = false;
+    }
+
+    // boost button cooldown visual
+    var now = performance.now() / 1000;
+    boostBtn.classList.toggle("onCooldown", now < boostReadyAt);
+
+    // camera chase
+    var camOffset = new THREE.Vector3(0, 3.4, -8);
+    var desiredCam = player.pos.clone().add(camOffset);
+    camera.position.lerp(desiredCam, 1 - Math.pow(0.001, dt));
+    var lookAt = player.pos.clone();
+    lookAt.z += 8;
+    camera.lookAt(lookAt);
+
+    document.getElementById("scoreLine").textContent = (Math.floor(distance) + tokenScore) + " m";
+
+    if (player.pos.y < DEATH_Y) endGame();
+  }
+
+  // ---------- Main loop ----------
+  var clock = new THREE.Clock();
+  function animate() {
+    requestAnimationFrame(animate);
+    var dt = clock.getDelta();
+    update(dt);
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener("resize", function () {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  resetGame();
+  camera.position.set(0, 23.4, -8);
+  camera.lookAt(0, 20, 8);
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("overlayScore").style.display = "none";
+  document.getElementById("overlayBest").style.display = "none";
+  animate();
+})();
+</script>
+</body>
+</html>
