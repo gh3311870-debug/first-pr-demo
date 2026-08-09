@@ -337,7 +337,7 @@
   scene.background = new THREE.Color(0x1b2740);
   scene.fog = new THREE.Fog(0x1b2740, 40, 130);
 
-  var camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 300);
+  var camera = new THREE.PerspectiveCamera(76, window.innerWidth / window.innerHeight, 0.1, 300);
 
   var renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -443,7 +443,9 @@
     buildings.push(b);
 
     // inner edge (facing the canyon center) gives the swing anchor
-    var innerX = xCenter + (xCenter < 0 ? w / 2 : -w / 2);
+    // stand the anchor off the face a bit so swings never drag the player
+    // (or the camera) flush against the building's wall
+    var innerX = xCenter + (xCenter < 0 ? w / 2 + 3 : -(w / 2 + 3));
     anchors.push({ x: innerX, y: h + 0.4, z: zStart + depth * 0.3, used: false });
     anchors.push({ x: innerX, y: h + 0.4, z: zStart + depth * 0.7, used: false });
 
@@ -596,13 +598,17 @@
   window.addEventListener("mousemove", function (e) { if (mouseJoystickDown) joystickMove(e.clientX, e.clientY); });
   window.addEventListener("mouseup", function () { if (mouseJoystickDown) { mouseJoystickDown = false; joystickEnd(); } });
 
-  function attachWeb() {
+  var lastFailSfxAt = 0;
+  function attachWeb(announceFail) {
     var a = findBestAnchor();
-    if (!a) { sfxFail(); return; }
-    var dx = a.x - player.pos.x, dy = a.y - player.pos.y, dz = a.z - player.pos.z;
-    var dist3 = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (!a) {
+      var now = performance.now() / 1000;
+      if (announceFail && now - lastFailSfxAt > 0.35) { sfxFail(); lastFailSfxAt = now; }
+      return;
+    }
+    var dx = a.x - player.pos.x, dy = a.y - player.pos.y;
     player.anchor = a;
-    player.ropeLength = Math.sqrt(dx * dx + dy * dy) * ROPE_SLACK;
+    player.ropeLength = Math.sqrt(dx * dx + dy * dy); // no slack: swing starts smoothly, no yank
     player.swinging = true;
     sfxWeb();
   }
@@ -613,19 +619,22 @@
     webLine.visible = false;
   }
 
+  var webHeld = false;
   var webPad = document.getElementById("webPad");
   webPad.addEventListener("touchstart", function (e) {
     e.preventDefault();
+    webHeld = true;
     if (state !== "playing") return;
-    attachWeb();
+    attachWeb(true);
   }, { passive: false });
   webPad.addEventListener("touchend", function (e) {
     e.preventDefault();
+    webHeld = false;
     releaseWeb();
   }, { passive: false });
-  webPad.addEventListener("touchcancel", releaseWeb);
-  webPad.addEventListener("mousedown", function () { if (state === "playing") attachWeb(); });
-  webPad.addEventListener("mouseup", releaseWeb);
+  webPad.addEventListener("touchcancel", function () { webHeld = false; releaseWeb(); });
+  webPad.addEventListener("mousedown", function () { webHeld = true; if (state === "playing") attachWeb(true); });
+  webPad.addEventListener("mouseup", function () { webHeld = false; releaseWeb(); });
 
   var boostBtn = document.getElementById("boostBtn");
   function doBoost() {
@@ -673,6 +682,10 @@
 
     var fwd = currentForwardSpeed();
 
+    // keep trying to grab a web every frame the pad is held, so firing
+    // isn't dependent on the exact instant of the initial touch
+    if (webHeld && !player.swinging) attachWeb(false);
+
     // steering
     player.vel.x += moveVec.x * AIR_ACCEL * dt;
     player.vel.y -= moveVec.y * AIR_ACCEL * 0.6 * dt; // pushing pad up climbs, down dives
@@ -701,8 +714,9 @@
           player.vel.y -= ny * radial;
         }
       }
-      // release automatically once the anchor is passed behind us
-      if (player.pos.z > a.z + 3) releaseWeb();
+      // auto-release only once well past the anchor, so a normal swing
+      // never gets cut short mid-arc
+      if (player.pos.z > a.z + 14) releaseWeb();
     }
 
     // soft canyon walls
@@ -760,12 +774,14 @@
     boostBtn.classList.toggle("onCooldown", now < boostReadyAt);
 
     // camera chase
-    var camOffset = new THREE.Vector3(0, 3.4, -8);
+    var camOffset = new THREE.Vector3(0, 3.4, -7);
     var desiredCam = player.pos.clone().add(camOffset);
-    camera.position.lerp(desiredCam, 1 - Math.pow(0.001, dt));
+    camera.position.lerp(desiredCam, 1 - Math.pow(0.00002, dt));
     var lookAt = player.pos.clone();
-    lookAt.z += 8;
+    lookAt.x += player.vel.x * 0.15;
+    lookAt.z += 9;
     camera.lookAt(lookAt);
+    camera.rotation.z = Math.max(-0.12, Math.min(0.12, -player.vel.x * 0.008));
 
     document.getElementById("scoreLine").textContent = (Math.floor(distance) + tokenScore) + " m";
 
