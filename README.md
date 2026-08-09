@@ -310,16 +310,34 @@ of security robots:
   turning to face whichever way it's actually moving
 - Drag on the right side of the screen: swing the chase camera around the
   hero and aim your abilities (vertical drag tilts heat vision up/down)
-- Up-arrow button: jump
+- Up-arrow button: jump &mdash; and while flying, hold it to climb
+- **FLY** button: toggle flight. In the air the left stick moves you in full
+  3D &mdash; forward follows wherever you're aiming, so look up and push
+  forward to climb over the rooftops. Ground enemies can't reach you up
+  there, but the hovering drones still can. Touch down without holding climb
+  and you land automatically
 - Red PUNCH button: a close-range melee cone attack with knockback, on a
   short cooldown so it doubles as your bread-and-butter attack
-- &#128293; button: **Heat Vision** &mdash; a sustained beam that burns
-  everything in a narrow cone in front of you for its short duration
-- &#128165; button: **Ground Pound** &mdash; leap up and slam down for
-  radial damage and knockback around your landing point
-- &#9889; button: **Dash** &mdash; a quick burst in your current movement
-  (or facing) direction with a brief window of invulnerability, good for
-  closing distance or dodging
+- Seven abilities sit in a grid next to the punch button, each showing its
+  own cooldown:
+  - &#9889; **Dash** &mdash; a quick burst in your current movement (or
+    facing) direction with a brief window of invulnerability
+  - &#128293; **Heat Vision** &mdash; a sustained beam that burns everything
+    in a narrow cone in front of you
+  - &#128165; **Ground Pound** &mdash; leap up and slam down for radial
+    damage and knockback. Trigger it while flying and it becomes a dive
+    bomb: you drop out of the sky from whatever altitude you were at, and
+    the further you fall the longer the plunge
+  - &#10052;&#65039; **Freeze Breath** &mdash; a cone of frost that damages
+    and chills. Chilled bots turn frosty blue and crawl at a quarter speed
+    for a few seconds
+  - &#128080; **Thunder Clap** &mdash; slam both hands together for a radial
+    burst with heavy knockback. Its reach is measured in 3D, so clapping
+    from high up covers less ground
+  - &#128162; **Energy Blast** &mdash; an aimed projectile that detonates on
+    the first thing it hits with splash damage
+  - &#9728;&#65039; **Solar Flare** &mdash; the ultimate. A blinding
+    detonation that hits everything in a wide radius around you
 - Top bar: live score, current wave, and a health bar
 - Two regular enemy types: ground-bound **Sentry Bots** that close in and
   melee you, and hovering **Drones** (from wave 2) that keep their distance
@@ -339,9 +357,14 @@ of security robots:
   reflection environment: a gradient sky with drifting clouds and sun glow,
   painted asphalt, a ring of windowed buildings (some windows lit), street
   lamps, crates and barriers for cover
-- An articulated hero with a run cycle, jump/landing squash-and-stretch, a
-  cape that lifts and trails as you move, glowing eyes during Heat Vision,
-  and a gold chest emblem
+- An articulated hero with a run cycle, a leaning flight pose with a
+  contrail, jump/landing squash-and-stretch, a cape that lifts and trails as
+  you move, glowing eyes during Heat Vision, and a gold chest emblem
+- Controls are pinned to the browser's *visual* viewport rather than the
+  layout viewport, so mobile Chrome's toolbars can't cover the ability
+  buttons, and they respect display cutouts via safe-area insets. There's
+  also a fullscreen button (which hides the browser UI entirely) and a mute
+  toggle in the top-right corner
 - Heavy feedback throughout: screen shake, brief hit-stop on solid
   connections, floating damage numbers, hit flashes, sparks and metal debris
   on impact, bots that burst apart into physics-driven chunks and smoke,
