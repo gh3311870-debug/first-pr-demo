@@ -263,7 +263,7 @@
   var MAX_WEB_RANGE = 30;
   var MIN_WEB_RANGE = 3;
   var ROPE_SLACK = 0.92; // fraction of measured distance used as rope length, gives a little initial swing
-  var DEATH_Y = -8;
+  var DEATH_Y = -6;
   var CANYON_HALF = 21; // soft x clamp
   var SPAWN_AHEAD = 90;
   var DESPAWN_BEHIND = 24;
@@ -334,21 +334,52 @@
 
   // ---------- Scene setup ----------
   var scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1b2740);
-  scene.fog = new THREE.Fog(0x1b2740, 40, 130);
+  scene.fog = new THREE.Fog(0x2a3350, 45, 150);
 
   var camera = new THREE.PerspectiveCamera(76, window.innerWidth / window.innerHeight, 0.1, 300);
 
   var renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
   document.body.appendChild(renderer.domElement);
 
-  var hemi = new THREE.HemisphereLight(0x8fa8d6, 0x14151f, 0.85);
+  // sunset skydome (gradient sphere) instead of a flat background color
+  var skyGeo = new THREE.SphereGeometry(280, 24, 16);
+  var skyMat = new THREE.ShaderMaterial({
+    uniforms: {
+      topColor: { value: new THREE.Color(0x2a3a6e) },
+      horizonColor: { value: new THREE.Color(0xb2634a) },
+      nadirColor: { value: new THREE.Color(0x181c2c) },
+      offset: { value: 20 }
+    },
+    vertexShader: "varying vec3 vWorldPosition;\nvoid main() {\n  vec4 worldPosition = modelMatrix * vec4(position, 1.0);\n  vWorldPosition = worldPosition.xyz;\n  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n}",
+    fragmentShader: "uniform vec3 topColor;\nuniform vec3 horizonColor;\nuniform vec3 nadirColor;\nuniform float offset;\nvarying vec3 vWorldPosition;\nvoid main() {\n  float h = normalize(vWorldPosition + vec3(0.0, offset, 0.0)).y;\n  vec3 lower = mix(nadirColor, horizonColor, smoothstep(-0.12, 0.0, h));\n  vec3 col = mix(lower, topColor, smoothstep(0.0, 0.6, h));\n  gl_FragColor = vec4(col, 1.0);\n}",
+    side: THREE.BackSide
+  });
+  var sky = new THREE.Mesh(skyGeo, skyMat);
+  scene.add(sky);
+
+  var hemi = new THREE.HemisphereLight(0x9fb0d8, 0x2a2035, 0.75);
   scene.add(hemi);
-  var sun = new THREE.DirectionalLight(0xffe6c2, 0.9);
-  sun.position.set(-20, 40, -10);
+  var sun = new THREE.DirectionalLight(0xffcf9e, 1.15);
+  sun.position.set(-24, 46, -14);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.camera.near = 5;
+  sun.shadow.camera.far = 140;
+  sun.shadow.camera.left = -45;
+  sun.shadow.camera.right = 45;
+  sun.shadow.camera.top = 45;
+  sun.shadow.camera.bottom = -45;
+  sun.shadow.bias = -0.0015;
   scene.add(sun);
+  sun.target = new THREE.Object3D();
+  scene.add(sun.target);
 
   function makeCanvasTexture(size, draw) {
     var c = document.createElement("canvas");
@@ -392,33 +423,112 @@
     new THREE.MeshStandardMaterial({ map: groundTexture, roughness: 0.95 })
   );
   ground.rotation.x = -Math.PI / 2;
-  ground.position.y = DEATH_Y - 4;
+  ground.position.y = DEATH_Y - 1;
+  ground.receiveShadow = true;
   scene.add(ground);
 
-  // ---------- Player ----------
+  // ---------- Player: a masked, web-patterned hero ----------
+  var suitTexture = makeCanvasTexture(128, function (ctx, s) {
+    ctx.fillStyle = "#c21e1e";
+    ctx.fillRect(0, 0, s, s);
+    ctx.strokeStyle = "rgba(20,20,20,0.55)";
+    ctx.lineWidth = 1.4;
+    var step = s / 8;
+    for (var i = -8; i <= 16; i++) {
+      ctx.beginPath(); ctx.moveTo(i * step, 0); ctx.lineTo(i * step - s, s); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(i * step, 0); ctx.lineTo(i * step + s, s); ctx.stroke();
+    }
+    for (var r = 6; r < s; r += 14) {
+      ctx.beginPath(); ctx.arc(s / 2, s / 2, r, 0, Math.PI * 2); ctx.stroke();
+    }
+  });
+  suitTexture.repeat.set(2, 2);
+
+  var maskTexture = makeCanvasTexture(64, function (ctx, s) {
+    ctx.fillStyle = "#c21e1e";
+    ctx.fillRect(0, 0, s, s);
+    ctx.strokeStyle = "rgba(20,20,20,0.55)";
+    ctx.lineWidth = 1;
+    for (var r = 4; r < s; r += 9) { ctx.beginPath(); ctx.arc(s / 2, s / 2, r, 0, Math.PI * 2); ctx.stroke(); }
+  });
+
   var playerGroup = new THREE.Group();
-  var bodyMat = new THREE.MeshStandardMaterial({ color: 0xd62828, roughness: 0.6 });
-  var trimMat = new THREE.MeshStandardMaterial({ color: 0x1b3a8f, roughness: 0.6 });
-  var body = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.7, 4, 8), bodyMat);
-  playerGroup.add(body);
-  var head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 10), bodyMat);
-  head.position.y = 0.65;
+  var suitMat = new THREE.MeshStandardMaterial({ map: suitTexture, roughness: 0.55 });
+  var maskMat = new THREE.MeshStandardMaterial({ map: maskTexture, roughness: 0.5 });
+  var trimMat = new THREE.MeshStandardMaterial({ color: 0x1b3fae, roughness: 0.55 });
+  var eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+  var torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.55, 4, 8), suitMat);
+  torso.castShadow = true;
+  playerGroup.add(torso);
+
+  var head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 12), maskMat);
+  head.position.y = 0.58;
+  head.castShadow = true;
   playerGroup.add(head);
-  var legs = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.3), trimMat);
-  legs.position.y = -0.55;
-  playerGroup.add(legs);
+
+  [-1, 1].forEach(function (side) {
+    var eye = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 8), eyeMat);
+    eye.scale.set(1, 0.6, 0.5);
+    eye.position.set(side * 0.1, 0.6, 0.2);
+    playerGroup.add(eye);
+  });
+
+  var hips = new THREE.Mesh(new THREE.CapsuleGeometry(0.19, 0.16, 4, 8), trimMat);
+  hips.position.y = -0.42;
+  hips.castShadow = true;
+  playerGroup.add(hips);
+
+  var legGeo = new THREE.CapsuleGeometry(0.11, 0.42, 4, 8);
+  var legL = new THREE.Mesh(legGeo, trimMat); legL.position.set(-0.13, -0.78, 0); legL.castShadow = true; playerGroup.add(legL);
+  var legR = new THREE.Mesh(legGeo, trimMat); legR.position.set(0.13, -0.78, 0); legR.castShadow = true; playerGroup.add(legR);
+
+  var armGeo = new THREE.CapsuleGeometry(0.09, 0.5, 4, 8);
+  var armPivotL = new THREE.Group(); armPivotL.position.set(-0.32, 0.28, 0); playerGroup.add(armPivotL);
+  var armL = new THREE.Mesh(armGeo, suitMat); armL.position.y = -0.28; armL.castShadow = true; armPivotL.add(armL);
+  var armPivotR = new THREE.Group(); armPivotR.position.set(0.32, 0.28, 0); playerGroup.add(armPivotR);
+  var armR = new THREE.Mesh(armGeo, suitMat); armR.position.y = -0.28; armR.castShadow = true; armPivotR.add(armR);
+
   scene.add(playerGroup);
 
-  var webLineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
-  var webLine = new THREE.Line(webLineGeo, new THREE.LineBasicMaterial({ color: 0xf2f2f2 }));
-  webLine.visible = false;
-  scene.add(webLine);
+  // thick web strand rendered as an oriented cylinder instead of a thin line
+  var webMesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.025, 0.045, 1, 6, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xf5f5f5, transparent: true, opacity: 0.85 })
+  );
+  webMesh.visible = false;
+  scene.add(webMesh);
 
   var anchorMarkerGeo = new THREE.SphereGeometry(0.35, 10, 8);
   var anchorMarkerMat = new THREE.MeshBasicMaterial({ color: 0xff3b3b });
   var anchorMarker = new THREE.Mesh(anchorMarkerGeo, anchorMarkerMat);
   anchorMarker.visible = false;
   scene.add(anchorMarker);
+
+  // small fading trail particles used for the boost effect
+  var trailParticles = [];
+  var trailGeo = new THREE.SphereGeometry(0.09, 6, 6);
+  var trailPool = [];
+  for (var tp = 0; tp < 24; tp++) {
+    var pm = new THREE.Mesh(trailGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }));
+    pm.visible = false;
+    scene.add(pm);
+    trailPool.push(pm);
+  }
+  function spawnTrailBurst(pos) {
+    for (var i = 0; i < 8; i++) {
+      var pm = trailPool.shift();
+      if (!pm) return;
+      trailPool.push(pm);
+      pm.position.copy(pos);
+      pm.position.x += (Math.random() - 0.5) * 0.3;
+      pm.position.y += (Math.random() - 0.5) * 0.3;
+      pm.position.z += (Math.random() - 0.5) * 0.3;
+      pm.material.opacity = 0.9;
+      pm.visible = true;
+      trailParticles.push(pm);
+    }
+  }
 
   // ---------- City generation ----------
   var buildings = []; // { mesh, x, zStart, zEnd, w, h }
@@ -437,9 +547,26 @@
     var mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 });
     var mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, depth), mat);
     mesh.position.set(xCenter, h / 2, zStart + depth / 2);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
     scene.add(mesh);
 
-    var b = { mesh: mesh, x: xCenter, zStart: zStart, zEnd: zStart + depth, w: w, h: h };
+    // occasional rooftop prop for skyline variety
+    var prop = null;
+    if (Math.random() < 0.4) {
+      var propMat = new THREE.MeshStandardMaterial({ color: 0x3a3a42, roughness: 0.7 });
+      if (Math.random() < 0.5) {
+        prop = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3, 6), propMat);
+        prop.position.set(xCenter + (Math.random() - 0.5) * w * 0.5, h + 1.5, zStart + depth / 2);
+      } else {
+        prop = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, 1.4, 8), propMat);
+        prop.position.set(xCenter + (Math.random() - 0.5) * w * 0.4, h + 0.7, zStart + depth / 2);
+      }
+      prop.castShadow = true;
+      scene.add(prop);
+    }
+
+    var b = { mesh: mesh, prop: prop, x: xCenter, zStart: zStart, zEnd: zStart + depth, w: w, h: h };
     buildings.push(b);
 
     // inner edge (facing the canyon center) gives the swing anchor
@@ -474,6 +601,7 @@
     for (var i = buildings.length - 1; i >= 0; i--) {
       if (buildings[i].zEnd < playerZ - DESPAWN_BEHIND) {
         scene.remove(buildings[i].mesh);
+        if (buildings[i].prop) scene.remove(buildings[i].prop);
         buildings.splice(i, 1);
       }
     }
@@ -506,7 +634,7 @@
   var boostReadyAt = 0;
 
   function resetGame() {
-    buildings.forEach(function (b) { scene.remove(b.mesh); });
+    buildings.forEach(function (b) { scene.remove(b.mesh); if (b.prop) scene.remove(b.prop); });
     tokens.forEach(function (t) { scene.remove(t.mesh); });
     buildings = []; anchors = []; tokens = [];
     nextChunkZ = 6;
@@ -517,7 +645,7 @@
     player.vel.set(0, 0, BASE_FORWARD_SPEED);
     player.swinging = false;
     player.anchor = null;
-    webLine.visible = false;
+    webMesh.visible = false;
     anchorMarker.visible = false;
     startZ = 0;
     distance = 0;
@@ -616,7 +744,7 @@
     if (player.swinging) sfxRelease();
     player.swinging = false;
     player.anchor = null;
-    webLine.visible = false;
+    webMesh.visible = false;
   }
 
   var webHeld = false;
@@ -644,6 +772,7 @@
     boostReadyAt = now + BOOST_COOLDOWN;
     player.vel.y += 8;
     player.vel.z += 4;
+    spawnTrailBurst(player.pos);
     sfxBoost();
   }
   boostBtn.addEventListener("touchstart", function (e) { e.preventDefault(); doBoost(); }, { passive: false });
@@ -751,14 +880,28 @@
     playerGroup.position.copy(player.pos);
     var lean = Math.max(-0.6, Math.min(0.6, -player.vel.x * 0.04));
     playerGroup.rotation.z = lean;
-    playerGroup.rotation.x = Math.max(-0.5, Math.min(0.5, player.vel.y * 0.02));
+    playerGroup.rotation.x = Math.max(-0.6, Math.min(0.9, player.vel.y * 0.025));
 
     if (player.swinging && player.anchor) {
-      var pts = [player.pos.clone(), new THREE.Vector3(player.anchor.x, player.anchor.y, player.anchor.z)];
-      webLine.geometry.setFromPoints(pts);
-      webLine.visible = true;
+      var pts0 = player.pos, pts1 = new THREE.Vector3(player.anchor.x, player.anchor.y, player.anchor.z);
+      var mid = pts0.clone().add(pts1).multiplyScalar(0.5);
+      var segLen = pts0.distanceTo(pts1);
+      webMesh.position.copy(mid);
+      webMesh.scale.set(1, Math.max(0.001, segLen), 1);
+      webMesh.up.set(0, 0, 1);
+      webMesh.lookAt(pts1);
+      webMesh.rotateX(Math.PI / 2);
+      webMesh.visible = true;
+
+      // arms reach up toward the web while swinging
+      armPivotL.rotation.x = -1.9;
+      armPivotR.rotation.x = -1.9;
     } else {
-      webLine.visible = false;
+      webMesh.visible = false;
+      // arms trail back for a falling/gliding pose
+      var fallPose = Math.max(-1.4, Math.min(0.3, -0.4 - player.vel.y * 0.03));
+      armPivotL.rotation.x = fallPose;
+      armPivotR.rotation.x = fallPose;
     }
 
     var target = findBestAnchor();
@@ -772,6 +915,24 @@
     // boost button cooldown visual
     var now = performance.now() / 1000;
     boostBtn.classList.toggle("onCooldown", now < boostReadyAt);
+
+    // fade out boost trail particles
+    for (var pi = trailParticles.length - 1; pi >= 0; pi--) {
+      var pm = trailParticles[pi];
+      pm.material.opacity -= dt * 2.2;
+      pm.scale.multiplyScalar(1 - dt * 1.5);
+      if (pm.material.opacity <= 0) {
+        pm.visible = false;
+        pm.scale.set(1, 1, 1);
+        trailParticles.splice(pi, 1);
+      }
+    }
+
+    // keep the skydome and sun centered on the player so shadows/backdrop
+    // never run out as the world streams past
+    sky.position.set(player.pos.x, 0, player.pos.z);
+    sun.position.set(player.pos.x - 24, player.pos.y + 46, player.pos.z - 14);
+    sun.target.position.copy(player.pos);
 
     // camera chase
     var camOffset = new THREE.Vector3(0, 3.4, -7);
