@@ -7,7 +7,9 @@ export class HUD {
       hud: $("hud"), ammo: $("ammoNum"), reserve: $("ammoRes"), mode: $("fireMode"), hp: $("hpFill"), hpNum: $("hpNum"),
       cross: $("cross"), hit: $("hitmark"), compass: $("compassStrip"), hostiles: $("hostiles"), dmg: $("dmgRing"),
       blood: $("bloodOverlay"), note: $("notify"), feed: $("killfeed"), reload: $("reloadHint"), heading: $("heading"),
+      wname: $("weaponName"), wlist: $("weaponList"), scope: $("scope"), squad: $("squad"), squadRow: $("squadRow"),
     };
+    this._wl = "";
     this._buildCompass();
     this.hitT = 0;
     this.indicators = [];
@@ -30,7 +32,22 @@ export class HUD {
     e.ammo.textContent = weapon.ammo;
     e.ammo.classList.toggle("low", weapon.ammo <= 8);
     e.reserve.textContent = weapon.reserve;
-    e.mode.textContent = weapon.mode === "auto" ? "AUTO" : "SEMI";
+    e.mode.textContent = weapon.mode.toUpperCase();
+    e.wname.textContent = weapon.def.name;
+    // weapon slots: key number, short name, rounds loaded
+    const wl = ["M4", "DMR", "SG", "PST"].map((k) => {
+      const on = k === (weapon.pending || weapon.current);
+      const st = weapon.state[k];
+      return `<span class="${on ? "on" : ""}"><b>${["M4", "DMR", "SG", "PST"].indexOf(k) + 1}</b>${k} ${st.ammo}</span>`;
+    }).join("");
+    if (wl !== this._wl) {
+      this._wl = wl;
+      e.wlist.innerHTML = wl;
+    }
+    e.scope.classList.toggle("on", weapon.scoped);
+    const allies = enemies.alliesAlive;
+    e.squadRow.style.display = enemies.mode === "squad" ? "" : "none";
+    e.squad.textContent = allies;
     const hp = Math.max(0, player.health);
     e.hp.style.width = hp + "%";
     e.hp.classList.toggle("crit", hp < 35);

@@ -450,6 +450,12 @@ def copy_three():
         if dst.endswith(".jpg"):
             im = im.convert("RGB")
             im.save(os.path.join(OUT, dst), quality=88)
+        elif dst == "smoke.png":
+            # the source puff is greyscale without alpha: use its brightness as the alpha channel
+            g = np.asarray(im.convert("L"), dtype=float) / 255.0
+            a = np.clip((g - 0.04) / 0.96, 0, 1) ** 1.2
+            rgba = np.dstack([np.full_like(g, 255), np.full_like(g, 255), np.full_like(g, 255), a * 255]).astype(np.uint8)
+            Image.fromarray(rgba, "RGBA").save(os.path.join(OUT, dst))
         else:
             im.save(os.path.join(OUT, dst))
         print("copied", dst)

@@ -46,7 +46,7 @@ export class Input {
       this.lookDY += e.movementY * 0.0022 * this.sensitivity;
     });
     addEventListener("wheel", (e) => {
-      if (this.locked) this.pressed.add("Wheel");
+      if (this.locked) this.pressed.add(e.deltaY > 0 ? "WheelDown" : "WheelUp");
     });
     document.addEventListener("pointerlockchange", () => {
       this.locked = document.pointerLockElement === canvas;
@@ -139,6 +139,7 @@ export class Input {
     btn("tReload", () => this.pressed.add("KeyR"), () => {});
     btn("tJump", () => this.pressed.add("Space"), () => {});
     btn("tCrouch", () => this.pressed.add("KeyC"), () => {});
+    btn("tSwap", () => this.pressed.add("Swap"), () => {});
 
     const zone = document.getElementById("tLook");
     zone.addEventListener("touchstart", (e) => {

@@ -91,9 +91,7 @@
   #dmgRing { position: absolute; left: 50%; top: 50%; }
   .dmgArc {
     position: absolute; left: -90px; top: -90px; width: 180px; height: 180px; border-radius: 50%;
-    border-top: 5px solid rgba(220, 40, 30, 0.9); box-sizing: border-box; filter: blur(0.5px);
-    -webkit-mask: linear-gradient(90deg, transparent 30%, #000 42%, #000 58%, transparent 70%);
-    mask: linear-gradient(90deg, transparent 30%, #000 42%, #000 58%, transparent 70%);
+    border: 5px solid transparent; border-top-color: rgba(220, 40, 30, 0.9); box-sizing: border-box;
   }
   #compass {
     position: absolute; top: 14px; left: 50%; width: 360px; height: 30px; margin-left: -180px; overflow: hidden;
@@ -125,6 +123,25 @@
   #notify { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); font-size: 15px; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0; white-space: nowrap; }
   #notify.show { animation: note 3.2s ease forwards; }
   @keyframes note { 0% { opacity: 0; transform: translate(-50%, 6px); } 10%, 75% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+  #weaponList { margin-top: 6px; display: flex; gap: 10px; justify-content: flex-end; font-size: 11px; letter-spacing: 0.08em; color: var(--dim); }
+  #weaponList span b { color: var(--ui); margin-right: 4px; font-weight: 700; }
+  #weaponList span.on { color: var(--accent); }
+  #weaponList span.on b { color: var(--accent); }
+  #objective .sq { font-size: 12px; margin-top: 6px; color: #7fb6ff; letter-spacing: 0.2em; }
+  #scope { position: absolute; inset: 0; display: none; pointer-events: none; }
+  #scope.on { display: block; }
+  #scope .lens {
+    position: absolute; left: 50%; top: 50%; width: min(86vh, 92vw); aspect-ratio: 1; transform: translate(-50%, -50%);
+    border-radius: 50%; box-shadow: 0 0 0 200vmax #050505, inset 0 0 60px 30px rgba(0,0,0,0.85);
+  }
+  #scope .h, #scope .v { position: absolute; background: #0a0a0a; }
+  #scope .h { left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; }
+  #scope .v { top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; }
+  #scope .thick.h { height: 5px; margin-top: -2.5px; }
+  #scope .thick.v { width: 5px; margin-left: -2.5px; }
+  #scope .h.l { right: 62%; } #scope .h.r { left: 62%; } #scope .v.t { bottom: 62%; } #scope .v.b { top: 62%; }
+  #scope .dots { position: absolute; left: 50%; top: 50%; }
+  #scope .dots i { position: absolute; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: #0a0a0a; }
   #killfeed { position: absolute; right: 24px; top: 70px; text-align: right; font-size: 13px; letter-spacing: 0.15em; }
   .feedItem { animation: feed 3.5s ease forwards; margin-bottom: 4px; }
   .feedItem.head { color: var(--accent); }
@@ -150,6 +167,7 @@
   #tReload { right: 142px; bottom: 76px; width: 54px; height: 54px; }
   #tJump { right: 34px; bottom: 30px; width: 56px; height: 56px; }
   #tCrouch { right: 104px; bottom: 16px; width: 50px; height: 50px; }
+  #tSwap { right: 206px; bottom: 100px; width: 52px; height: 52px; }
   body.touch #ammo { bottom: auto; top: 70px; }
   body.touch #health { bottom: auto; top: 70px; left: 18px; width: 150px; }
   body.touch #objective { display: none; }
@@ -168,9 +186,9 @@
   <div class="card">
     <div class="title" style="text-align:left">FRONTLINE<small>DUST VEIL</small></div>
     <p class="brief">
-      <b>0600 hrs.</b> Insurgents have taken the village of Qal'at Rahim. Enter through the south checkpoint and
-      <b>clear every hostile</b> from the compound. Watch the rooftops and towers, use cover, and make your magazines count &mdash;
-      pick up spare mags from fallen enemies.
+      <b>0600 hrs.</b> Insurgents have taken the village of Qal'at Rahim. Lead your four-man squad in through the south
+      checkpoint and <b>clear every hostile</b> from the compound. Snipers hold the rooftops and towers; shotgunners wait
+      indoors. Carry an M4, a scoped DMR, a pump shotgun and a pistol, and grab spare ammo from fallen enemies.
     </p>
     <div class="btnRow">
       <button class="btn primary" id="deployBtn">Deploy</button>
@@ -186,6 +204,12 @@
           <option value="low">Low (phones)</option>
           <option value="medium">Medium</option>
           <option value="high">High (AO, 4K shadows)</option>
+        </select>
+        <label for="optMode">Game mode</label>
+        <select id="optMode">
+          <option value="squad">Squad vs insurgents</option>
+          <option value="ffa">Free-for-all</option>
+          <option value="solo">Solo</option>
         </select>
         <label for="optDifficulty">Difficulty</label>
         <select id="optDifficulty">
@@ -209,20 +233,23 @@
         <b>Space</b><span>Jump</span>
         <b>Q / E</b><span>Lean around corners</span>
         <b>R</b><span>Reload</span>
-        <b>V</b><span>Toggle auto / semi-auto</span>
+        <b>1 2 3 4</b><span>M4 carbine &middot; DMR (scoped) &middot; pump shotgun &middot; pistol (or scroll wheel)</span>
+        <b>V</b><span>Toggle auto / semi-auto (M4)</span>
+        <b>Shift (scoped)</b><span>Hold your breath to steady the DMR scope</span>
         <b>Esc</b><span>Pause</span>
         <b>Touch</b><span>Left stick moves (push to the top to sprint), drag right side to look, buttons for fire / aim / reload / jump / crouch</span>
       </div>
     </div>
     <div id="creditsPanel" class="sub hidden">
       <h3>CREDITS &amp; SOURCES</h3>
-      Rifle, arms rig animations, props and level built with <b>Blender 5.0</b> (Python API) &mdash; scripts in
+      Weapons (M4, DMR, shotgun, pistol), arm and soldier animations, props and level built with <b>Blender 5.0</b> (Python API) &mdash; scripts in
       <code>tools/frontline/</code>. Textures generated procedurally with Python/NumPy.<br>
       Soldier character &amp; base animations: <b>Soldier.glb</b> from the
       <a href="https://github.com/mrdoob/three.js/tree/dev/examples/models/gltf" target="_blank" rel="noopener">three.js examples</a>
       (Mixamo-rigged).<br>
       Brick, hardwood and smoke textures: three.js examples.<br>
-      Engine: <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> r186 (MIT). All audio synthesized live with Web Audio.
+      Sound effects: recordings from <a href="https://github.com/xonotic/xonotic-data.pk3dir" target="_blank" rel="noopener">Xonotic</a> (GPLv3+).<br>
+      Engine: <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> r186 (MIT).
       Full list: <code>assets/frontline/CREDITS.md</code>.
     </div>
   </div>
@@ -247,18 +274,23 @@
 </div>
 
 <div id="hud" class="hidden">
+  <div id="scope"><div class="lens"></div>
+    <div class="h l thick"></div><div class="h r thick"></div><div class="v t thick"></div><div class="v b thick"></div>
+    <div class="h"></div><div class="v"></div>
+    <div class="dots"><i style="left:-120px"></i><i style="left:-80px"></i><i style="left:-40px"></i><i style="left:40px"></i><i style="left:80px"></i><i style="left:120px"></i><i style="top:40px"></i><i style="top:80px"></i><i style="top:120px"></i><i style="top:-40px"></i><i style="top:-80px"></i></div>
+  </div>
   <div id="bloodOverlay"></div>
   <div id="cross"><i></i><i></i><i></i><i></i><b></b></div>
   <div id="hitmark"></div>
   <div id="dmgRing"></div>
   <div id="compass"><div id="compassStrip"></div></div>
   <div id="heading">000</div>
-  <div id="objective"><div class="t">Clear the village</div><div class="h"><span id="hostiles">0</span><small>HOSTILES</small></div></div>
+  <div id="objective"><div class="t">Clear the village</div><div class="h"><span id="hostiles">0</span><small>HOSTILES</small></div><div class="sq" id="squadRow">SQUAD <span id="squad">4</span></div></div>
   <div id="killfeed"></div>
   <div id="notify"></div>
   <div id="reloadHint">RELOAD</div>
   <div id="health"><div class="lbl"><span>HEALTH</span><span id="hpNum">100</span></div><div class="hpBar"><div id="hpFill"></div></div></div>
-  <div id="ammo"><div class="w">M4A1 CARBINE<span id="fireMode">AUTO</span></div><span id="ammoNum">30</span><span id="ammoRes">180</span></div>
+  <div id="ammo"><div class="w"><span id="weaponName">M4A1 CARBINE</span><span id="fireMode">AUTO</span></div><span id="ammoNum">30</span><span id="ammoRes">180</span><div id="weaponList"></div></div>
 </div>
 
 <div id="touch">
@@ -269,6 +301,7 @@
   <div class="tBtn" id="tReload">RLD</div>
   <div class="tBtn" id="tJump">JUMP</div>
   <div class="tBtn" id="tCrouch">CRCH</div>
+  <div class="tBtn" id="tSwap">SWAP</div>
 </div>
 
 <a class="gameLink" href="index.html">&larr; GAMES</a>

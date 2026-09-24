@@ -1,37 +1,77 @@
-// All sound is synthesized with the Web Audio API (no audio files needed).
+// Game audio: recorded sound effects (Xonotic, GPLv3+, see assets/frontline/sounds/README.md)
+// played through Web Audio with 3D positioning, speed-of-sound delay, air absorption and an
+// outdoor echo. A few UI/body cues (bullet crack, heartbeat, wind, hit ticks) are synthesized.
+const BASE = "assets/frontline/sounds/";
+
+const SAMPLES = [
+  "rifle_shot", "dmr_shot", "sniper_far", "shotgun_shot", "reload_out", "reload_in", "dryfire",
+  "impact_stone_1", "impact_stone_2", "impact_stone_3", "impact_stone_4",
+  "impact_metal_1", "impact_metal_2", "impact_metal_3", "impact_wood_1", "impact_wood_2", "impact_wood_3",
+  "impact_flesh_1", "impact_flesh_2", "impact_flesh_3", "body_1", "body_2", "ric_1", "ric_2", "ric_3",
+  "casing_1", "casing_2", "casing_3", "step_1", "step_2", "step_3", "step_4", "step_5", "step_6",
+];
+
+// how each weapon sounds: sample, playback rate, gain, extra low "thump" for the shooter
+export const GUN_SOUNDS = {
+  rifle: { sample: "rifle_shot", rate: 1.0, gain: 1.0, thump: 1.0 },
+  smg: { sample: "rifle_shot", rate: 1.12, gain: 0.8, thump: 0.6 },
+  dmr: { sample: "dmr_shot", rate: 1.0, gain: 1.15, thump: 1.4 },
+  shotgun: { sample: "shotgun_shot", rate: 1.0, gain: 1.2, thump: 1.6 },
+  pistol: { sample: "rifle_shot", rate: 1.28, gain: 0.8, thump: 0.5 },
+};
+
 export class Audio {
   constructor() {
     this.ctx = null;
+    this.buf = {};
     this.muted = false;
+    this.listenerPos = null;
   }
 
-  init() {
-    if (this.ctx) {
-      if (this.ctx.state === "suspended") this.ctx.resume();
-      return;
-    }
+  // Create the context early (it starts suspended) so samples decode during loading.
+  async load(onProgress) {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     const ctx = (this.ctx = new AC());
     this.master = ctx.createGain();
-    this.master.gain.value = 0.8;
+    this.master.gain.value = 0.85;
     this.lowpass = ctx.createBiquadFilter(); // muffles everything when badly hurt
     this.lowpass.type = "lowpass";
     this.lowpass.frequency.value = 20000;
     const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = -14;
-    comp.ratio.value = 6;
-    comp.attack.value = 0.002;
-    comp.release.value = 0.2;
+    comp.threshold.value = -12;
+    comp.ratio.value = 5;
+    comp.attack.value = 0.003;
+    comp.release.value = 0.25;
     this.master.connect(this.lowpass).connect(comp).connect(ctx.destination);
-    // outdoor reverb: a diffuse tail plus discrete echoes off buildings
+    // outdoor reverb: diffuse tail plus discrete slap-back echoes off the buildings
     this.reverb = ctx.createConvolver();
-    this.reverb.buffer = this._impulse(2.4);
+    this.reverb.buffer = this._impulse(2.6);
     this.reverbSend = ctx.createGain();
-    this.reverbSend.gain.value = 0.55;
+    this.reverbSend.gain.value = 0.5;
     this.reverbSend.connect(this.reverb).connect(this.master);
     this.noise = this._noiseBuffer(2);
-    this._wind();
+    let done = 0;
+    await Promise.all(SAMPLES.map(async (name) => {
+      try {
+        const res = await fetch(BASE + name + ".wav");
+        const data = await res.arrayBuffer();
+        this.buf[name] = await new Promise((ok, fail) => ctx.decodeAudioData(data, ok, fail));
+      } catch (e) {
+        console.warn("sound failed", name, e);
+      }
+      onProgress && onProgress(++done / SAMPLES.length);
+    }));
+  }
+
+  // Must be called from a user gesture (browsers keep audio locked until then).
+  init() {
+    if (!this.ctx) return;
+    if (this.ctx.state === "suspended") this.ctx.resume();
+    if (!this._windOn) {
+      this._windOn = true;
+      this._wind();
+    }
   }
 
   _noiseBuffer(sec) {
@@ -51,11 +91,11 @@ export class Audio {
       const d = b.getChannelData(c);
       for (let i = 0; i < len; i++) {
         const t = i / ctx.sampleRate;
-        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t / sec, 3.2) * 0.35 * Math.min(1, t * 30);
+        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t / sec, 3.2) * 0.3 * Math.min(1, t * 30);
       }
       for (const e of echoes) {
         const at = Math.floor((e + c * 0.013 + Math.random() * 0.01) * ctx.sampleRate);
-        for (let k = 0; k < 900; k++) d[at + k] += (Math.random() * 2 - 1) * Math.exp(-k / 180) * 0.9 * (1 - e);
+        for (let k = 0; k < 900; k++) d[at + k] += (Math.random() * 2 - 1) * Math.exp(-k / 180) * 0.8 * (1 - e);
       }
     }
     return b;
@@ -70,11 +110,11 @@ export class Audio {
     f.type = "lowpass";
     f.frequency.value = 420;
     const g = ctx.createGain();
-    g.gain.value = 0.05;
+    g.gain.value = 0.045;
     const lfo = ctx.createOscillator();
     lfo.frequency.value = 0.09;
     const lg = ctx.createGain();
-    lg.gain.value = 0.035;
+    lg.gain.value = 0.03;
     lfo.connect(lg).connect(g.gain);
     const lfo2 = ctx.createOscillator();
     lfo2.frequency.value = 0.23;
@@ -110,45 +150,74 @@ export class Audio {
     this.listenerPos = p;
   }
 
+  get ready() {
+    return this.ctx && this.ctx.state === "running" && !this.muted;
+  }
+
+  distance(pos) {
+    if (!pos || !this.listenerPos) return 0;
+    return pos.distanceTo(this.listenerPos);
+  }
+
+  // Output node: spatialized when pos is given, with a send into the outdoor reverb.
   _out(pos, gain = 1, reverb = 0.3) {
-    // returns a node to connect sources into (spatialized if pos is given)
     const ctx = this.ctx;
     const g = ctx.createGain();
     g.gain.value = gain;
+    let tail = g;
     if (pos) {
       const pan = ctx.createPanner();
       pan.panningModel = "HRTF";
       pan.distanceModel = "inverse";
       pan.refDistance = 4;
       pan.rolloffFactor = 1.1;
-      pan.maxDistance = 400;
+      pan.maxDistance = 500;
       if (pan.positionX) {
         pan.positionX.value = pos.x;
         pan.positionY.value = pos.y;
         pan.positionZ.value = pos.z;
       } else pan.setPosition(pos.x, pos.y, pos.z);
-      g.connect(pan).connect(this.master);
-      if (reverb) {
-        const s = ctx.createGain();
-        s.gain.value = reverb;
-        pan.connect(s).connect(this.reverbSend);
-      }
-    } else {
-      g.connect(this.master);
-      if (reverb) {
-        const s = ctx.createGain();
-        s.gain.value = reverb;
-        g.connect(s).connect(this.reverbSend);
-      }
+      g.connect(pan);
+      tail = pan;
+    }
+    tail.connect(this.master);
+    if (reverb) {
+      const s = ctx.createGain();
+      s.gain.value = reverb;
+      tail.connect(s).connect(this.reverbSend);
     }
     return g;
+  }
+
+  // Play a recorded sample. name may be a prefix ("impact_stone") to pick a random variant.
+  sample(name, dest, { when = 0, rate = 1, gain = 1, lowpass = 0, offset = 0 } = {}) {
+    let b = this.buf[name];
+    if (!b) {
+      const variants = Object.keys(this.buf).filter((k) => k.startsWith(name + "_"));
+      if (!variants.length) return;
+      b = this.buf[variants[Math.floor(Math.random() * variants.length)]];
+    }
+    const ctx = this.ctx;
+    const src = ctx.createBufferSource();
+    src.buffer = b;
+    src.playbackRate.value = rate;
+    let node = src;
+    if (lowpass) {
+      const f = ctx.createBiquadFilter();
+      f.type = "lowpass";
+      f.frequency.value = lowpass;
+      node = node.connect(f);
+    }
+    const g = ctx.createGain();
+    g.gain.value = gain;
+    node.connect(g).connect(dest);
+    src.start(Math.max(ctx.currentTime, when || ctx.currentTime), offset);
   }
 
   _noise(dest, t, dur, type, freq, q, peak, decay, attack = 0.001) {
     const ctx = this.ctx;
     const src = ctx.createBufferSource();
     src.buffer = this.noise;
-    src.playbackRate.value = 0.8 + Math.random() * 0.4;
     const f = ctx.createBiquadFilter();
     f.type = type;
     f.frequency.value = freq;
@@ -176,37 +245,35 @@ export class Audio {
     o.stop(t + dur + 0.05);
   }
 
-  distance(pos) {
-    if (!pos || !this.listenerPos) return 0;
-    return pos.distanceTo(this.listenerPos);
-  }
-
-  // 5.56 rifle shot. Player shots are unspatialized; distant ones get delay + air absorption.
-  gunshot(pos = null, loud = 1) {
-    if (!this.ctx || this.muted) return;
-    const ctx = this.ctx;
+  // Gunshot. pos = null for the player's own weapon; otherwise a 3D source that arrives
+  // late (speed of sound) and duller with distance, with more echo far away.
+  gunshot(kind = "rifle", pos = null, loud = 1) {
+    if (!this.ready) return;
+    const s = GUN_SOUNDS[kind] || GUN_SOUNDS.rifle;
     const d = this.distance(pos);
-    const t = ctx.currentTime + d / 343; // speed of sound
-    const far = Math.min(1, d / 120);
-    const out = this._out(pos, loud * (pos ? 1.6 : 0.9), pos ? 0.5 + far * 0.6 : 0.4);
-    // distant shots lose their high end
-    const air = ctx.createBiquadFilter();
-    air.type = "lowpass";
-    air.frequency.value = 16000 / (1 + d / 18);
-    air.connect(out);
-    const j = 0.9 + Math.random() * 0.2;
-    this._noise(air, t, 0.08, "bandpass", 3200 * j, 0.6, 1.1, 0.05);
-    this._noise(air, t, 0.25, "lowpass", 1100 * j, 0.7, 1.4, 0.22);
-    this._tone(air, t, 130 * j, 42, 0.16, 1.3);
-    this._noise(air, t + 0.004, 0.4, "lowpass", 380, 0.5, 0.5, 0.45, 0.01);
-    if (!pos) this._noise(out, t + 0.03, 0.02, "highpass", 5200, 1, 0.12, 0.02); // bolt carrier
+    const t = this.ctx.currentTime + d / 343;
+    const far = Math.min(1, d / 140);
+    const out = this._out(pos, loud * s.gain * (pos ? 1.8 : 0.95), pos ? 0.35 + far * 0.7 : 0.35);
+    const rate = s.rate * (0.96 + Math.random() * 0.08);
+    const lowpass = pos ? 16000 / (1 + d / 25) : 0;
+    const sample = kind === "dmr" && d > 70 ? "sniper_far" : s.sample;
+    this.sample(sample, out, { when: t, rate, lowpass });
+    // body you feel in your chest when you fire it yourself
+    if (!pos) this._tone(out, t, 110, 42, 0.14, 0.6 * s.thump);
   }
 
-  // supersonic crack + whizz of a round passing close to the listener
+  // Brass hitting the ground a moment after the shot.
+  casing(delay = 0.45) {
+    if (!this.ready || Math.random() < 0.35) return;
+    const out = this._out(null, 0.14, 0.05);
+    this.sample("casing", out, { when: this.ctx.currentTime + delay + Math.random() * 0.15, rate: 0.95 + Math.random() * 0.15 });
+  }
+
+  // Supersonic crack + whizz of a round passing close to the listener.
   crack(pos) {
-    if (!this.ctx || this.muted) return;
+    if (!this.ready) return;
     const t = this.ctx.currentTime;
-    const out = this._out(pos, 0.9, 0.15);
+    const out = this._out(pos, 0.8, 0.15);
     this._noise(out, t, 0.03, "highpass", 1800, 0.7, 1.0, 0.025);
     const ctx = this.ctx;
     const src = ctx.createBufferSource();
@@ -217,76 +284,81 @@ export class Audio {
     f.frequency.setValueAtTime(3000, t);
     f.frequency.exponentialRampToValueAtTime(700, t + 0.18);
     const g = ctx.createGain();
-    g.gain.setValueAtTime(0.35, t);
+    g.gain.setValueAtTime(0.3, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
     src.connect(f).connect(g).connect(out);
     src.start(t, Math.random(), 0.25);
   }
 
   impact(surface, pos) {
-    if (!this.ctx || this.muted) return;
+    if (!this.ready) return;
     const d = this.distance(pos);
     if (d > 90) return;
-    const t = this.ctx.currentTime;
-    const out = this._out(pos, 0.9, 0.12);
+    const out = this._out(pos, 0.8, 0.12);
+    const r = 0.9 + Math.random() * 0.2;
     switch (surface) {
       case "metal":
-        this._noise(out, t, 0.02, "highpass", 4000, 1, 0.5, 0.02);
-        for (const f of [1750, 2630, 4120]) this._tone(out, t, f * (0.9 + Math.random() * 0.2), f * 0.98, 0.35, 0.12);
+        this.sample("impact_metal", out, { rate: r });
+        if (Math.random() < 0.3 && d < 30) this.sample("ric", out, { rate: r, gain: 0.5 });
         break;
       case "wood":
-        this._noise(out, t, 0.08, "bandpass", 900, 2.5, 0.8, 0.08);
-        this._tone(out, t, 320, 180, 0.08, 0.35);
+        this.sample("impact_wood", out, { rate: r });
         break;
       case "flesh":
-        this._noise(out, t, 0.1, "lowpass", 700, 1, 1.0, 0.1);
-        this._tone(out, t, 110, 60, 0.1, 0.6);
+        this.sample("impact_flesh", out, { rate: r, gain: 0.9 });
+        this.sample("body", out, { rate: r, gain: 0.5 });
         break;
       case "concrete":
       case "plaster":
-        this._noise(out, t, 0.06, "bandpass", 2400, 1.2, 0.7, 0.05);
-        this._noise(out, t + 0.01, 0.15, "lowpass", 900, 0.8, 0.3, 0.14);
+        this.sample("impact_stone", out, { rate: r });
+        if (Math.random() < 0.12 && d < 25) this.sample("ric", out, { rate: r, gain: 0.35 });
         break;
-      default:
-        this._noise(out, t, 0.12, "lowpass", 1300, 0.7, 0.6, 0.1);
-        this._tone(out, t, 90, 50, 0.08, 0.3);
+      default: // sand, sandbags, dirt: a dull thud
+        this.sample("impact_stone", out, { rate: r * 0.7, lowpass: 1200, gain: 0.8 });
     }
   }
 
   footstep(pos = null, gain = 0.28) {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    const out = this._out(pos, gain, 0.05);
-    this._noise(out, t, 0.09, "bandpass", 500 + Math.random() * 400, 1.2, 0.8, 0.08, 0.006);
-    this._noise(out, t + 0.02, 0.05, "highpass", 3500, 0.7, 0.18, 0.05, 0.004);
+    if (!this.ready) return;
+    const out = this._out(pos, gain * 1.6, 0.04);
+    this.sample("step", out, { rate: 0.9 + Math.random() * 0.2 });
   }
 
   reload(part) {
-    if (!this.ctx || this.muted) return;
+    if (!this.ready) return;
+    const out = this._out(null, 0.6, 0.05);
     const t = this.ctx.currentTime;
-    const out = this._out(null, 0.5, 0.05);
-    if (part === "out") {
-      this._noise(out, t, 0.03, "highpass", 2500, 1, 0.8, 0.03);
-      this._tone(out, t, 2100, 1800, 0.05, 0.2, "triangle");
-      this._noise(out, t + 0.05, 0.1, "bandpass", 700, 1, 0.4, 0.1);
-    } else if (part === "in") {
-      this._noise(out, t, 0.03, "bandpass", 1600, 1.5, 1.0, 0.03);
-      this._noise(out, t + 0.07, 0.03, "highpass", 3000, 1, 0.9, 0.03);
-      this._tone(out, t + 0.07, 2600, 2400, 0.06, 0.2, "triangle");
-    } else if (part === "slap") {
-      this._noise(out, t, 0.05, "lowpass", 900, 1, 0.9, 0.05);
-    } else if (part === "dry") {
-      this._noise(out, t, 0.02, "highpass", 4000, 1, 0.6, 0.02);
-      this._tone(out, t, 3200, 3000, 0.03, 0.1, "square");
-    } else if (part === "switch") {
-      this._noise(out, t, 0.02, "bandpass", 2800, 2, 0.6, 0.02);
+    switch (part) {
+      case "out":
+        this.sample("reload_out", out);
+        break;
+      case "in":
+        this.sample("reload_in", out);
+        break;
+      case "shell": // shotgun shell pushed into the tube
+        this.sample("reload_in", out, { rate: 1.35, gain: 0.55 });
+        break;
+      case "pump":
+        this.sample("reload_in", out, { rate: 0.8, gain: 0.8 });
+        this.sample("reload_out", out, { rate: 0.95, gain: 0.35, when: t + 0.12 });
+        break;
+      case "slap":
+        this._noise(out, t, 0.05, "lowpass", 900, 1, 0.7, 0.05);
+        break;
+      case "dry":
+        this.sample("dryfire", out);
+        break;
+      case "switch":
+        this.sample("dryfire", out, { rate: 0.8, gain: 0.5 });
+        this._noise(out, t + 0.05, 0.12, "bandpass", 700, 0.8, 0.25, 0.12);
+        break;
     }
   }
 
   hitmarker(kind) {
-    if (!this.ctx || this.muted) return;
+    if (!this.ready) return;
     const t = this.ctx.currentTime;
-    const out = this._out(null, 0.35, 0);
+    const out = this._out(null, 0.3, 0);
     if (kind === "head") {
       this._tone(out, t, 2600, 2400, 0.12, 0.35, "triangle");
       this._tone(out, t, 5200, 5000, 0.08, 0.1);
@@ -299,17 +371,17 @@ export class Audio {
   }
 
   hurt() {
-    if (!this.ctx || this.muted) return;
+    if (!this.ready) return;
     const t = this.ctx.currentTime;
-    const out = this._out(null, 0.8, 0.05);
-    this._noise(out, t, 0.15, "lowpass", 500, 1, 1.0, 0.15);
-    this._tone(out, t, 70, 40, 0.2, 0.8);
+    const out = this._out(null, 0.9, 0.05);
+    this.sample("body", out, { rate: 0.8, gain: 0.8 });
+    this.sample("impact_flesh", out, { rate: 0.85, gain: 0.5, lowpass: 2500 });
     // brief tinnitus ring
-    this._tone(out, t, 3900, 3880, 1.2, 0.025);
+    this._tone(out, t, 3900, 3880, 1.2, 0.02);
   }
 
   heartbeat() {
-    if (!this.ctx || this.muted) return;
+    if (!this.ready) return;
     const t = this.ctx.currentTime;
     const out = this._out(null, 0.5, 0);
     this._tone(out, t, 60, 40, 0.14, 0.9);

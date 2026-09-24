@@ -29,6 +29,8 @@ export class Player {
     this.lastHurt = -99;
     this.time = 0;
     this.dead = false;
+    this.team = "blue";
+    this.isPlayerEntity = true;
   }
 
   spawn(x, z, yaw) {
@@ -70,7 +72,9 @@ export class Player {
     this.justLanded = false;
     if (this.dead) return;
     // --- look ---
-    const adsSlow = weapon ? THREE.MathUtils.lerp(1, 0.62, weapon.adsT) : 1;
+    // aim slower when zoomed in so the crosshair moves the same speed on screen
+    const zoom = this.engine.camera.fov / this.engine.baseFov;
+    const adsSlow = weapon ? Math.min(THREE.MathUtils.lerp(1, 0.62, weapon.adsT), zoom * 1.05) : 1;
     this.yaw -= input.lookDX * adsSlow;
     this.pitch -= input.lookDY * adsSlow;
     // recoil recovery: return most of the climb unless the player pulled down already
@@ -142,10 +146,10 @@ export class Player {
     // regenerate after a few seconds without taking damage
     if (this.time - this.lastHurt > 5 && this.health < 100) this.health = Math.min(100, this.health + 12 * dt);
 
-    this._updateCamera(dt);
+    this._updateCamera(dt, weapon);
   }
 
-  _updateCamera(dt) {
+  _updateCamera(dt, weapon) {
     const cam = this.engine.camera;
     const eye = this.eyePos;
     // head bob is subtle; most motion is carried by the weapon
@@ -163,7 +167,9 @@ export class Player {
     }
     this.punch.multiplyScalar(Math.max(0, 1 - dt * 8));
     cam.position.copy(eye);
-    cam.rotation.set(this.pitch + this.punch.x, this.yaw + this.punch.y, -this.leanT * 0.2 + this.punch.z + Math.sin(t * 0.5) * 0.004 * bobA);
+    const swayX = weapon ? weapon.scopeSwayX : 0;
+    const swayY = weapon ? weapon.scopeSwayY : 0;
+    cam.rotation.set(this.pitch + this.punch.x + swayY, this.yaw + this.punch.y + swayX, -this.leanT * 0.2 + this.punch.z + Math.sin(t * 0.5) * 0.004 * bobA);
     cam.updateMatrixWorld();
     this.engine.vmCamera.position.set(0, 0, 0);
   }

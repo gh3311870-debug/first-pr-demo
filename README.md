@@ -407,45 +407,55 @@ Serve it the same way as the other demos and visit
 desert village. It runs on desktop (mouse + keyboard) and phones (touch), and
 uses three.js r186 as ES modules (`frontline/`, `vendor/three-r186/`).
 
-- Clear 17 hostiles: guards, patrols, and shooters on rooftops and
-  watchtowers. Enemies see and hear you, alert each other, path-find through
-  the village (A*), fire in bursts, reposition, and get suppressed when your
-  rounds crack past them
-- M4 carbine with a working red-dot optic: aim down sights, recoil and
-  weapon sway, auto/semi fire modes, and 30+1 tactical reloads. Headshots
-  kill instantly, and fallen enemies drop spare magazines
+- Lead a four-man squad against 21 insurgents: guards, patrols, marksmen on
+  rooftops and towers, and shotgunners indoors. Every soldier sees and
+  hears, path-finds through the village (A*) and fights whoever is hostile
+  to it. Squadmates follow you in a wedge and engage on their own. There's
+  also a **Free-for-all** mode (everyone fights everyone) and a **Solo** mode
+- Four weapons, each modeled and animated in Blender:
+  - M4A1 carbine (auto/semi, red dot)
+  - MK20 DMR (4.5x scope; hold Shift to steady your breathing)
+  - M590 pump shotgun (9 pellets, pump after every shot, shell-by-shell
+    reloads you can interrupt)
+  - M17 pistol (fast to switch to)
+- Aim-down-sights poses, recoil and weapon sway, tactical reloads that keep a
+  round chambered, ammo pickups from fallen enemies, and suppression when
+  rounds crack past a soldier
 - Movement: sprint, crouch (harder to spot, steadier aim), jump, lean
   around corners, and climb exterior stairs onto the rooftops
 - Physical sky with image-based lighting, sun shadows, ambient occlusion
-  (High quality), PBR textures, bullet holes, dust, sparks, blood, tracers
-  and ejected brass
-- Every sound is synthesized live, including delayed distant gunshots with
-  echo, bullet cracks, surface-specific impacts, footsteps, and reloads
+  (High quality), PBR textures, bullet holes, dust, sparks, blood, tracers,
+  ejected brass and shotgun hulls
+- Recorded sound effects from Xonotic (GPLv3+), positioned in 3D, with
+  speed-of-sound delay, distance muffling and outdoor echo
 
-Controls: WASD move, mouse look, left click fire, right click aim, Shift
-sprint, C crouch, Space jump, Q/E lean, R reload, V fire mode, Esc pause.
-On touch: left stick moves (push to the top to sprint), drag the right side
-to look, and use the on-screen buttons.
+Controls: WASD move, mouse look, left click fire, right click aim, 1-4 or the
+scroll wheel switch weapons, Shift sprint (or hold breath while scoped), C
+crouch, Space jump, Q/E lean, R reload, V fire mode, Esc pause. On touch:
+left stick moves (push to the top to sprint), drag the right side to look,
+and use the on-screen buttons (SWAP changes weapon).
 
-Graphics quality (Low / Medium / High), difficulty, look speed and FOV are
-in **Settings** on the start screen.
+Game mode, graphics quality (Low / Medium / High), difficulty, look speed
+and FOV are in **Settings** on the start screen.
 
 ### How the assets were made
 
-- The rifle, the first-person arm and enemy animations (IK-driven grips,
-  reload, aim, run, death), and all level props were built with Blender's
-  Python API. The scripts are in `tools/frontline/`
+- All four weapons, the first-person arm and soldier animations (IK-driven
+  grips, aim-down-sights, reloads, shotgun pump, run, death), and all level
+  props were built with Blender's Python API. The scripts are in
+  `tools/frontline/`
 - Textures were generated with Python/NumPy (`tools/frontline/make_textures.py`)
 - The soldier character comes from the three.js examples
 - Sources and licenses are listed in
   [`assets/frontline/CREDITS.md`](assets/frontline/CREDITS.md)
 
-To rebuild the assets (requires `pip install bpy numpy scipy pillow`):
+To rebuild the assets (requires `pip install bpy numpy scipy pillow soundfile`):
 
 ```
 python3 tools/frontline/build_operator.py Soldier.glb assets/frontline/operator.glb
 python3 tools/frontline/build_props.py assets/frontline/props.glb
 python3 tools/frontline/make_textures.py assets/frontline/tex <three.js>/examples/textures
+python3 tools/frontline/prepare_sounds.py <xonotic-data.pk3dir> assets/frontline/sounds
 ```
 
 Serve it the same way as the other demos and visit

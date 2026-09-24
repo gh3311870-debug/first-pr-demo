@@ -13,32 +13,43 @@ import { HUD } from "./hud.js";
 
 const $ = (id) => document.getElementById(id);
 
-// Enemy placements: guards, patrols and static shooters on roofs/towers.
+// Insurgent placements: guards, patrols, rooftop/tower marksmen (DMR) and shotgunners indoors.
 const PI = Math.PI;
-const SPAWNS = [
+const HOSTILES = [
   { x: 3.8, z: 47.5, yaw: -PI / 2 },
   { x: -4.5, z: 47.8, yaw: PI / 2 },
   { x: -12, z: 48, path: [[-12, 48], [-12, 33], [-28, 33], [-28, 49]] },
-  { x: 23, z: 36.4, y: 6.4, yaw: 0.5, static: true },
-  { x: -24, z: 12, yaw: PI / 2 },
+  { x: 23, z: 36.4, y: 6.4, yaw: 0.5, static: true, weapon: "DMR" },
+  { x: -24, z: 12, yaw: PI / 2, weapon: "SG" },
   { x: -36, z: -2, path: [[-36, -2], [30, -2.5], [30, -12], [-20, -12]] },
   { x: 47, z: 1, yaw: 0.2 },
-  { x: 22, z: 5, yaw: PI / 2 },
-  { x: 62, z: -62, y: 3.6, yaw: (3 * PI) / 4, static: true },
-  { x: 19, z: -25.9, y: 6.4, yaw: PI, static: true },
+  { x: 22, z: 5, yaw: PI / 2, weapon: "SG" },
+  { x: 62, z: -62, y: 3.6, yaw: (3 * PI) / 4, static: true, weapon: "DMR" },
+  { x: 19, z: -25.9, y: 6.4, yaw: PI, static: true, weapon: "DMR" },
   { x: 18, z: -21.5, yaw: PI * 0.9 },
-  { x: -4, z: -55, yaw: PI },
+  { x: -4, z: -55, yaw: PI, weapon: "SG" },
   { x: 3, z: -45, path: [[3, -45], [-10, -41], [-10, -37], [3, -38]] },
   { x: -22, z: -19, path: [[-22, -19], [-10, -20], [-10, -33], [-32, -33], [-33, -19]] },
   { x: -43.5, z: 22, yaw: -PI / 2 },
-  { x: -62, z: -62, y: 3.6, yaw: (-3 * PI) / 4, static: true },
-  { x: 25, z: -30, yaw: PI / 2 },
+  { x: -62, z: -62, y: 3.6, yaw: (-3 * PI) / 4, static: true, weapon: "DMR" },
+  { x: 25, z: -30, yaw: PI / 2, weapon: "SG" },
+  { x: 44, z: -12, path: [[44, -12], [50, 12], [36, 14], [36, -10]] },
+  { x: -20, z: -27, yaw: PI / 2, weapon: "SG" },
+  { x: 10, z: -52, yaw: PI * 0.8 },
+  { x: -46, z: -10, yaw: -PI / 2 },
+];
+// The player's squad starts with you at the south gate: [right, back] wedge slots.
+const SQUAD = [
+  { x: -2.5, z: 67, slot: [-3, 3] },
+  { x: 2.5, z: 67, slot: [3, 3] },
+  { x: -4.5, z: 69.5, slot: [-5.5, 6.5] },
+  { x: 4.5, z: 69.5, slot: [5.5, 6.5], weapon: "DMR" },
 ];
 
 const settings = loadSettings();
 
 function loadSettings() {
-  const def = { quality: defaultQuality(), sens: 1, difficulty: "regular", fov: 72 };
+  const def = { quality: defaultQuality(), sens: 1, difficulty: "regular", fov: 72, mode: "squad" };
   try {
     return { ...def, ...JSON.parse(localStorage.getItem("frontline-settings") || "{}") };
   } catch {
@@ -69,22 +80,28 @@ class Game {
     this.engine.baseFov = settings.fov;
     const bar = $("loadFill");
     const label = $("loadLabel");
+    this.audio = new Audio();
+    const soundLoad = this.audio.load();
     this.assets = await new Assets(this.engine.renderer, (f, url) => {
       bar.style.width = (f * 100).toFixed(0) + "%";
       label.textContent = "Loading " + url.split("/").pop();
     }).load();
+    label.textContent = "Loading sounds...";
+    await soundLoad;
     label.textContent = "Building the village...";
     await new Promise((r) => setTimeout(r, 30));
     this.level = new Level(this.engine, this.assets).build();
-    this.audio = new Audio();
     this.fx = new FX(this.engine, this.assets, this.level.world);
     this.input = new Input(this.engine.renderer.domElement);
     this.input.sensitivity = settings.sens;
     this.player = new Player(this.engine, this.level.world, this.audio);
     this.player.spawn(0, 65, 0);
     this.weapon = new Weapon(this.engine, this.assets, this.fx, this.audio, this.level.world);
-    this.enemies = new Enemies(this.engine, this.assets, this.level.world, this.level.nav, this.fx, this.audio, settings.difficulty);
-    this.enemies.spawn(SPAWNS);
+    const mode = settings.mode;
+    this.enemies = new Enemies(this.engine, this.assets, this.level.world, this.level.nav, this.fx, this.audio, settings.difficulty, mode);
+    const spawns = HOSTILES.map((h, i) => ({ ...h, team: mode === "ffa" ? "ffa" + i : "red" }));
+    if (mode === "squad") SQUAD.forEach((s) => spawns.push({ ...s, team: "blue", yaw: 0 }));
+    this.enemies.spawn(spawns);
     this.hud = new HUD();
     this.input.onUnlock = () => {
       if (this.playing && !this.over) this.pause();
@@ -115,7 +132,7 @@ class Game {
     this.playing = true;
     if (!this.started) {
       this.started = true;
-      this.hud.notify("Clear the village of all hostiles");
+      this.hud.notify(settings.mode === "ffa" ? "Free-for-all: everyone is hostile" : "Clear the village of all hostiles");
     }
     this.last = performance.now();
   }
@@ -136,6 +153,13 @@ class Game {
     } else if (left <= 3) {
       this.hud.notify(`${left} hostile${left > 1 ? "s" : ""} remaining`);
     }
+  }
+
+  // a kill made by an AI soldier
+  onAiKill(victim, killer) {
+    if (victim.ally) this.hud.feed("SQUADMATE DOWN", false);
+    else if (killer && killer.ally) this.hud.feed("SQUAD KILL", false);
+    if (this.enemies.aliveCount === 0 && !this.over) setTimeout(() => this.finish(true), 2200);
   }
 
   onNearMiss() {
@@ -211,6 +235,13 @@ function setupMenu() {
   q.value = settings.quality;
   q.onchange = () => {
     settings.quality = q.value;
+    saveSettings();
+    location.reload();
+  };
+  const m = $("optMode");
+  m.value = settings.mode;
+  m.onchange = () => {
+    settings.mode = m.value;
     saveSettings();
     location.reload();
   };

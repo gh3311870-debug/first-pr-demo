@@ -186,10 +186,17 @@ export class FX {
     this.brass.frustumCulled = false;
     this.brass.castShadow = true;
     this.scene.add(this.brass);
+    const hg = new THREE.CylinderGeometry(0.0105, 0.0105, 0.07, 10);
+    hg.rotateX(Math.PI / 2);
+    this.hulls = new THREE.InstancedMesh(hg, new THREE.MeshStandardMaterial({ color: 0x7a1010, roughness: 0.5 }), 20);
+    this.hulls.count = 0;
+    this.hulls.frustumCulled = false;
+    this.hulls.castShadow = true;
+    this.scene.add(this.hulls);
     this.shells = [];
   }
 
-  impact(point, normal, surface) {
+  impact(point, normal, surface, scale = 1) {
     const n = normal;
     const colors = {
       sand: [0xb89a74, 0.9], sandbag: [0xa08a68, 0.8], plaster: [0xcdbba0, 0.9], concrete: [0xa8a49c, 0.85],
@@ -197,7 +204,7 @@ export class FX {
     };
     const [c, a] = colors[surface] || colors.sand;
     const col = new THREE.Color(c);
-    const count = surface === "metal" ? 2 : 5;
+    const count = Math.max(1, Math.round((surface === "metal" ? 2 : 5) * scale));
     for (let i = 0; i < count; i++) {
       const v = n.clone().multiplyScalar(1.5 + Math.random() * 2.5)
         .add(new THREE.Vector3((Math.random() - 0.5) * 1.6, Math.random() * 1.2, (Math.random() - 0.5) * 1.6));
@@ -205,7 +212,7 @@ export class FX {
         size: 0.12, sizeEnd: 0.9 + Math.random() * 0.6, color: col, alpha: a * 0.7, drag: 3.5, gravity: -0.4 });
     }
     // debris chunks
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < Math.round(6 * scale); i++) {
       const v = n.clone().multiplyScalar(2 + Math.random() * 3)
         .add(new THREE.Vector3((Math.random() - 0.5) * 3, Math.random() * 2, (Math.random() - 0.5) * 3));
       this.mist.spawn({ pos: point.clone(), vel: v, life: 0.5, size: 0.025, sizeEnd: 0.02, color: col.clone().multiplyScalar(0.6),
@@ -279,9 +286,9 @@ export class FX {
     }
   }
 
-  ejectShell(pos, vel) {
-    if (this.shells.length >= 40) this.shells.shift();
-    this.shells.push({ pos: pos.clone(), vel: vel.clone(), rot: new THREE.Euler(Math.random() * 6, Math.random() * 6, 0),
+  ejectShell(pos, vel, kind = "brass") {
+    if (this.shells.length >= 50) this.shells.shift();
+    this.shells.push({ kind, pos: pos.clone(), vel: vel.clone(), rot: new THREE.Euler(Math.random() * 6, Math.random() * 6, 0),
       spin: new THREE.Vector3(20 * Math.random(), 30, 10), life: 0, rest: false });
   }
 
@@ -312,6 +319,7 @@ export class FX {
       if (s.t <= 0) s.s.visible = false;
     }
     let i = 0;
+    let h = 0;
     const keep = [];
     for (const sh of this.shells) {
       sh.life += dt;
@@ -327,7 +335,7 @@ export class FX {
           sh.pos.y = g + 0.005;
           if (Math.abs(sh.vel.y) < 0.8) {
             sh.rest = true;
-            sh.rot.x = Math.PI / 2 * 0;
+            sh.rot.x = 0;
             sh.rot.z = 0;
           }
           sh.vel.y *= -0.35;
@@ -337,10 +345,13 @@ export class FX {
         }
       }
       tmpM.compose(sh.pos, tmpQ.setFromEuler(sh.rot), tmpV.set(1, 1, 1));
-      this.brass.setMatrixAt(i++, tmpM);
+      if (sh.kind === "hull" && h < 20) this.hulls.setMatrixAt(h++, tmpM);
+      else if (i < 40) this.brass.setMatrixAt(i++, tmpM);
     }
     this.shells = keep;
     this.brass.count = i;
     this.brass.instanceMatrix.needsUpdate = true;
+    this.hulls.count = h;
+    this.hulls.instanceMatrix.needsUpdate = true;
   }
 }
