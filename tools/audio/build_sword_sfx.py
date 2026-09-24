@@ -631,6 +631,73 @@ def guard_break(seed):
     return trim(y)
 
 
+def fireball_cast(seed):
+    """Ignition whoomph: a rising roar of filtered noise over a sub thump, with crackle."""
+    rng = np.random.default_rng(seed)
+    dur = 1.3
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    env = np.minimum(1, t / 0.08) * np.exp(-np.maximum(0, t - 0.15) / 0.35)
+
+    def formants(tt):
+        f = 250 + 1400 * min(1.0, tt / 0.25) * math.exp(-max(0.0, tt - 0.25) / 0.5)
+        return [(f, f * 0.9, 1.0), (f * 2.2, f * 1.4, 0.4)]
+
+    roar = resonate_blocks(noise(n, rng), formants, 128)
+    roar = roar / (np.max(np.abs(roar)) + 1e-9) * env
+    y = roar
+    place(y, thump(rng, 90, 35, 0.12, 0.9), 0)
+    tt = 0.02
+    while tt < 0.9:
+        tt += rng.exponential(1 / 40)
+        pop = hp(noise(300, rng), rng.uniform(1500, 4000)) * np.exp(-np.arange(300) / rng.uniform(10, 40))
+        place(y, pop * rng.uniform(0.1, 0.6) * math.exp(-tt / 0.4), tt)
+    return trim(soft_clip(hp(y, 40) * 1.3, 1.2))
+
+
+def explosion(seed):
+    rng = np.random.default_rng(seed)
+    dur = 2.4
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    y = np.zeros(n)
+    f = 28 + 60 * np.exp(-t / 0.08)
+    y += np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t / 0.35) * 1.4
+    body = lp(noise(n, rng), 900) * np.exp(-t / 0.5) * np.minimum(1, t / 0.004)
+    y += body * 1.2
+    y += bp(noise(n, rng), 1500, 7000) * np.exp(-t / 0.06) * 0.8
+    tt = 0.05
+    while tt < 1.8:  # debris and flame crackle tail
+        tt += rng.exponential(1 / 30)
+        pop = hp(noise(400, rng), rng.uniform(800, 3500)) * np.exp(-np.arange(400) / rng.uniform(15, 60))
+        place(y, pop * rng.uniform(0.1, 0.7) * math.exp(-tt / 0.6), tt)
+    place(y, sand_crunch(rng, 0.6, 2500, 0.4, 400, 2500), 0.05)
+    return trim(soft_clip(y * 1.4, 1.6))
+
+
+def burn_loop(seed):
+    rng = np.random.default_rng(seed)
+    dur = 4.0
+    n = int(dur * SR)
+    roar = lp(noise(n, rng), 700) * (0.7 + 0.3 * lp(noise(n, rng), 4) * 4)
+    y = roar + bp(noise(n, rng), 1000, 4000) * 0.12
+    tt = 0.0
+    while tt < dur:
+        tt += rng.exponential(1 / 22)
+        pop = hp(noise(400, rng), rng.uniform(1500, 4500)) * np.exp(-np.arange(400) / rng.uniform(12, 50))
+        place(y, pop * rng.uniform(0.2, 1.1) ** 2, tt)
+    return loopify(y, 0.5)
+
+
+def kick_hit(seed):
+    rng = np.random.default_rng(seed)
+    y = np.zeros(int(0.8 * SR))
+    place(y, thump(rng, 120, 45, 0.09, 1.5), 0)
+    place(y, armor_clank(rng, 0.5, 0.6, 500, 3200, 9, 1.0), 0.002)
+    place(y, mail_rattle(rng, 0.3, 900, 0.12, 0.08), 0.004)
+    return trim(soft_clip(lp(y, 6000) * 1.2, 1.2))
+
+
 # ---------------------------------------------------------------------------
 
 def main():
@@ -654,6 +721,9 @@ def main():
         ("scream", 4, lambda i: voice(950 + i, "scream")),
         ("death", 4, lambda i: voice(1000 + i, "death")),
         ("drum", 2, lambda i: drum(1050 + i, big=(i == 0))),
+        ("fireball", 3, lambda i: fireball_cast(1400 + i)),
+        ("explosion", 3, lambda i: explosion(1450 + i)),
+        ("kick", 3, lambda i: kick_hit(1500 + i)),
     ]
     for name, count, fn in jobs:
         for i in range(count):
@@ -664,6 +734,7 @@ def main():
     write("cheer_1", cheer(1201), stereo=True, peak=0.85)
     write("cheerbig_0", cheer(1250, big=True), stereo=True, peak=0.9)
     write("fire_0", fire_loop(1300), stereo=True, peak=0.6)
+    write("burn_0", burn_loop(1350), peak=0.7)
     print("rendered ambience")
     with open(os.path.join(OUT, "manifest.json"), "w") as fh:
         json.dump(MANIFEST, fh, indent=1, sort_keys=True)

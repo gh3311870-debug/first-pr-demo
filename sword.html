@@ -87,7 +87,7 @@
   #btnBlock { width: 86px; height: 86px; right: calc(22px + var(--safe-r)); bottom: calc(30px + var(--safe-b)); }
   #btnDodge { width: 62px; height: 62px; right: calc(120px + var(--safe-r)); bottom: calc(22px + var(--safe-b)); }
   #btnLock { width: 50px; height: 50px; right: calc(34px + var(--safe-r)); bottom: calc(132px + var(--safe-b)); font-size: 10px; }
-  #swipeHint { position: absolute; right: calc(16px + var(--safe-r)); bottom: calc(196px + var(--safe-b)); font-size: 11px; opacity: 0.6; text-align: right; text-shadow: 0 1px 3px #000; }
+  #swipeHint { position: absolute; right: calc(16px + var(--safe-r)); bottom: calc(250px + var(--safe-b)); font-size: 11px; opacity: 0.6; text-align: right; text-shadow: 0 1px 3px #000; }
 
   #menu, #loading, #pauseMenu, #endScreen { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box; }
   #menu { background: linear-gradient(rgba(10,5,5,0.2), rgba(10,5,5,0.75)); overflow-y: auto; justify-content: safe center; }
@@ -108,7 +108,19 @@
   .mbtn.alt { background: rgba(0,0,0,0.4); font-size: 13px; }
   .opts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 10px; font-size: 13px; }
   .opt { pointer-events: auto; padding: 6px 10px; border: 1px solid rgba(255,230,200,0.35); background: rgba(0,0,0,0.4); color: var(--ink); font-family: inherit; font-size: 12px; cursor: pointer; letter-spacing: 1px; }
-  .opt.sel { border-color: var(--gold); background: rgba(217,179,90,0.25); }
+  .opt.sel, .wopt.sel { border-color: var(--gold); background: rgba(217,179,90,0.25); }
+  .wopt { pointer-events: auto; padding: 6px 10px; border: 1px solid rgba(255,230,200,0.35); background: rgba(0,0,0,0.4); color: var(--ink); font-family: inherit; font-size: 12px; cursor: pointer; letter-spacing: 1px; }
+  .optRow { flex-wrap: wrap; justify-content: center; }
+  #fbRow { display: flex; align-items: center; gap: 6px; font-size: 10px; letter-spacing: 2px; opacity: 0.85; }
+  #fbRow .bar { flex: 1; margin: 0; height: 5px; }
+  #fbFill { background: #7a3a14; }
+  #fbFill.ready { background: linear-gradient(90deg, #ff9a2e, #ffd36a); box-shadow: 0 0 8px #ff8a2a; }
+  #prompt { position: absolute; left: 50%; top: 62%; transform: translateX(-50%); font-size: 15px; letter-spacing: 4px; color: var(--ink);
+            text-shadow: 0 0 10px #000, 0 0 2px #000; padding: 6px 14px; border: 1px solid rgba(217,179,90,0.6); background: rgba(40,6,6,0.55); white-space: nowrap; }
+  #prompt b { color: var(--gold); font-weight: normal; margin-right: 6px; }
+  #btnKick { width: 58px; height: 58px; right: calc(128px + var(--safe-r)); bottom: calc(100px + var(--safe-b)); }
+  #btnFire { width: 58px; height: 58px; right: calc(112px + var(--safe-r)); bottom: calc(172px + var(--safe-b)); }
+  #btnAct { width: 96px; height: 40px; border-radius: 6px; right: calc(22px + var(--safe-r)); bottom: calc(196px + var(--safe-b)); background: rgba(179,18,27,0.65); font-size: 11px; }
   .optRow { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
   .optRow label { width: 70px; text-align: right; font-size: 11px; letter-spacing: 2px; opacity: 0.8; }
   #help { max-width: 560px; font-size: 13px; line-height: 1.6; background: rgba(0,0,0,0.55); border: 1px solid rgba(255,230,200,0.2); padding: 12px 18px; margin-top: 12px; text-align: left; }
@@ -141,6 +153,7 @@
     <div class="barLabel">VIGOUR</div>
     <div class="bar"><div id="hpGhost"></div><div id="hpFill"></div></div>
     <div class="bar small"><div id="stFill"></div></div>
+    <div id="fbRow">FIRE<div class="bar"><div id="fbFill"></div></div></div>
   </div>
   <div id="waveBox"><div id="waveText">WAVE I</div><div id="enemyText"></div></div>
   <div id="scoreBox"><div id="scoreText">0</div><div id="killText"></div></div>
@@ -148,6 +161,7 @@
   <div id="ebars"></div>
   <div id="dirInd"><span id="dL"></span><span id="dR"></span><span id="dU"></span><span id="dD"></span><div id="dirDot"></div></div>
   <div id="banner"></div>
+  <div id="prompt" class="hidden"></div>
   <div id="feed"></div>
   <div id="vignette"></div>
   <div id="bloodScreen"></div>
@@ -160,6 +174,9 @@
     <button id="btnLock" class="tbtn">LOCK</button>
     <button id="btnDodge" class="tbtn">DODGE</button>
     <button id="btnBlock" class="tbtn">BLOCK</button>
+    <button id="btnKick" class="tbtn">KICK</button>
+    <button id="btnFire" class="tbtn">FIRE</button>
+    <button id="btnAct" class="tbtn hidden">EXECUTE</button>
   </div>
 </div>
 
@@ -170,13 +187,15 @@
   <button class="mbtn alt" id="helpBtn">How to fight</button>
   <div class="opts">
     <div class="optRow"><label>GORE</label><button class="opt" data-k="gore" data-v="0">Off</button><button class="opt" data-k="gore" data-v="1">Bloody</button><button class="opt" data-k="gore" data-v="2">Brutal</button></div>
+    <div class="optRow"><label>WEAPON</label><button class="wopt" data-w="longsword">Longsword</button><button class="wopt" data-w="greatsword">Greatsword</button><button class="wopt" data-w="daneaxe">Dane axe</button><button class="wopt" data-w="warhammer">War hammer</button></div>
     <div class="optRow"><label>QUALITY</label><button class="opt" data-k="quality" data-v="0">Fast</button><button class="opt" data-k="quality" data-v="1">Pretty</button></div>
   </div>
   <div id="help" class="hidden">
     <b>Desktop</b> — click to grab the mouse. <b>WASD</b> move, <b>Shift</b> sprint, <b>Space</b> dodge.<br>
     <b>Left click</b> strikes <i>in the direction you last moved the mouse</i>: flick left or right to slash, down to chop, up to thrust. <b>Q</b> chop, <b>E</b> thrust.<br>
     <b>Right click</b> (hold) blocks. Block just before a blow lands to <b>parry</b> and stagger your foe. <b>Tab</b> toggles lock-on.<br>
-    <b>Touch</b> — left thumb moves. Swipe the right side to strike in that direction, tap for a quick slash. Hold <b>BLOCK</b>, tap <b>DODGE</b>.<br>
+    <b>C</b> kicks through a guard. <b>X</b> hurls a fireball that sets knights alight. <b>F</b> executes a staggered or maimed foe. <b>R</b> takes up a fallen weapon.<br>
+    <b>Touch</b> — left thumb moves. Swipe the right side to strike in that direction, tap for a quick slash. Hold <b>BLOCK</b>, tap <b>DODGE</b>, <b>KICK</b> or <b>FIRE</b>; <b>EXECUTE</b> and <b>TAKE</b> appear when you can use them.<br>
     Heavy blows can take limbs. A killing blow to the head takes the head. Staggered and crippled foes cannot defend themselves.
   </div>
   <div id="bestLine"></div>
@@ -225,7 +244,7 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem('bns_' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem('bns_' + k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } },
 };
-const settings = { gore: store.get('gore', 2), quality: store.get('quality', IS_TOUCH ? 0 : 1), muted: store.get('muted', false) };
+const settings = { gore: store.get('gore', 2), quality: store.get('quality', IS_TOUCH ? 0 : 1), muted: store.get('muted', false), weapon: store.get('weapon', 'longsword') };
 if (QS.has('gore')) settings.gore = +QS.get('gore');
 if (QS.has('q')) settings.quality = +QS.get('q');
 
@@ -371,7 +390,7 @@ function loadGLB(name) {
     loader.load('assets/sword/' + name + '.glb', resolve, (e) => {
       if (e.total) loadProgress[name] = e.loaded / e.total;
       const vals = Object.values(loadProgress);
-      $('loadFill').style.width = (vals.reduce((a, b) => a + b, 0) / 4 * 100).toFixed(0) + '%';
+      $('loadFill').style.width = (vals.reduce((a, b) => a + b, 0) / 5 * 100).toFixed(0) + '%';
     }, reject);
   });
 }
@@ -460,7 +479,7 @@ $('bloodScreen').style.backgroundImage = `url(${screenBloodURL()})`;
 // Particle systems (blood, mist, sparks, embers)
 // ============================================================================
 class Particles {
-  constructor(max, { color, additive = false, sizeMul = 1, soft = 0.3, gravity = 9.8, drag = 0.2, ground = true, onGround = null, glow = false }) {
+  constructor(max, { color, additive = false, sizeMul = 1, soft = 0.3, gravity = 9.8, drag = 0.2, ground = true, onGround = null, glow = false, opacity = 1 }) {
     this.max = max; this.i = 0;
     this.pos = new Float32Array(max * 3); this.vel = new Float32Array(max * 3);
     this.life = new Float32Array(max); this.maxLife = new Float32Array(max);
@@ -475,12 +494,12 @@ class Particles {
     geo.setAttribute('aAlpha', this.alphaAttr);
     geo.boundingSphere = new THREE.Sphere(new V3(), 1e4);
     this.mat = new THREE.ShaderMaterial({
-      uniforms: { uScale: { value: 1 }, uColor: { value: new THREE.Color(color) }, uSoft: { value: soft }, uMul: { value: sizeMul } },
+      uniforms: { uScale: { value: 1 }, uColor: { value: new THREE.Color(color) }, uSoft: { value: soft }, uMul: { value: sizeMul }, uOpacity: { value: opacity } },
       vertexShader: `attribute float aSize; attribute float aAlpha; varying float vA; uniform float uScale, uMul;
         void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = max(aSize * uMul * uScale / -mv.z, 1.0); gl_Position = projectionMatrix * mv; vA = aAlpha; }`,
-      fragmentShader: `varying float vA; uniform vec3 uColor; uniform float uSoft;
+      fragmentShader: `varying float vA; uniform vec3 uColor; uniform float uSoft, uOpacity;
         void main(){ vec2 c = gl_PointCoord - 0.5; float d = length(c); if (d > 0.5 || vA <= 0.0) discard;
-          float a = smoothstep(0.5, 0.5 - uSoft, d) * vA;
+          float a = smoothstep(0.5, 0.5 - uSoft, d) * vA * uOpacity;
           ${glow ? 'vec3 col = uColor * (1.0 + 2.0 * smoothstep(0.3, 0.0, d));' : 'vec3 col = uColor * (0.75 + 0.7 * smoothstep(0.3, 0.0, length(c - vec2(-0.13, -0.13))));'}
           gl_FragColor = vec4(col, a); }`,
       transparent: true, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
@@ -581,6 +600,10 @@ function initFX() {
     mist: new Particles(500, { color: 0x4a0306, soft: 0.5, gravity: 0.6, drag: 2.5, ground: false }),
     sparks: new Particles(500, { color: new THREE.Color(5, 2.6, 0.9), additive: true, soft: 0.2, gravity: 7, drag: 1.2, glow: true }),
     embers: new Particles(400, { color: new THREE.Color(4, 1.4, 0.4), additive: true, soft: 0.4, gravity: -0.6, drag: 0.6, ground: false, glow: true }),
+    fire: new Particles(1600, { color: new THREE.Color(4.5, 1.7, 0.35), additive: true, soft: 0.5, gravity: -2.4, drag: 1.6, ground: false, glow: true }),
+    smoke: new Particles(600, { color: 0x3a322c, soft: 0.5, gravity: -0.9, drag: 1.3, ground: false, opacity: 0.32 }),
+    scorch: new DecalPool(poolTex, 14, { rough: 0.95, color: 0x1a1a1a, y: 0.0035 }),
+    fireLights: [0, 1, 2].map(() => { const l = new THREE.PointLight(0xff7a2a, 0, 9, 1.8); scene.add(l); return l; }),
     flash: new THREE.PointLight(0xffc070, 0, 6, 2),
     tick(dt) { dropBudget = Math.min(160, dropBudget + 240 * dt); },
   };
@@ -1091,6 +1114,16 @@ const ATK = {
   atk_over: { dur: 1.05, a0: 0.41, a1: 0.66, dmg: 42, cost: 18, block: 'block_high', lunge: 1.1, combo: 0.78 },
   atk_thrust: { dur: 0.95, a0: 0.38, a1: 0.6, dmg: 28, cost: 12, block: 'block_mid', lunge: 2.6, combo: 0.72 },
 };
+// Weapon handling. base/tip: hit segment along the weapon (metres from the right fist);
+// pad widens it for axe bits and hammer heads; block scales the stamina a defender loses blocking it.
+const WEAPONS = {
+  longsword: { name: 'Longsword', speed: 1.0, dmg: 1.0, sever: 1.0, thrust: 1.0, base: 0.12, tip: 1.05, pad: 0.02, block: 1.0 },
+  greatsword: { name: 'Greatsword', speed: 0.86, dmg: 1.3, sever: 1.3, thrust: 1.1, base: 0.2, tip: 1.44, pad: 0.02, block: 1.15 },
+  daneaxe: { name: 'Dane axe', speed: 0.88, dmg: 1.35, sever: 1.9, thrust: 0.45, base: 0.82, tip: 1.22, pad: 0.1, block: 0.95 },
+  warhammer: { name: 'War hammer', speed: 0.93, dmg: 1.2, sever: 0, thrust: 0.6, base: 0.88, tip: 1.12, pad: 0.09, block: 1.45, crush: true },
+};
+const WEAPON_KEYS = Object.keys(WEAPONS);
+const FIREBALL_COOLDOWN = 7;
 const PART_MULT = { head: 1.9, torso: 1.0, upperarm_L: 0.6, upperarm_R: 0.6, forearm_L: 0.55, forearm_R: 0.55, thigh_L: 0.7, thigh_R: 0.7, shin_L: 0.6, shin_R: 0.6 };
 const STUMP = { head: [0.056, 0.045, true], upperarm_L: [0.05, 0.0], upperarm_R: [0.05, 0.0], forearm_L: [0.043, 0.0], forearm_R: [0.043, 0.0], thigh_L: [0.072, 0.02], thigh_R: [0.072, 0.02], shin_L: [0.056, 0.0], shin_R: [0.056, 0.0] };
 const HELMS = { great: 'helm_great_geo', bascinet: 'helm_bascinet_geo', barbute: 'helm_barbute_geo' };
@@ -1107,7 +1140,7 @@ const PLAYER_LOOK = { helm: 'great', tabard: 0x7a0a0e, emblem: 0xd8b04a, steel: 
 
 let fighterId = 0;
 class Fighter {
-  constructor({ team, isPlayer = false, look, name, stats = {} }) {
+  constructor({ team, isPlayer = false, look, name, stats = {}, weapon = 'longsword' }) {
     this.id = fighterId++;
     this.team = team; this.isPlayer = isPlayer; this.look = look; this.name = name;
     this.root = new THREE.Group();
@@ -1127,7 +1160,9 @@ class Fighter {
     if (this.n.tabard_geo) this.n.tabard_geo.visible = !!look.top;
 
     // stats
-    Object.assign(this, { maxHp: 100, dmgMult: 1, atkSpeed: 1, moveSpeed: 1 }, stats);
+    Object.assign(this, { maxHp: 100, dmgMult: 1, atkSpeed: 1, moveSpeed: 1, caster: false }, stats);
+    this.baseAtkSpeed = this.atkSpeed;
+    this.castCool = rand(3, 6); this.burnT = 0; this.charU = { value: 0 };
     this.hp = this.maxHp; this.stamina = 100; this.staminaDelay = 0;
     this.pos = this.root.position; this.yaw = 0; this.vel = new V3(); this.moveIntent = new V3(); this.faceYaw = 0;
     this.state = 'free'; this.stateT = 0; this.alive = true; this.atk = null; this.blockName = 'block_mid'; this.blockT = 0;
@@ -1173,16 +1208,11 @@ class Fighter {
       .multiply(HL0);
     this.KR = T0.clone().invert().multiply(HR0);
     this.KL = HR0.clone().invert().multiply(XL);
-    // sword in the right hand
+    // weapon in the right hand
     const S0 = new THREE.Matrix4().makeBasis(new V3(0, -1, 0), new V3(0, 0, 1), new V3(-1, 0, 0)).setPosition(fistR);
-    this.sword = A.sword.scene.children[0].clone(true);
+    this.gripLocal = HR0.clone().invert().multiply(S0);
     this.swordBlood = { uBlood: { value: 0 }, uSeed: { value: new V3(rand(0, 50), 0, rand(0, 50)) } };
-    const swCache = new Map();
-    this.sword.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material = this.swordMaterial(o.material, swCache); } });
-    this.sword.matrixAutoUpdate = true;
-    const local = HR0.clone().invert().multiply(S0);
-    local.decompose(this.sword.position, this.sword.quaternion, this.sword.scale);
-    n.hand_R.add(this.sword);
+    this.equip(weapon);
     // rest directions of severable bones (in their own local space)
     this.boneDir = {};
     const dirOf = (bone, child) => {
@@ -1209,6 +1239,20 @@ class Fighter {
     this.blade = { base: new V3(), tip: new V3(), pBase: new V3(), pTip: new V3(), valid: false };
   }
 
+  equip(type) {
+    this.weapon = type; this.wcfg = WEAPONS[type];
+    this.atkSpeed = this.baseAtkSpeed * this.wcfg.speed;
+    const src = type === 'longsword' ? A.sword.scene.children[0] : A.weapons.getObjectByName(type);
+    this.sword = src.clone(true);
+    this.sword.position.set(0, 0, 0); this.sword.quaternion.identity();
+    const cache = new Map();
+    this.sword.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material = this.swordMaterial(o.material, cache); } });
+    this.gripLocal.decompose(this.sword.position, this.sword.quaternion, this.sword.scale);
+    this.n.hand_R.add(this.sword);
+    this.swordBlood.uBlood.value = 0;
+    this.hasSword = true;
+  }
+
   skinMaterial(m, cache) {
     if (cache.has(m)) return cache.get(m);
     const c = m.clone();
@@ -1216,7 +1260,7 @@ class Fighter {
     if (m.name === 'tabard') c.color.set(L.tabard);
     else if (m.name === 'emblem') c.color.set(L.emblem);
     else if (m.name === 'steel' || m.name === 'steel_dark') { c.color.multiplyScalar(L.steel); c.envMapIntensity = 1.2; }
-    if (goreScale()) injectBlood(c, this.bloodU);
+    injectBlood(c, this.bloodU, 14, false, this.charU);
     cache.set(m, c);
     return c;
   }
@@ -1225,6 +1269,7 @@ class Fighter {
     const c = m.clone();
     if (m.name === 'blade') c.envMapIntensity = 1.6;
     if (goreScale() && m.name === 'blade') injectBlood(c, this.swordBlood, 40, true);
+    if (m.name === 'haft') c.envMapIntensity = 0.5;
     cache.set(m, c);
     return c;
   }
@@ -1260,7 +1305,29 @@ class Fighter {
   setState(s) { this.state = s; this.stateT = 0; }
 
   // ---------------- actions ----------------
-  canAct() { return this.alive && this.state !== 'crippled'; }
+  canAct() { return this.alive && this.state !== 'crippled' && this.state !== 'executed' && this.state !== 'execute'; }
+  isHelpless() { return this.alive && (this.state === 'stagger' || this.state === 'crippled' || this.state === 'executed' || (this.hp < this.maxHp * 0.2 && this.state === 'hit')); }
+  startKick() {
+    if (!this.canAct() || !(this.state === 'free' || this.state === 'block') || this.stamina < 10) return false;
+    this.useStamina(16);
+    this.setState('kick'); this.kickDone = false;
+    this.playFull('kick', { fade: 0.06, speed: 1.1 });
+    sfx.voice(this.pos, 'effort', this.voicePitch());
+    return true;
+  }
+  startCast() {
+    if (!this.canAct() || !(this.state === 'free' || this.state === 'block') || this.castCool > 0 || !this.hasSword) return false;
+    this.castCool = this.isPlayer ? FIREBALL_COOLDOWN : rand(9, 13);
+    this.setState('cast'); this.castDone = false;
+    this.playUpper('cast', { fade: 0.08 });
+    sfx.play('fireball', this.pos, { vol: 0.8 });
+    return true;
+  }
+  ignite(t = 3.5) {
+    if (!this.alive) return;
+    if (this.burnT <= 0) { sfx.play('burn', this.pos, { vol: 0.7 }); sfx.voice(this.pos, 'scream', this.voicePitch()); }
+    this.burnT = Math.max(this.burnT, t);
+  }
   startAttack(type) {
     if (!this.canAct() || !this.hasSword) return false;
     const cfg = ATK[type];
@@ -1299,11 +1366,19 @@ class Fighter {
     if (this.alive) {
       if (this.staminaDelay > 0) this.staminaDelay -= dt;
       else this.stamina = Math.min(100, this.stamina + (this.state === 'block' ? 10 : 24) * dt);
+      if (this.castCool > 0) this.castCool -= dt;
+      if (this.burnT > 0) {
+        this.burnT -= dt;
+        this.hp -= 7 * dt;
+        this.charU.value = Math.min(0.55, this.charU.value + dt * 0.12);
+        burnFX(this, dt);
+        if (this.hp <= 0) this.die({ cause: 'fire', dir: this.forward(new V3()).negate() });
+      }
       if (this.bleedRate > 0) {
         this.hp -= this.bleedRate * dt;
         if (this.hp <= 0) this.die({ cause: 'bleed', dir: new V3(0, 0, 1).applyAxisAngle(UP, this.yaw) });
       }
-    }
+    } else if (this.burnT > 0) { this.burnT -= dt; burnFX(this, dt); }
     this.updateState(dt);
     this.updateMovement(dt);
     this.updateAnimation(dt);
@@ -1331,6 +1406,20 @@ class Fighter {
       if (this.stateT > 1.05) { this.setState('free'); this.stopFull(0.25); this.playUpper('idle', { loop: true, fade: 0.01 }); }
     } else if (s === 'dodge') {
       if (this.stateT > 0.5) { this.setState('free'); this.stopFull(0.15); this.playUpper('idle', { loop: true, fade: 0.01 }); }
+    } else if (s === 'kick') {
+      if (!this.kickDone && this.stateT > 0.24 / 1.1) { this.kickDone = true; kickHit(this); }
+      if (this.stateT > 0.68) { this.setState('free'); this.stopFull(0.18); this.playUpper('idle', { loop: true, fade: 0.01 }); }
+    } else if (s === 'cast') {
+      if (!this.castDone && this.stateT > 0.32) { this.castDone = true; launchFireball(this); }
+      if (this.stateT > 0.8) { this.setState('free'); this.playUpper('idle', { loop: true, fade: 0.2 }); }
+    } else if (s === 'execute') {
+      if (this.stateT > 1.6) { this.setState('free'); this.stopFull(0.25); this.playUpper('idle', { loop: true, fade: 0.01 }); }
+    } else if (s === 'executed') {
+      if (this.execBy) {
+        const want = _v1.copy(this.execBy.pos).addScaledVector(this.execBy.forward(_v2), 1.3);
+        this.pos.x = damp(this.pos.x, want.x, 10, dt); this.pos.z = damp(this.pos.z, want.z, 10, dt);
+        this.faceYaw = this.yaw = dampAngle(this.yaw, this.execBy.yaw + Math.PI, 10, dt);
+      }
     } else if (s === 'crippled') {
       if (this.stateT > 7) this.die({ cause: 'bleed', anim: 'death_kneel', from: 1.3 });
     }
@@ -1340,14 +1429,14 @@ class Fighter {
     const s = this.state;
     let speed = 0;
     const desired = _v1.set(0, 0, 0);
-    if (this.alive && s !== 'crippled') {
+    if (this.alive && s !== 'crippled' && s !== 'executed' && s !== 'execute') {
       if (s === 'dodge') {
         const k = Math.max(0, 1 - this.stateT / 0.42);
         desired.copy(this.dodgeVel).multiplyScalar(k * k * 1.6);
         this.vel.copy(desired);
       } else {
         let mult = 1;
-        if (s === 'attack') mult = 0.35; else if (s === 'block') mult = 0.55; else if (s === 'stagger' || s === 'recoil') mult = 0.15; else if (s === 'hit') mult = 0.4;
+        if (s === 'attack') mult = 0.35; else if (s === 'block') mult = 0.55; else if (s === 'kick' || s === 'cast') mult = 0.2; else if (s === 'stagger' || s === 'recoil') mult = 0.15; else if (s === 'hit') mult = 0.4;
         const base = (this.sprint && s === 'free' ? 4.6 : 2.0) * this.moveSpeed;
         desired.copy(this.moveIntent).multiplyScalar(base * mult);
         if (s === 'attack') {
@@ -1444,12 +1533,12 @@ class Fighter {
 
   solveIK() {
     const n = this.n;
-    if (!this.hasSword || !this.alive || this.state === 'crippled') return;
+    if (!this.hasSword || !this.alive || this.state === 'crippled' || this.state === 'executed') return;
     // right hand follows the animated sword target
     _m1.multiplyMatrices(n.sword_ik.matrixWorld, this.KR);
     if (!this.severed.has('upperarm_R') && !this.severed.has('forearm_R')) this.solveArm('R', _m1);
     // left hand holds the grip behind the right fist
-    if (!this.severed.has('upperarm_L') && !this.severed.has('forearm_L')) {
+    if (!this.severed.has('upperarm_L') && !this.severed.has('forearm_L') && this.state !== 'cast') {
       _m2.multiplyMatrices(n.hand_R.matrixWorld, this.KL);
       this.solveArm('L', _m2);
     }
@@ -1534,8 +1623,8 @@ class Fighter {
     B.pBase.copy(B.base); B.pTip.copy(B.tip);
     if (this.sword && this.hasSword) {
       this.sword.updateWorldMatrix(true, false);
-      B.base.set(0, 0.12, 0).applyMatrix4(this.sword.matrixWorld);
-      B.tip.set(0, 1.05, 0).applyMatrix4(this.sword.matrixWorld);
+      B.base.set(0, this.wcfg.base, 0).applyMatrix4(this.sword.matrixWorld);
+      B.tip.set(0, this.wcfg.tip, 0).applyMatrix4(this.sword.matrixWorld);
       if (!B.valid) { B.pBase.copy(B.base); B.pTip.copy(B.tip); B.valid = true; }
     } else B.valid = false;
   }
@@ -1547,7 +1636,8 @@ class Fighter {
   // ---------------- damage ----------------
   receiveHit(att, part, point, swingDir) {
     const cfg = att.atk.cfg;
-    let dmg = cfg.dmg * PART_MULT[part] * att.dmgMult * rand(0.9, 1.12);
+    const W = att.wcfg;
+    let dmg = cfg.dmg * PART_MULT[part] * att.dmgMult * W.dmg * (att.atk.type === 'atk_thrust' ? W.thrust : 1) * rand(0.9, 1.12);
     if (this.state === 'stagger' || this.state === 'crippled') dmg *= 1.4;
     const fatal = this.hp - dmg <= 0;
     this.hp -= dmg;
@@ -1569,7 +1659,7 @@ class Fighter {
     // the player only ever loses the off hand to a non-lethal blow; losing the sword arm or a leg ends a run unfairly
     const allowed = !this.isPlayer || part === 'upperarm_L' || part === 'forearm_L';
     if (gk && limb && allowed && dmg >= 16) {
-      const chance = (part.startsWith('forearm') ? 0.3 : part.startsWith('upperarm') ? 0.18 : 0.12) * (settings.gore === 2 ? 1.4 : 1);
+      const chance = (part.startsWith('forearm') ? 0.3 : part.startsWith('upperarm') ? 0.18 : 0.12) * (settings.gore === 2 ? 1.4 : 1) * W.sever;
       if (Math.random() < chance) {
         this.sever(part, swingDir);
         if (part.startsWith('thigh') || part.startsWith('shin')) { this.die({ part, dir: swingDir, attacker: att, noSever: true, atkType: att.atk.type }); return; }
@@ -1581,7 +1671,7 @@ class Fighter {
     if (this.state === 'attack' && this.atk.t < this.atk.cfg.a0) { /* interrupted */ }
     if (this.state === 'crippled') return;
     this.stopFull(0.1);
-    if (dmg > 34 || part === 'head') { this.setState('stagger'); this.playFull('stagger', { fade: 0.06 }); }
+    if (dmg > 34 || part === 'head' || (W.crush && part === 'torso')) { this.setState('stagger'); this.playFull('stagger', { fade: 0.06 }); }
     else { this.setState('hit'); this.playUpper('hit_react', { fade: 0.05 }); }
     this.wantBlock = false;
   }
@@ -1595,17 +1685,24 @@ class Fighter {
     game.feed(`<b>${this.name}</b> is maimed and begs for mercy`);
   }
 
-  die({ part = 'torso', dir = new V3(0, 0, 1), attacker = null, cause = 'blade', anim = null, from = 0, noSever = false, atkType = null } = {}) {
+  die({ part = 'torso', dir = new V3(0, 0, 1), attacker = null, cause = 'blade', anim = null, from = 0, noSever = false, atkType = null, forceSever = false } = {}) {
     if (!this.alive) return;
     this.alive = false; this.hp = 0; this.bleedRate = 0;
     const gk = goreScale();
     let severedPart = null;
     if (gk && !noSever && cause === 'blade') {
       const isSlash = atkType !== 'atk_thrust';
-      if (part === 'head' && isSlash && Math.random() < (settings.gore === 2 ? 0.9 : 0.6)) severedPart = 'head';
-      else if (part !== 'head' && part !== 'torso' && Math.random() < (settings.gore === 2 ? 0.75 : 0.45)) severedPart = part;
+      const W = attacker ? attacker.wcfg : WEAPONS.longsword;
+      if (W.crush && part === 'head') { severedPart = 'head'; this.crushed = true; }
+      else if (W.crush) { /* blunt: no clean cuts */ }
+      else if (part === 'head' && (forceSever || (isSlash && Math.random() < (settings.gore === 2 ? 0.9 : 0.6) * Math.min(1.1, W.sever)))) severedPart = 'head';
+      else if (part !== 'head' && part !== 'torso' && Math.random() < (settings.gore === 2 ? 0.75 : 0.45) * Math.min(1.3, W.sever)) severedPart = part;
     }
-    if (severedPart) this.sever(severedPart, dir, true);
+    if (gk && cause === 'fire' && this.blastDir && Math.random() < 0.6) {
+      severedPart = pick(['forearm_L', 'forearm_R', 'upperarm_L', 'shin_R', 'head']);
+      dir = this.blastDir;
+    }
+    if (severedPart) this.sever(severedPart, dir, true, { crush: this.crushed });
     // pick a fall
     const fwd = this.forward(_v1);
     const fromFront = dir ? -dir.dot(fwd) > -0.2 : true;
@@ -1616,12 +1713,12 @@ class Fighter {
     }
     this.setState('dead');
     this.dropSword(dir);
-    this.stopFull(0.01);
-    this.full.weight = 0;
+    // crossfade from whatever full-body clip is playing (kneeling, staggering) straight into the fall
     this.playFull(anim, { fade: 0.08, from });
     this.deathAnim = anim;
     if (!this.severed.has('head')) sfx.voice(this.pos, Math.random() < 0.5 ? 'death' : 'scream', this.voicePitch() * 0.95);
     // blood pool where the body settles
+    if (cause === 'fire') this.charU.value = Math.max(this.charU.value, 0.45);
     const poolDelay = anim === 'death_kneel' ? 2.1 : 1.0;
     game.later(poolDelay, () => {
       if (!this.root.parent) return;
@@ -1647,9 +1744,10 @@ class Fighter {
     if (dir) b.v.addScaledVector(dir, 1.5);
     b.w.set(rand(-6, 6), rand(-3, 3), rand(-6, 6));
     b.onBump = (p, v) => { if (v > 1.8) sfx.clang(p, clamp(v / 5, 0.3, 0.8), 'swordrop'); };
+    b.pickup = this.weapon;
   }
 
-  sever(part, dir, fatal = false) {
+  sever(part, dir, fatal = false, { crush = false } = {}) {
     if (this.severed.has(part)) return;
     const n = this.n;
     const bone = n[part];
@@ -1713,6 +1811,13 @@ class Fighter {
       gib.add(gibNode);
       const body = new RigidBody(gib, { mass: part === 'head' ? 1.2 : 1.6, bounce: 0.25, friction: 0.7, bleed: { node: gibNode, dir: _v3.copy(bdir).negate().clone(), t: 1.6, dur: 1.6, power: 0.6 } });
       this.launchGib(body, dir, part);
+      if (crush) {
+        gib.scale.set(1.18, 0.5, 1.18);
+        body.v.multiplyScalar(0.35); body.v.y = 1.2;
+        bone.getWorldPosition(_v4);
+        bloodBurst(_v4, UP, 140, 3.2, 1.4);
+        sfx.clang(_v4, 0.8, 'guardbreak');
+      }
       sfx.crack(gib.position);
       sfx.gurgle(gib.position, 1.4);
       body.onBump = (p, v) => {
@@ -1724,7 +1829,7 @@ class Fighter {
       bloodBurst(_v4, dir, 70, 3.5, 1.1);
       bloodSplat(_v4.x + dir.x * 0.5, _v4.z + dir.z * 0.5, rand(0.8, 1.3));
       if (settings.gore === 2) {
-        for (let i = 0; i < (part === 'head' ? 3 : 2); i++) {
+        for (let i = 0; i < (crush ? 7 : part === 'head' ? 3 : 2); i++) {
           const g = A.gibs[randi(0, A.gibs.length - 1)].clone(true);
           g.scale.setScalar(rand(0.025, 0.045));
           g.position.copy(_v4);
@@ -1759,16 +1864,17 @@ class Fighter {
   }
 }
 
-function injectBlood(mat, U, scale = 14, blade = false) {
+function injectBlood(mat, U, scale = 14, blade = false, charU = null) {
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.uBlood = U.uBlood;
     sh.uniforms.uBloodSeed = U.uSeed;
+    sh.uniforms.uChar = charU || { value: 0 };
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vBPos;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvBPos = position;');
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
-        varying vec3 vBPos; uniform float uBlood; uniform vec3 uBloodSeed;
+        varying vec3 vBPos; uniform float uBlood, uChar; uniform vec3 uBloodSeed;
         float bh(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
         float bn(vec3 p){ vec3 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
           return mix(mix(mix(bh(i), bh(i+vec3(1,0,0)), f.x), mix(bh(i+vec3(0,1,0)), bh(i+vec3(1,1,0)), f.x), f.y),
@@ -1781,8 +1887,8 @@ function injectBlood(mat, U, scale = 14, blade = false) {
           ${blade ? 'n += (vBPos.y - 0.5) * 0.25;' : ''}
           return smoothstep(1.0 - uBlood, 1.0 - uBlood + 0.05, n);
         }`)
-      .replace('#include <map_fragment>', '#include <map_fragment>\nfloat bMask = bloodMask(); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.13, 0.004, 0.004), bMask * 0.94);')
-      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.18, bMask);')
+      .replace('#include <map_fragment>', '#include <map_fragment>\nfloat bMask = bloodMask(); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.13, 0.004, 0.004), bMask * 0.94);\nfloat cMask = uChar * (0.7 + 0.6 * bn(vBPos * 30.0 + uBloodSeed)); diffuseColor.rgb *= 1.0 - clamp(cMask, 0.0, 0.92);')
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.18, bMask); roughnessFactor = mix(roughnessFactor, 0.95, clamp(cMask, 0.0, 1.0));')
       .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\nmetalnessFactor = mix(metalnessFactor, 0.05, bMask);');
   };
   mat.customProgramCacheKey = () => 'blood' + scale + (blade ? 'b' : '');
@@ -1807,7 +1913,7 @@ function combatStep() {
       let best = null, bestD = Infinity;
       for (const c of d.caps) {
         if (d.severed.has(c.part === 'torso' ? 'none' : c.part)) continue;
-        const r2 = (c.r + 0.02) * (c.r + 0.02);
+        const r2 = (c.r + a.wcfg.pad) * (c.r + a.wcfg.pad);
         let dd = segSegDist2(B.base, B.tip, c.a, c.b, _c1, _c2);
         let hitP = dd < r2 ? _c1.clone() : null;
         for (let i = 1; i <= 5 && !hitP; i++) {
@@ -1844,7 +1950,7 @@ function resolveHit(a, d, part, point) {
       game.onParry(d, a);
     } else {
       a.setState('recoil'); a.playUpper('recoil', { fade: 0.04 });
-      d.useStamina(cfg.dmg * 0.45);
+      d.useStamina(cfg.dmg * 0.45 * a.wcfg.block);
       d.playUpper(d.blockName, { fade: 0.02, from: 0 });
       if (d.stamina <= 0) { d.stamina = 0; sfx.clang(cp, 1, 'guardbreak'); d.setState('stagger'); d.playFull('stagger', { fade: 0.05 }); d.wantBlock = false; game.banner(d.isPlayer ? 'GUARD BROKEN' : '', 0.8); }
     }
@@ -1853,6 +1959,191 @@ function resolveHit(a, d, part, point) {
     return;
   }
   d.receiveHit(a, part, point, swing.clone());
+}
+
+function kickHit(f) {
+  const fwd = f.forward(_v1);
+  for (const d of game.fighters) {
+    if (d === f || d.team === f.team || !d.alive || d.invuln > 0) continue;
+    const to = _v2.subVectors(d.pos, f.pos).setY(0);
+    const dist = to.length();
+    if (dist > 1.8 || to.normalize().dot(fwd) < 0.5) continue;
+    if (!sfx.play('kick', d.pos)) sfx.thud(d.pos, 1);
+    sfx.voice(d.pos, 'grunt', d.voicePitch());
+    d.useStamina(30);
+    d.wantBlock = false;
+    if (d.state === 'crippled' || d.state === 'executed') continue;
+    d.stopFull(0.05); d.setState('stagger'); d.playFull('stagger', { fade: 0.05 });
+    d.pos.addScaledVector(to, 0.3);
+    d.vel.addScaledVector(to, 3.5);
+    game.addShake(d.isPlayer || f.isPlayer ? 0.25 : 0.05);
+    if (f.isPlayer) { game.hitStop(0.05); game.feed(`You kick <b>${d.name}</b> off balance`); }
+  }
+}
+
+const fireballs = [];
+function launchFireball(f) {
+  const p = new V3().setFromMatrixPosition(f.n.hand_L.matrixWorld).addScaledVector(f.forward(_v1), 0.3);
+  p.y = Math.max(p.y, 1.15);
+  let target = f.isPlayer ? game.lockTarget : f.target;
+  if (f.isPlayer && !target) {
+    let bd = -1;
+    for (const o of game.fighters) {
+      if (o.team === f.team || !o.alive) continue;
+      const to = _v2.subVectors(o.pos, f.pos).setY(0); const d = to.length();
+      const score = to.normalize().dot(f.forward(_v3)) - d * 0.03;
+      if (d < 16 && score > 0.8 && score > bd) { bd = score; target = o; }
+    }
+  }
+  const dir = target ? target.chestPos(new V3()).sub(p).normalize() : f.forward(new V3()).setY(0.02).normalize();
+  const g = new THREE.Group();
+  g.position.copy(p);
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color(9, 4, 1.2) }));
+  g.add(core);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: flameTex, color: new THREE.Color(3, 1.3, 0.4), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  halo.scale.set(0.8, 0.8, 1);
+  g.add(halo);
+  scene.add(g);
+  const light = fx.fireLights.find((l) => !l.userData.busy);
+  if (light) light.userData.busy = true;
+  fireballs.push({ g, halo, v: dir.multiplyScalar(15), owner: f, target, life: 2.6, light, t: 0 });
+}
+function updateFireballs(dt) {
+  for (let i = fireballs.length - 1; i >= 0; i--) {
+    const fb = fireballs[i];
+    fb.life -= dt; fb.t += dt;
+    const pos = fb.g.position;
+    if (fb.target && fb.target.alive) { // gentle homing
+      const want = fb.target.chestPos(_v1).sub(pos).normalize().multiplyScalar(15);
+      fb.v.lerp(want, 1 - Math.exp(-dt * 2.2)).setLength(15);
+    }
+    pos.addScaledVector(fb.v, dt);
+    const fl = 0.85 + 0.3 * Math.sin(fb.t * 40);
+    fb.halo.scale.set(0.8 * fl, 0.8 * fl, 1);
+    fb.halo.material.rotation += dt * 6;
+    for (let k = 0; k < 6; k++) {
+      _v2.set(rand(-0.4, 0.4), rand(-0.2, 0.6), rand(-0.4, 0.4)).addScaledVector(fb.v, -0.08);
+      fx.fire.emit(_v3.copy(pos).add(_v4.set(rand(-0.06, 0.06), rand(-0.06, 0.06), rand(-0.06, 0.06))), _v2, rand(0.15, 0.35), rand(0.12, 0.26), 0.3);
+    }
+    if (Math.random() < 0.5) fx.smoke.emit(pos, _v2.set(rand(-0.2, 0.2), rand(0.1, 0.4), rand(-0.2, 0.2)), rand(0.5, 0.9), rand(0.1, 0.2), 0.5);
+    if (fb.light) { fb.light.position.copy(pos); fb.light.intensity = 10 * fl; }
+    let hit = null;
+    for (const d of game.fighters) {
+      if (d.team === fb.owner.team || !d.alive || d.invuln > 0) continue;
+      for (const c of d.caps) {
+        if (d.severed.has(c.part)) continue;
+        const l = new THREE.Line3(c.a, c.b).closestPointToPoint(pos, true, _v5);
+        if (l.distanceTo(pos) < c.r + 0.25) { hit = d; break; }
+      }
+      if (hit) break;
+    }
+    const r = Math.hypot(pos.x, pos.z);
+    if (hit || pos.y < 0.12 || r > ARENA_R - 0.4 || fb.life <= 0) {
+      explode(fb, hit);
+      fireballs.splice(i, 1);
+    }
+  }
+}
+function explode(fb, direct) {
+  const p = fb.g.position.clone();
+  scene.remove(fb.g);
+  fb.g.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+  if (fb.light) { fb.light.intensity = 0; fb.light.userData.busy = false; }
+  sparkBurst(p, 40);
+  fx.flash.position.copy(p); fx.flash.intensity = 90;
+  for (let i = 0; i < 170; i++) {
+    _v1.set(rand(-1, 1), rand(-0.3, 1), rand(-1, 1)).normalize().multiplyScalar(rand(1, 5.5));
+    fx.fire.emit(p, _v1, rand(0.25, 0.6), rand(0.18, 0.45), 0.8);
+  }
+  for (let i = 0; i < 40; i++) fx.smoke.emit(p, _v1.set(rand(-1.5, 1.5), rand(0.3, 1.8), rand(-1.5, 1.5)), rand(1, 2.2), rand(0.25, 0.5), 0.9);
+  for (let i = 0; i < 30; i++) fx.embers.emit(p, _v1.set(rand(-3, 3), rand(1, 5), rand(-3, 3)), rand(1, 2.5), rand(0.012, 0.03));
+  fx.scorch.add(p.x, p.z, rand(1.4, 2.0));
+  if (!sfx.play('explosion', p, { vol: 1.2 })) sfx.thud(p, 1.2);
+  game.addShake(clamp(1.1 - camera.position.distanceTo(p) / 12, 0.1, 0.6));
+  const o = fb.owner;
+  for (const d of [...game.fighters]) {
+    if (d.team === o.team || !d.alive) continue;
+    const c = d.chestPos(_v2);
+    const dist = c.distanceTo(p);
+    if (d !== direct && dist > 2.6) continue;
+    let dmg = d === direct ? 48 : 28 * (1 - dist / 2.6);
+    const facing = d.forward(_v3).dot(_v4.subVectors(p, d.pos).setY(0).normalize()) > 0.3;
+    const guarded = d.state === 'block' && facing;
+    if (guarded) dmg *= 0.45;
+    dmg *= o.dmgMult;
+    d.blastDir = _v4.subVectors(d.pos, p).setY(0).normalize().setY(0.45).normalize().clone();
+    const fatal = d.hp - dmg <= 0;
+    d.hp -= dmg;
+    game.onHit(o, d, dmg, fatal);
+    if (fatal) { d.ignite(4); d.die({ cause: 'fire', dir: d.blastDir, attacker: o }); continue; }
+    if (!guarded) d.ignite(3.5);
+    if (d.state !== 'crippled' && d.state !== 'executed') { d.stopFull(0.05); d.setState('stagger'); d.playFull('stagger', { fade: 0.05 }); }
+    d.vel.addScaledVector(d.blastDir, 4);
+  }
+}
+function burnFX(f, dt) {
+  const caps = f.caps;
+  const n = Math.floor(dt * 110 + Math.random());
+  for (let i = 0; i < n; i++) {
+    const c = caps[Math.floor(Math.random() * caps.length)];
+    if (f.severed.has(c.part)) continue;
+    _v1.lerpVectors(c.a, c.b, Math.random()).add(_v2.set(rand(-c.r, c.r), 0, rand(-c.r, c.r)));
+    fx.fire.emit(_v1, _v2.set(rand(-0.2, 0.2), rand(0.6, 1.4), rand(-0.2, 0.2)), rand(0.25, 0.55), rand(0.14, 0.3), 0.35);
+  }
+  if (Math.random() < dt * 8) fx.smoke.emit(f.chestPos(_v1), _v2.set(rand(-0.2, 0.2), rand(0.5, 1), rand(-0.2, 0.2)), rand(1, 1.8), rand(0.15, 0.3), 0.6);
+}
+
+function findExecTarget(p) {
+  let best = null, bd = 2.5;
+  for (const d of game.fighters) {
+    if (d.team === p.team || !d.isHelpless() || d.state === 'executed') continue;
+    const to = _v1.subVectors(d.pos, p.pos).setY(0);
+    const dist = to.length();
+    if (dist < bd && (d === game.lockTarget || to.normalize().dot(p.forward(_v2)) > 0.3)) { bd = dist; best = d; }
+  }
+  return best;
+}
+function startExecution(p, v) {
+  if (!p.canAct() || !(p.state === 'free' || p.state === 'block') || !p.hasSword || !v.alive) return false;
+  p.setState('execute'); p.invuln = 1.9; p.wantBlock = false;
+  p.faceYaw = p.yaw = Math.atan2(v.pos.x - p.pos.x, v.pos.z - p.pos.z);
+  p.stopFull(0.01); p.full.weight = 0;
+  p.playFull('execute', { fade: 0.1 });
+  v.stopFull(0.01); v.full.weight = 0;
+  v.setState('executed'); v.execBy = p; v.wantBlock = false; v.bleedRate = 0;
+  v.dropSword();
+  v.playFull('kneel', { fade: 0.18, loop: true });
+  if (p.isPlayer || v.isPlayer || game.state === 'menu') game.cine = { t: 2.0, p, v };
+  sfx.cheer(0.6);
+  sfx.voice(v.pos, 'pain', v.voicePitch());
+  game.later(0.97, () => {
+    if (!v.alive || v.state !== 'executed') return;
+    const dir = p.forward(new V3()).multiplyScalar(0.8).add(new V3(0, 0.35, 0)).normalize();
+    game.slowmo(1.3, 0.22); game.addShake(0.4); game.hitStop(0.08);
+    v.hp = 0;
+    sfx.flesh(v.pos, 1.4);
+    v.die({ part: 'head', dir, attacker: p, atkType: 'atk_over', forceSever: true, anim: 'death_kneel', from: 0.4 });
+    if (p.isPlayer) { game.stats.execs++; game.score += 600; game.banner(p.wcfg.crush ? 'SKULL CRUSHED' : 'EXECUTED', 1.6); }
+  });
+  return true;
+}
+function findPickup(p) {
+  let best = null, bd = 1.5;
+  for (const b of bodies) {
+    if (!b.pickup || !b.obj.parent || b.v.lengthSq() > 1) continue;
+    const d = Math.hypot(b.obj.position.x - p.pos.x, b.obj.position.z - p.pos.z);
+    if (d < bd) { bd = d; best = b; }
+  }
+  return best;
+}
+function takePickup(p, b) {
+  if (!p.canAct() || !(p.state === 'free' || p.state === 'block')) return;
+  if (p.hasSword) p.dropSword(p.forward(new V3()).multiplyScalar(0.4));
+  b.obj.parent.remove(b.obj);
+  bodies.splice(bodies.indexOf(b), 1);
+  p.equip(b.pickup);
+  sfx.clang(p.pos, 0.4, 'swordrop');
+  game.feed(`You take up the <b>${WEAPONS[b.pickup].name}</b>`);
 }
 
 // ============================================================================
@@ -1868,7 +2159,7 @@ class Brain {
   update(dt) {
     const f = this.f, s = this.s;
     this.time += dt;
-    if (!f.alive || f.state === 'crippled') { f.moveIntent.set(0, 0, 0); f.wantBlock = false; return; }
+    if (!f.alive || f.state === 'crippled' || f.state === 'executed' || f.state === 'execute') { f.moveIntent.set(0, 0, 0); f.wantBlock = false; return; }
     const T = f.target = pickTarget(f);
     if (!T) { f.moveIntent.set(0, 0, 0); f.wantBlock = false; return; }
     const to = _v1.subVectors(T.pos, f.pos).setY(0);
@@ -1930,6 +2221,11 @@ class Brain {
       if (d2 < 2.5 && d2 > 1e-4) { mv.x += dx / d2 * 0.6; mv.z += dz / d2 * 0.6; }
     }
     if (token && f.state === 'free' && !f.wantBlock && dist < 2.3 && this.cool <= 0 && T.alive) this.attack(T);
+    // finish a helpless foe (rarely the player, and only when nearly dead)
+    if (f.state === 'free' && dist < 2.2 && T.isHelpless() && T.state !== 'executed' && (!T.isPlayer || T.hp < T.maxHp * 0.22) && Math.random() < s.punish * dt * (T.isPlayer ? 0.6 : 2)) startExecution(f, T);
+    // kick a turtling opponent; casters lob fireballs from range
+    if (f.state === 'free' && dist < 1.7 && T.state === 'block' && T.blockT > 0.5 && Math.random() < s.kick * dt) f.startKick();
+    if (f.caster && f.state === 'free' && dist > 4 && dist < 11 && f.castCool <= 0 && Math.random() < dt * 0.8) f.startCast();
   }
   attack(T) {
     const types = ['atk_right', 'atk_left', 'atk_over', 'atk_thrust'];
@@ -1951,7 +2247,7 @@ function skillFor(level) {
   const k = clamp((level - 1) / 9, 0, 1);
   return {
     reaction: lerp(0.42, 0.16, k), block: lerp(0.28, 0.68, k), parry: lerp(0.0, 0.35, k), accuracy: lerp(0.6, 0.93, k),
-    dodge: lerp(0.06, 0.16, k), aggression: lerp(0.7, 1.45, k), punish: lerp(0.3, 0.9, k),
+    dodge: lerp(0.06, 0.16, k), aggression: lerp(0.7, 1.45, k), punish: lerp(0.3, 0.9, k), kick: lerp(0.3, 1.4, k),
   };
 }
 
@@ -1972,7 +2268,11 @@ addEventListener('keydown', (e) => {
   if (game.state !== 'playing') return;
   if (e.code === 'Space') { input.dodge = true; e.preventDefault(); }
   if (e.code === 'KeyQ') input.attack = 'atk_over';
-  if (e.code === 'KeyE' || e.code === 'KeyF') input.attack = 'atk_thrust';
+  if (e.code === 'KeyE') input.attack = 'atk_thrust';
+  if (e.code === 'KeyF') input.exec = true;
+  if (e.code === 'KeyC') input.kick = true;
+  if (e.code === 'KeyX') input.cast = true;
+  if (e.code === 'KeyR') input.take = true;
   if (e.code === 'Escape' || e.code === 'KeyP') game.pause(true);
 });
 addEventListener('keyup', (e) => { input.keys[e.code] = false; });
@@ -2069,6 +2369,9 @@ function setupTouch() {
   };
   hold($('btnBlock'), () => { input.block = true; }, () => { input.block = false; });
   hold($('btnDodge'), () => { input.dodge = true; });
+  hold($('btnKick'), () => { input.kick = true; });
+  hold($('btnFire'), () => { input.cast = true; });
+  hold($('btnAct'), () => { if (game.execTarget) input.exec = true; else input.take = true; });
   hold($('btnLock'), () => { input.lockEnabled = !input.lockEnabled; $('btnLock').textContent = input.lockEnabled ? 'LOCK' : 'FREE'; });
 }
 
@@ -2118,6 +2421,13 @@ function updatePlayerInput(dt) {
     p.blockName = best ? best.atk.cfg.block : 'block_mid';
   }
   if (input.attack) { if (!p.startAttack(input.attack) && p.state !== 'attack') { /* not possible now */ } input.attack = null; }
+  // context actions: execute a helpless foe, pick up a dropped weapon
+  game.execTarget = (p.state === 'free' || p.state === 'block') && p.hasSword ? findExecTarget(p) : null;
+  game.pickTarget = !game.execTarget && (p.state === 'free' || p.state === 'block') ? findPickup(p) : null;
+  if (input.exec) { input.exec = false; if (game.execTarget) startExecution(p, game.execTarget); }
+  if (input.take) { input.take = false; if (game.pickTarget) takePickup(p, game.pickTarget); }
+  if (input.kick) { input.kick = false; p.startKick(); }
+  if (input.cast) { input.cast = false; if (!p.startCast() && p.castCool > 0) game.hint('Fireball ready in ' + Math.ceil(p.castCool) + 's', 1); }
   if (input.dodge) {
     input.dodge = false;
     const dir = p.moveIntent.lengthSq() > 0.05 ? p.moveIntent.clone() : _v3.set(-Math.sin(p.yaw), 0, -Math.cos(p.yaw)).clone();
@@ -2141,7 +2451,14 @@ function updateCamera(dt, rdt) {
   if (o) { camera.position.set(...o.pos); camera.lookAt(new V3(...o.look)); return; }
   const p = game.player;
   let wantPos = _v1, wantLook = _v2;
-  if (game.state === 'menu' || !p) {
+  if (game.cine && game.cine.t > 0) {
+    game.cine.t -= rdt;
+    const { p: e, v } = game.cine;
+    const d = _v3.subVectors(v.pos, e.pos).setY(0).normalize();
+    wantPos.addVectors(e.pos, v.pos).multiplyScalar(0.5).addScaledVector(_v4.set(-d.z, 0, d.x), 2.6).addScaledVector(d, -0.5);
+    wantPos.y = 1.3;
+    wantLook.copy(v.pos); wantLook.y = 0.95;
+  } else if (game.state === 'menu' || !p) {
     cam.orbitA += rdt * 0.08;
     const duel = game.fighters.filter((f) => f.alive);
     const c = duel.length ? duel.reduce((acc, f) => acc.add(f.pos), new V3()).divideScalar(duel.length) : new V3();
@@ -2283,6 +2600,9 @@ const game = {
     this.fighters = [];
     for (const b of bodies) b.obj.parent && b.obj.parent.remove(b.obj);
     bodies.length = 0;
+    for (const fb of fireballs) { scene.remove(fb.g); if (fb.light) { fb.light.intensity = 0; fb.light.userData.busy = false; } }
+    fireballs.length = 0;
+    this.cine = null;
     this.player = null; this.lockTarget = null;
   },
   // ---- attract mode behind the menu ----
@@ -2300,7 +2620,7 @@ const game = {
   menuSpawn(team) {
     const look = team === 0 ? PLAYER_LOOK : pick(LOOKS);
     const a = team === 0 ? 0 : Math.PI;
-    const f = this.spawn({ team, look, name: pick(NAMES), skill: skillFor(team === 0 ? 7 : randi(3, 8)), stats: { atkSpeed: rand(0.95, 1.1) } });
+    const f = this.spawn({ team, look, name: pick(NAMES), skill: skillFor(team === 0 ? 7 : randi(3, 8)), weapon: pick(WEAPON_KEYS), stats: { atkSpeed: rand(0.95, 1.1), caster: Math.random() < 0.35 } });
     f.pos.set(Math.cos(a) * 4, 0, Math.sin(a) * 4);
     f.yaw = f.faceYaw = Math.atan2(-f.pos.x, -f.pos.z);
   },
@@ -2309,18 +2629,20 @@ const game = {
     sfx.init();
     this.clearAll();
     this.state = 'playing';
-    this.wave = 0; this.score = 0; this.stats = { kills: 0, heads: 0, limbs: 0, parries: 0 };
+    this.wave = 0; this.score = 0; this.stats = { kills: 0, heads: 0, limbs: 0, parries: 0, execs: 0 };
+    this.cine = null;
     $('menu').classList.add('hidden'); $('endScreen').classList.add('hidden'); $('pauseMenu').classList.add('hidden');
     $('hud').classList.remove('hidden');
-    for (const d of [...fx.splats, fx.drops, fx.pools]) { d.i = 0; const z = new THREE.Matrix4().makeScale(0, 0, 0); for (let i = 0; i < d.max; i++) d.mesh.setMatrixAt(i, z); d.mesh.instanceMatrix.needsUpdate = true; d.grow = []; }
-    this.player = this.spawn({ team: 0, isPlayer: true, look: PLAYER_LOOK, name: 'You', stats: { atkSpeed: 1.12, maxHp: 120 } });
+    for (const d of [...fx.splats, fx.drops, fx.pools, fx.scorch]) { d.i = 0; const z = new THREE.Matrix4().makeScale(0, 0, 0); for (let i = 0; i < d.max; i++) d.mesh.setMatrixAt(i, z); d.mesh.instanceMatrix.needsUpdate = true; d.grow = []; }
+    this.player = this.spawn({ team: 0, isPlayer: true, look: PLAYER_LOOK, name: 'You', weapon: WEAPONS[settings.weapon] ? settings.weapon : 'longsword', stats: { atkSpeed: 1.12, maxHp: 120 } });
+    this.player.castCool = 0;
     this.player.pos.set(0, 0, 3);
     this.player.yaw = this.player.faceYaw = Math.PI;
     input.camYaw = 0;
     cam.pos.set(0, 2.4, 6.5);
     this.nextWave();
-    if (!IS_TOUCH) this.hint('Click to grab the mouse · flick the mouse then click to strike · right click to block', 6);
-    else this.hint('Swipe the right side to strike · hold BLOCK · left thumb moves', 6);
+    if (!IS_TOUCH) this.hint('Flick the mouse then click to strike · right click blocks · C kicks · X hurls a fireball · F executes', 7);
+    else this.hint('Swipe the right side to strike · hold BLOCK · KICK and FIRE on the right', 6);
     if (!IS_TOUCH) lockPointer();
   },
   nextWave() {
@@ -2334,11 +2656,14 @@ const game = {
       const gate = i % 2 === 0 ? 1 : -1;
       const look = champion ? LOOKS[0] : pick(LOOKS);
       const lvl = w + (champion ? 3 : 0);
+      const weapon = champion ? pick(['greatsword', 'warhammer', 'daneaxe']) : w < 2 ? 'longsword' : pick(WEAPON_KEYS);
+      const caster = (champion && w >= 5) || (w >= 7 && Math.random() < 0.25);
       const f = this.spawn({
-        team: 1, look, name: (champion ? 'Champion ' : '') + pick(NAMES) + (champion ? '' : ''), skill: skillFor(lvl),
-        stats: { maxHp: (champion ? 170 : 80) + w * 6, dmgMult: 0.8 + Math.min(w, 12) * 0.04, atkSpeed: 0.9 + Math.min(w, 10) * 0.025, moveSpeed: 0.95 },
+        team: 1, look, name: (champion ? 'Champion ' : '') + pick(NAMES), skill: skillFor(lvl), weapon,
+        stats: { maxHp: (champion ? 170 : 80) + w * 6, dmgMult: 0.8 + Math.min(w, 12) * 0.04, atkSpeed: 0.9 + Math.min(w, 10) * 0.025, moveSpeed: 0.95, caster },
       });
-      f.title = look.title;
+      if (caster) f.title = (f.title || look.title) + ' · Pyromancer';
+      f.title = f.title || look.title;
       f.pos.set(12 * gate + rand(-0.5, 0.5), 0, (i - count / 2) * 1.2);
       f.yaw = f.faceYaw = Math.atan2(-f.pos.x, -f.pos.z);
       if (champion) f.root.scale.setScalar(1.06);
@@ -2356,7 +2681,7 @@ const game = {
     }
     const enemies = this.fighters.filter((f) => f.team === 1 && f.alive).length;
     $('enemyText').textContent = enemies ? `${enemies} ${enemies === 1 ? 'foe remains' : 'foes remain'}` : '';
-    if (this.player && this.player.alive && enemies === 0 && this.waveBreak < 0) {
+    if (this.player && this.player.alive && enemies === 0 && this.waveBreak < 0 && !(this.cine && this.cine.t > 0)) {
       this.waveBreak = 4.5;
       this.banner('VICTORY', 2, `wave ${roman(this.wave)} survived`);
       this.player.hp = Math.min(this.player.maxHp, this.player.hp + 40);
@@ -2381,7 +2706,7 @@ const game = {
     const best = store.get('best', 0);
     if (this.score > best) { store.set('best', this.score); store.set('bestWave', this.wave); }
     const s = this.stats;
-    $('endStats').innerHTML = `Fell in wave ${roman(this.wave)}<br>${s.kills} slain · ${s.heads} heads taken · ${s.limbs} limbs severed · ${s.parries} parries<br><span style="color:var(--gold)">SCORE ${this.score}</span>${this.score > best ? ' — new best' : ''}`;
+    $('endStats').innerHTML = `Fell in wave ${roman(this.wave)}<br>${s.kills} slain · ${s.heads} heads taken · ${s.execs} executions · ${s.limbs} limbs severed · ${s.parries} parries<br><span style="color:var(--gold)">SCORE ${this.score}</span>${this.score > best ? ' — new best' : ''}`;
     $('endScreen').classList.remove('hidden');
     $('hud').classList.add('hidden');
   },
@@ -2398,6 +2723,17 @@ function updateHUD() {
   $('hpGhost').style.transform = `scaleX(${hp})`;
   $('stFill').style.transform = `scaleX(${clamp(p.stamina / 100, 0, 1)})`;
   $('stFill').classList.toggle('low', p.stamina < 20);
+  const fireK = 1 - clamp(p.castCool / FIREBALL_COOLDOWN, 0, 1);
+  $('fbFill').style.transform = `scaleX(${fireK})`;
+  $('fbFill').classList.toggle('ready', fireK >= 1);
+  $('btnFire').style.background = `conic-gradient(rgba(255,120,30,0.65) ${fireK * 360}deg, rgba(20,8,8,0.5) 0deg)`;
+  let prompt = '';
+  if (game.execTarget) prompt = (IS_TOUCH ? '' : '<b>F</b> ') + (p.wcfg.crush ? 'CRUSH ' : 'EXECUTE ') + game.execTarget.name.toUpperCase();
+  else if (game.pickTarget) prompt = (IS_TOUCH ? '' : '<b>R</b> ') + 'TAKE THE ' + WEAPONS[game.pickTarget.pickup].name.toUpperCase();
+  if ($('prompt').dataset.t !== prompt) { $('prompt').dataset.t = prompt; $('prompt').innerHTML = prompt; }
+  $('prompt').classList.toggle('hidden', !prompt);
+  $('btnAct').classList.toggle('hidden', !prompt);
+  $('btnAct').textContent = game.execTarget ? (p.wcfg.crush ? 'CRUSH' : 'EXECUTE') : 'TAKE';
   $('waveText').textContent = 'WAVE ' + roman(game.wave);
   $('scoreText').textContent = game.score;
   $('killText').textContent = `${game.stats.kills} slain · ${game.stats.heads} heads`;
@@ -2461,7 +2797,8 @@ function tick(rdt, now) {
     game.update(dt);
     game.runTimers(dt);
     updateBodies(dt);
-    fx.blood.update(dt); fx.mist.update(dt); fx.sparks.update(dt); fx.embers.update(dt); fx.tick(dt);
+    updateFireballs(dt);
+    fx.blood.update(dt); fx.mist.update(dt); fx.sparks.update(dt); fx.embers.update(dt); fx.fire.update(dt); fx.smoke.update(dt); fx.tick(dt);
     for (const d of [...fx.splats, fx.drops, fx.pools]) d.update(dt);
     fx.flash.intensity *= Math.exp(-rdt * 18);
     // blood drips from bloodied blades
@@ -2497,6 +2834,9 @@ document.querySelectorAll('.opt').forEach((b) => b.addEventListener('click', () 
   store.set(k, v);
   if (k === 'quality' || k === 'gore') { location.reload(); return; }
 }));
+function syncWeapon() { document.querySelectorAll('.wopt').forEach((b) => b.classList.toggle('sel', b.dataset.w === settings.weapon)); }
+document.querySelectorAll('.wopt').forEach((b) => b.addEventListener('click', () => { settings.weapon = b.dataset.w; store.set('weapon', settings.weapon); syncWeapon(); }));
+syncWeapon();
 $('startBtn').addEventListener('click', () => game.start());
 $('helpBtn').addEventListener('click', () => $('help').classList.toggle('hidden'));
 $('resumeBtn').addEventListener('click', () => game.pause(false));
@@ -2512,11 +2852,12 @@ $('muteBtn').style.opacity = settings.muted ? 0.4 : 1;
 // ============================================================================
 (async function boot() {
   try {
-    const [knight, sword, gore, arena, meta] = await Promise.all([
+    const [knight, sword, gore, arena, meta, , weapons] = await Promise.all([
       loadGLB('knight'), loadGLB('sword'), loadGLB('gore'), loadGLB('arena'),
       fetch('assets/sword/meta.json').then((r) => r.json()),
-      prefetchSamples(),
+      prefetchSamples(), loadGLB('weapons'),
     ]);
+    A.weapons = weapons.scene;
     A.knight = knight; A.sword = sword;
     prepClips(knight.animations);
     const byName = (n) => gore.scene.getObjectByName(n);
@@ -2537,7 +2878,7 @@ $('muteBtn').style.opacity = settings.muted ? 0.4 : 1;
 })();
 
 // hooks for automated testing / debugging
-window.__bs = { advance(sec, step = 1 / 60) { for (let t = 0; t < sec; t += step) tick(step); }, game, THREE, scene, camera, input, cam, settings, Fighter, bodies, fx, skillFor, LOOKS, PLAYER_LOOK };
+window.__bs = { fireballs, advance(sec, step = 1 / 60) { for (let t = 0; t < sec; t += step) tick(step); }, game, THREE, scene, camera, input, cam, settings, Fighter, bodies, fx, skillFor, LOOKS, PLAYER_LOOK };
 </script>
 </body>
 </html>

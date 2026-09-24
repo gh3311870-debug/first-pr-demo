@@ -422,16 +422,29 @@ two-handed longsword:
   rigid-body physics, blood sprays and pools on the sand, and armour and blades
   get progressively bloodier. A **Gore** setting (Off / Bloody / Brutal) and a
   **Quality** setting (Fast / Pretty) are on the main menu
-- Waves of increasingly skilled enemies with different helmets, heraldry and
-  fighting styles (they block, parry, dodge and punish openings), with a
-  champion every fifth wave, a cheering crowd and slow-motion kills
+- Four weapons, chosen on the main menu: the balanced **longsword**, the long
+  and heavy **greatsword**, the **Dane axe** (takes limbs far more often) and
+  the **war hammer** (stuns through armour and guards, crushes skulls). Walk
+  over a fallen foe's weapon and press **R** (TAKE on touch) to take it up
+- **C** / KICK drives a boot through an enemy's guard and knocks them off
+  balance; enemies kick back if you turtle behind your block
+- **X** / FIRE hurls a fireball (7 second cooldown) that homes on your target,
+  explodes with splash damage and knockback, and sets knights on fire; the
+  flames char their armour. Later waves bring pyromancers who throw them too
+- **F** / EXECUTE finishes a staggered or maimed foe with a slow-motion
+  beheading (or skull crush with the hammer) shown from a cinematic camera.
+  Enemies will do the same to you when you are nearly dead and helpless
+- Waves of increasingly skilled enemies with different helmets, heraldry,
+  weapons and fighting styles (they block, parry, dodge, kick and punish
+  openings), with a champion every fifth wave, a cheering crowd and
+  slow-motion kills
 
 Everything is generated from code in this repo:
 
 - `tools/blender/build_sword_assets.py` builds all the 3D assets with Blender:
   procedural PBR textures, the knight (rigid plate pieces on an armature, with
-  three helmet variants), the longsword, the arena, the gore pieces (stumps and
-  gibs) and all 25 animation clips. It writes `.glb` files to
+  three helmet variants), the four weapons, the arena, the gore pieces (stumps
+  and gibs) and all 28 animation clips. It writes `.glb` files to
   `assets/sword/`. Run it with `blender --background --python
   tools/blender/build_sword_assets.py`, or with `pip install bpy` and
   `python3 tools/blender/build_sword_assets.py`

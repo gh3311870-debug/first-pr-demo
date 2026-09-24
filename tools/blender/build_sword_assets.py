@@ -1166,6 +1166,43 @@ def build_clips(arm):
                                 foot_L=(0, -40, 0), foot_R=(0, -40, 0),
                                 upperarm_L=(0, -155, -40), upperarm_R=(0, -55, 52), forearm_L=(0, -18, 0), forearm_R=(0, -18, 0)))),
     ])
+    # ---- kick: right leg chambers and drives forward ----
+    A.clip("kick", [
+        (0.0, up(sword=GUARD)),
+        (0.18, up(sword=S((0.18, 0.12, 1.25), (0.4, 0.35, 0.85), (1, 0, 0)), pelvis=(0, -8, 0), pelvis_pos=(0, -0.03, -0.02),
+                  spine=(-4, -6, 0), thigh_R=(0, -72, -3), shin_R=(0, 95, 0), foot_R=(0, -10, 0), thigh_L=(0, -10, 3), shin_L=(0, 14, 0))),
+        (0.32, up(sword=S((0.2, 0.1, 1.28), (0.45, 0.3, 0.84), (1, 0, 0)), pelvis=(0, -16, 0), pelvis_pos=(0, 0.05, -0.02),
+                  spine=(-4, -8, 0), thigh_R=(0, -86, -3), shin_R=(0, 8, 0), foot_R=(0, -45, 0), thigh_L=(0, -6, 3), shin_L=(0, 8, 0))),
+        (0.46, up(sword=S((0.16, 0.15, 1.22), (0.3, 0.45, 0.84), (1, 0, 0)), pelvis=(0, -8, 0), spine=(-4, -4, 0),
+                  thigh_R=(0, -55, -3), shin_R=(0, 85, 0), foot_R=(0, -10, 0))),
+        (0.75, up(sword=GUARD)),
+    ])
+
+    # ---- execution: two-handed overhead chop down onto a kneeling foe ----
+    lunge = dict(pelvis_pos=(0, 0.1, -0.16), thigh_L=(0, -42, 3), shin_L=(0, 52, 0), thigh_R=(0, 26, -3), shin_R=(0, 26, 0))
+    A.clip("execute", [
+        (0.0, up(sword=GUARD)),
+        (0.45, up(sword=S((0.05, 0.02, 1.72), (0.05, -0.45, 0.9), (0, 1, 0.4)), spine=(0, -12, 0), head=(0, 8, 0))),
+        (0.8, up(sword=S((0.04, 0.0, 1.76), (0.04, -0.55, 0.84), (0, 1, 0.5)), spine=(0, -15, 0), head=(0, 10, 0))),
+        (0.95, up(lunge, sword=S((0.02, 0.42, 1.3), (0, 0.92, -0.2), (0, -0.2, -1)), spine=(0, 20, 0), head=(0, -8, 0))),
+        (1.07, up(lunge, sword=S((0.0, 0.4, 0.95), (0, 0.35, -0.94), (0, -0.9, -0.3)), spine=(0, 32, 0), head=(0, -14, 0),
+                  pelvis_pos=(0, 0.12, -0.22))),
+        (1.3, up(lunge, sword=S((0.0, 0.4, 0.97), (0, 0.38, -0.92), (0, -0.9, -0.3)), spine=(0, 28, 0), pelvis_pos=(0, 0.12, -0.2))),
+        (1.65, up(sword=GUARD)),
+    ])
+
+    # ---- fireball: sword drops to the right hand alone, left palm thrusts forward ----
+    held = S((0.27, 0.12, 1.0), (0.35, 0.55, 0.76), (1, 0, 0))
+    A.clip("cast", [
+        (0.0, up(sword=GUARD)),
+        (0.2, up(sword=held, spine=(14, -4, 0), head=(-8, 0, 0), upperarm_L=(10, -35, 25), forearm_L=(0, -115, 0), hand_L=(0, -20, 0))),
+        (0.34, up(sword=held, spine=(-16, 6, 0), head=(10, -4, 0), upperarm_L=(-6, -86, -4), forearm_L=(0, -6, 0), hand_L=(0, 35, 0),
+                  pelvis_pos=(0, 0.05, -0.08), thigh_L=(0, -30, 3), shin_L=(0, 34, 0))),
+        (0.55, up(sword=held, spine=(-14, 4, 0), upperarm_L=(-6, -82, -4), forearm_L=(0, -10, 0), hand_L=(0, 30, 0),
+                  pelvis_pos=(0, 0.04, -0.07), thigh_L=(0, -28, 3), shin_L=(0, 32, 0))),
+        (0.85, up(sword=GUARD)),
+    ])
+
     A.clip("victory", [
         (0.0, up(sword=GUARD)),
         (0.5, up(sword=S((0.05, 0.12, 1.75), (0.05, 0.1, 1.0), (0, 1, 0)), spine=(0, -10, 0), head=(0, -18, 0))),
@@ -1339,6 +1376,104 @@ def build_sword_file():
 # ---------------------------------------------------------------------------
 # Gore pieces
 # ---------------------------------------------------------------------------
+
+def build_weapons_file():
+    """Greatsword, Dane axe and war hammer. Same conventions as the longsword:
+    origin at the right fist, weapon along +Z, cutting edge / striking face toward +X."""
+    reset_scene()
+    M_blade = material("blade", texset("blade2", tex_steel(512, 19, 0.16)), nstr=0.25)
+    M_steel = material("hilt", texset("hilt2", tex_steel(256, 21, 0.38)), nstr=0.6)
+    M_dark = material("iron", texset("iron2", tex_steel(256, 23, 0.5)), nstr=0.8)
+    M_leather = material("grip", texset("grip2", tex_leather(256, 22)))
+    M_wood = material("haft", texset("haft", tex_wood(256, 24)))
+
+    def loft_blade(z0, z1, w0, w1, th, n=30, fuller_to=0.6):
+        bm = bmesh.new()
+        rings = []
+        for i in range(n + 1):
+            t = i / n
+            z = z0 + (z1 - z0) * t
+            w = w0 + (w1 - w0) * min(1, t / 0.88) if t < 0.88 else w1 * math.sqrt(max(0.0, 1 - ((t - 0.88) / 0.12) ** 2))
+            tk = th * (1 - 0.45 * t)
+            fu = max(0.0, 1 - t / fuller_to) if t < fuller_to else 0.0
+            pts = [(-w / 2, 0), (-w * 0.27, tk * 0.8), (-w * 0.12, tk * (0.8 - 0.3 * fu)), (0, tk * (0.8 - 0.35 * fu)),
+                   (w * 0.12, tk * (0.8 - 0.3 * fu)), (w * 0.27, tk * 0.8), (w / 2, 0)]
+            pts = pts + [(x, -y) for x, y in reversed(pts[1:-1])]
+            rings.append([bm.verts.new((0, 0, z))] * len(pts) if i == n else [bm.verts.new((x, y, z)) for x, y in pts])
+        m = len(rings[0])
+        for k in range(n):
+            for i in range(m):
+                j = (i + 1) % m
+                uniq = list(dict.fromkeys([rings[k][i], rings[k][j], rings[k + 1][j], rings[k + 1][i]]))
+                if len(uniq) >= 3:
+                    bm.faces.new(uniq)
+        bm.faces.new(list(reversed(rings[0])))
+        bm.normal_update()
+        return bm
+
+    # greatsword (zweihander): long blade, leather-wrapped ricasso, parrying lugs, big cross
+    gs = Part("greatsword")
+    gs.add(loft_blade(0.2, 1.45, 0.058, 0.036, 0.008, 34, 0.55), M_blade, uv=1.0, sharp=40)
+    gs.add(bm_lathe([(0.016, 0.08), (0.016, 0.2)], 12), M_leather, uv=10)
+    for s_ in (-1, 1):
+        lug = bm_box(0.05, 0.012, 0.018, (0.045 * s_, 0, 0.21), 0.004)
+        deform(lug, lambda c: (c[0], c[1], c[2] + 3 * c[0] ** 2))
+        gs.add(lug, M_steel, uv=6)
+    guard = bm_box(0.36, 0.024, 0.026, (0, 0, 0.065), 0.006, 2)
+    bmesh.ops.subdivide_edges(guard, edges=[e for e in guard.edges if abs(e.verts[0].co.x - e.verts[1].co.x) > 0.1], cuts=10)
+    deform(guard, lambda c: (c[0], c[1], c[2] - 0.9 * c[0] ** 2 + 0.6 * abs(c[0]) ** 3 * 10))
+    gs.add(guard, M_steel, uv=6)
+    for s_ in (-1, 1):
+        ring = bm_lathe([(0.026, -0.006), (0.03, 0.0), (0.026, 0.006)], 16, False, False)
+        ring = solidify(ring, 0.006)
+        xform(ring, Matrix.Translation((0.0, 0.028 * s_, 0.065)) @ Matrix.Rotation(math.pi / 2, 4, "X"))
+        gs.add(ring, M_steel, uv=6)
+    gs.add(bm_lathe([(0.014, -0.3), (0.017, -0.2), (0.017, -0.05), (0.015, 0.05)], 12), M_leather, uv=10)
+    pom = bm_lathe([(0.0, -0.36), (0.022, -0.35), (0.03, -0.32), (0.022, -0.3), (0.0, -0.3)], 16)
+    gs.add(pom, M_steel, uv=8)
+    gs.build()
+
+    # Dane axe: long ash haft, bearded head with a flaring bit on +X
+    ax = Part("daneaxe")
+    ax.add(bm_lathe([(0.0, -0.32), (0.017, -0.31), (0.018, 0.4), (0.016, 1.1), (0.014, 1.2), (0.0, 1.21)], 10), M_wood, uv=3)
+    ax.add(bm_lathe([(0.02, -0.33), (0.021, -0.25)], 10), M_dark, uv=6)
+    eye = bm_box(0.05, 0.036, 0.1, (0.0, 0, 1.12), 0.006)
+    ax.add(eye, M_dark, uv=6)
+    head = bmesh.new()
+    prof = [(0.02, 1.07), (0.1, 1.02), (0.2, 0.96), (0.235, 0.98), (0.245, 1.1), (0.235, 1.23), (0.2, 1.24), (0.1, 1.17), (0.02, 1.17)]
+    top = [head.verts.new((x, 0.011 * (1 - x / 0.26) + 0.002, z)) for x, z in prof]
+    bot = [head.verts.new((x, -(0.011 * (1 - x / 0.26) + 0.002), z)) for x, z in prof]
+    for v in top + bot:
+        if v.co.x > 0.22:
+            v.co.y *= 0.15  # thin cutting edge
+    head.faces.new(top)
+    head.faces.new(list(reversed(bot)))
+    n_ = len(prof)
+    for i in range(n_):
+        j = (i + 1) % n_
+        head.faces.new([top[i], bot[i], bot[j], top[j]])
+    bmesh.ops.recalc_face_normals(head, faces=head.faces)
+    ax.add(head, M_blade, uv=3, sharp=35)
+    ax.build()
+
+    # war hammer: haft with langets, hammer face on +X, beak on -X, top spike
+    hm = Part("warhammer")
+    hm.add(bm_lathe([(0.0, -0.3), (0.017, -0.29), (0.018, 1.0), (0.0, 1.01)], 10), M_wood, uv=3)
+    hm.add(bm_lathe([(0.02, -0.12), (0.021, 0.08)], 10), M_leather, uv=8)
+    for s_ in (-1, 1):
+        hm.add(bm_box(0.006, 0.024, 0.3, (0.02 * s_, 0, 0.88), 0.002), M_dark, uv=6)
+    hm.add(bm_box(0.05, 0.05, 0.08, (0, 0, 1.02), 0.006), M_dark, uv=6)
+    face = bm_lathe([(0.03, 0.0), (0.034, 0.05), (0.038, 0.1), (0.0, 0.1)], 12)
+    xform(face, Matrix.Translation((0.02, 0, 1.02)) @ Matrix.Rotation(math.pi / 2, 4, "Y"))
+    hm.add(face, M_dark, uv=6)
+    beak = bm_lathe([(0.022, 0.0), (0.016, 0.08), (0.0, 0.17)], 10)
+    xform(beak, Matrix.Translation((-0.02, 0, 1.02)) @ Matrix.Rotation(-math.pi / 2 - 0.25, 4, "Y"))
+    hm.add(beak, M_dark, uv=6)
+    hm.add(bm_lathe([(0.015, 1.06), (0.0, 1.2)], 8), M_dark, uv=6)
+    hm.add(bm_lathe([(0.021, -0.31), (0.024, -0.29), (0.0, -0.27)], 10), M_dark, uv=6)
+    hm.build()
+    export_glb(os.path.join(OUT, "weapons.glb"))
+
 
 def build_gore_file():
     reset_scene()
@@ -1601,6 +1736,7 @@ def build_arena_file():
 def main():
     build_knight_file()
     build_sword_file()
+    build_weapons_file()
     build_gore_file()
     tiers = build_arena_file()
     meta = {"arenaRadius": ARENA_R, "tiers": [[round(a, 3), round(b, 3)] for a, b in tiers[1:15:2]]}
