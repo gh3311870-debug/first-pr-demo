@@ -403,6 +403,44 @@ Serve it the same way as the other demos and visit
 
 All seven demos link to each other via the nav chips in the top-right corner.
 
+## Cloud Hopper demo
+
+`hopper.html` is a 3D sky-island platformer (think a tiny Mario 64) that
+plays on phones and on laptops/desktops. Climb from the meadow start, across
+a crumbling bridge and a Grumble-patrolled plateau, then up a spiral of
+platforms to the summit flag:
+
+- Run with the left joystick (or WASD / arrows); drag the right side of the
+  screen to turn the camera (on a laptop, click to lock the mouse for
+  mouse-look, Q / E also turn it, mouse wheel zooms)
+- JUMP (or Space); press again in the air for a front-flipping double jump,
+  and tap briefly for a short hop
+- Collect coins, head-butt `?` blocks for bonus coins and bricks to smash
+  them, and find the 3 hidden crystals
+- Red springs launch you to high ledges; crumbly platforms shake and drop
+  shortly after you land on them
+- Touching a spiky Grumble or falling off costs a heart and sends you back to
+  the last checkpoint flag; your best time is saved on the device
+
+Assets:
+
+- The character (with idle/walk/jump animations), platforms, coins, blocks,
+  clouds, flags and sound effects come from Kenney's
+  [Starter Kit 3D Platformer](https://github.com/KenneyNL/Starter-Kit-3D-Platformer)
+  (CC0), in `assets/hopper/`. Sounds were converted from OGG to MP3 so they
+  play on iOS Safari.
+- The spring, the Grumble enemy and the crystal were modelled in Blender by
+  `tools/blender/make_hopper_models.py`. Regenerate them with
+  `pip install bpy && python tools/blender/make_hopper_models.py` (or
+  `blender -b -P tools/blender/make_hopper_models.py`).
+- The background music is a small chiptune loop synthesised in the browser
+  with the Web Audio API.
+- It uses the ES-module build of Three.js r160 plus `GLTFLoader`, vendored in
+  `vendor/three/`.
+
+Serve it the same way as the other demos and visit
+`http://localhost:8000/hopper.html`.
+
 ### Playing on your phone via GitHub Pages
 
 To play without running a local server, enable GitHub Pages for this repo:
@@ -410,7 +448,7 @@ To play without running a local server, enable GitHub Pages for this repo:
 1. Go to the repo's **Settings > Pages**.
 2. Under "Build and deployment", set **Source** to "Deploy from a branch".
 3. Pick branch `main`, folder `/ (root)`, then **Save**.
-4. After a minute, all seven demos will be live at
+4. After a minute, all eight demos will be live at
    `https://gh3311870-debug.github.io/first-pr-demo/index.html` (builder),
    `https://gh3311870-debug.github.io/first-pr-demo/fps.html` (shooter),
    `https://gh3311870-debug.github.io/first-pr-demo/powers.html` (flight),
@@ -419,9 +457,11 @@ To play without running a local server, enable GitHub Pages for this repo:
    `https://gh3311870-debug.github.io/first-pr-demo/netrunner.html`
    (twin-stick shooter),
    `https://gh3311870-debug.github.io/first-pr-demo/hero.html`
-   (superhero brawler), and
+   (superhero brawler),
    `https://gh3311870-debug.github.io/first-pr-demo/swinger.html`
-   (web-swinging runner) — open any of them on your phone.
+   (web-swinging runner), and
+   `https://gh3311870-debug.github.io/first-pr-demo/hopper.html`
+   (3D platformer) — open any of them on your phone.
 
 Each merge to `main` kicks off a fresh Pages deployment automatically. It
 usually finishes in under a minute, but if a page seems to be missing a

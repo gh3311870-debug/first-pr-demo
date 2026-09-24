@@ -1,0 +1,8 @@
+Kenney assets (character, platforms, coin, blocks, cloud, flag, grass, dust,
+sprites and sound effects) are from Kenney's "Starter Kit 3D Platformer"
+https://github.com/KenneyNL/Starter-Kit-3D-Platformer
+License: Creative Commons Zero, CC0 — https://creativecommons.org/publicdomain/zero/1.0/
+Sounds were converted from OGG to MP3.
+
+spring.glb, spikeball.glb and gem.glb were generated for this repo by
+tools/blender/make_hopper_models.py.
