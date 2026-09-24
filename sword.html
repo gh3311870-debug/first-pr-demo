@@ -117,6 +117,8 @@
   #fbFill.ready { background: linear-gradient(90deg, #ff9a2e, #ffd36a); box-shadow: 0 0 8px #ff8a2a; }
   #prompt { position: absolute; left: 50%; top: 62%; transform: translateX(-50%); font-size: 15px; letter-spacing: 4px; color: var(--ink);
             text-shadow: 0 0 10px #000, 0 0 2px #000; padding: 6px 14px; border: 1px solid rgba(217,179,90,0.6); background: rgba(40,6,6,0.55); white-space: nowrap; }
+  #godTag { position: absolute; top: calc(92px + var(--safe-t)); left: calc(14px + var(--safe-l)); font-size: 10px; letter-spacing: 3px; color: var(--gold);
+            border: 1px solid rgba(217,179,90,0.6); padding: 2px 6px; background: rgba(0,0,0,0.4); }
   #prompt b { color: var(--gold); font-weight: normal; margin-right: 6px; }
   #btnKick { width: 58px; height: 58px; right: calc(128px + var(--safe-r)); bottom: calc(100px + var(--safe-b)); }
   #btnFire { width: 58px; height: 58px; right: calc(112px + var(--safe-r)); bottom: calc(172px + var(--safe-b)); }
@@ -162,6 +164,7 @@
   <div id="dirInd"><span id="dL"></span><span id="dR"></span><span id="dU"></span><span id="dD"></span><div id="dirDot"></div></div>
   <div id="banner"></div>
   <div id="prompt" class="hidden"></div>
+  <div id="godTag" class="hidden">GOD MODE</div>
   <div id="feed"></div>
   <div id="vignette"></div>
   <div id="bloodScreen"></div>
@@ -188,13 +191,14 @@
   <div class="opts">
     <div class="optRow"><label>GORE</label><button class="opt" data-k="gore" data-v="0">Off</button><button class="opt" data-k="gore" data-v="1">Bloody</button><button class="opt" data-k="gore" data-v="2">Brutal</button></div>
     <div class="optRow"><label>WEAPON</label><button class="wopt" data-w="longsword">Longsword</button><button class="wopt" data-w="greatsword">Greatsword</button><button class="wopt" data-w="daneaxe">Dane axe</button><button class="wopt" data-w="warhammer">War hammer</button></div>
+    <div class="optRow"><label>GOD MODE</label><button class="opt" data-k="god" data-v="0">Off</button><button class="opt" data-k="god" data-v="1">On</button></div>
     <div class="optRow"><label>QUALITY</label><button class="opt" data-k="quality" data-v="0">Fast</button><button class="opt" data-k="quality" data-v="1">Pretty</button></div>
   </div>
   <div id="help" class="hidden">
     <b>Desktop</b> — click to grab the mouse. <b>WASD</b> move, <b>Shift</b> sprint, <b>Space</b> dodge.<br>
     <b>Left click</b> strikes <i>in the direction you last moved the mouse</i>: flick left or right to slash, down to chop, up to thrust. <b>Q</b> chop, <b>E</b> thrust.<br>
     <b>Right click</b> (hold) blocks. Block just before a blow lands to <b>parry</b> and stagger your foe. <b>Tab</b> toggles lock-on.<br>
-    <b>C</b> kicks through a guard. <b>X</b> hurls a fireball that sets knights alight. <b>F</b> executes a staggered or maimed foe. <b>R</b> takes up a fallen weapon.<br>
+    <b>G</b> toggles god mode (also on this menu) for testing. <b>C</b> kicks through a guard. <b>X</b> hurls a fireball that sets knights alight. <b>F</b> executes a staggered or maimed foe. <b>R</b> takes up a fallen weapon.<br>
     <b>Touch</b> — left thumb moves. Swipe the right side to strike in that direction, tap for a quick slash. Hold <b>BLOCK</b>, tap <b>DODGE</b>, <b>KICK</b> or <b>FIRE</b>; <b>EXECUTE</b> and <b>TAKE</b> appear when you can use them.<br>
     Heavy blows can take limbs. A killing blow to the head takes the head. Staggered and crippled foes cannot defend themselves.
   </div>
@@ -244,7 +248,8 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem('bns_' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem('bns_' + k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } },
 };
-const settings = { gore: store.get('gore', 2), quality: store.get('quality', IS_TOUCH ? 0 : 1), muted: store.get('muted', false), weapon: store.get('weapon', 'longsword') };
+const settings = { gore: store.get('gore', 2), quality: store.get('quality', IS_TOUCH ? 0 : 1), muted: store.get('muted', false), weapon: store.get('weapon', 'longsword'), god: store.get('god', 0) };
+const godMode = (f) => f.isPlayer && settings.god === 1;
 if (QS.has('gore')) settings.gore = +QS.get('gore');
 if (QS.has('q')) settings.quality = +QS.get('q');
 
@@ -1306,7 +1311,7 @@ class Fighter {
 
   // ---------------- actions ----------------
   canAct() { return this.alive && this.state !== 'crippled' && this.state !== 'executed' && this.state !== 'execute'; }
-  isHelpless() { return this.alive && (this.state === 'stagger' || this.state === 'crippled' || this.state === 'executed' || (this.hp < this.maxHp * 0.2 && this.state === 'hit')); }
+  isHelpless() { return !godMode(this) && this.alive && (this.state === 'stagger' || this.state === 'crippled' || this.state === 'executed' || (this.hp < this.maxHp * 0.2 && this.state === 'hit')); }
   startKick() {
     if (!this.canAct() || !(this.state === 'free' || this.state === 'block') || this.stamina < 10) return false;
     this.useStamina(16);
@@ -1363,6 +1368,7 @@ class Fighter {
   update(dt) {
     this.stateT += dt;
     if (this.invuln > 0) this.invuln -= dt;
+    if (godMode(this) && this.alive) { this.hp = this.maxHp; this.bleedRate = 0; }
     if (this.alive) {
       if (this.staminaDelay > 0) this.staminaDelay -= dt;
       else this.stamina = Math.min(100, this.stamina + (this.state === 'block' ? 10 : 24) * dt);
@@ -1639,6 +1645,7 @@ class Fighter {
     const W = att.wcfg;
     let dmg = cfg.dmg * PART_MULT[part] * att.dmgMult * W.dmg * (att.atk.type === 'atk_thrust' ? W.thrust : 1) * rand(0.9, 1.12);
     if (this.state === 'stagger' || this.state === 'crippled') dmg *= 1.4;
+    if (godMode(this)) dmg = Math.min(dmg, this.hp - 1);
     const fatal = this.hp - dmg <= 0;
     this.hp -= dmg;
     this.lastHitBy = att;
@@ -1657,7 +1664,7 @@ class Fighter {
     // non-lethal dismemberment
     const limb = part !== 'head' && part !== 'torso';
     // the player only ever loses the off hand to a non-lethal blow; losing the sword arm or a leg ends a run unfairly
-    const allowed = !this.isPlayer || part === 'upperarm_L' || part === 'forearm_L';
+    const allowed = !this.isPlayer || (!godMode(this) && (part === 'upperarm_L' || part === 'forearm_L'));
     if (gk && limb && allowed && dmg >= 16) {
       const chance = (part.startsWith('forearm') ? 0.3 : part.startsWith('upperarm') ? 0.18 : 0.12) * (settings.gore === 2 ? 1.4 : 1) * W.sever;
       if (Math.random() < chance) {
@@ -1687,6 +1694,7 @@ class Fighter {
 
   die({ part = 'torso', dir = new V3(0, 0, 1), attacker = null, cause = 'blade', anim = null, from = 0, noSever = false, atkType = null, forceSever = false } = {}) {
     if (!this.alive) return;
+    if (godMode(this)) { this.hp = this.maxHp; return; }
     this.alive = false; this.hp = 0; this.bleedRate = 0;
     const gk = goreScale();
     let severedPart = null;
@@ -2071,6 +2079,7 @@ function explode(fb, direct) {
     const guarded = d.state === 'block' && facing;
     if (guarded) dmg *= 0.45;
     dmg *= o.dmgMult;
+    if (godMode(d)) dmg = Math.min(dmg, d.hp - 1);
     d.blastDir = _v4.subVectors(d.pos, p).setY(0).normalize().setY(0.45).normalize().clone();
     const fatal = d.hp - dmg <= 0;
     d.hp -= dmg;
@@ -2273,6 +2282,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyC') input.kick = true;
   if (e.code === 'KeyX') input.cast = true;
   if (e.code === 'KeyR') input.take = true;
+  if (e.code === 'KeyG') { setGod(!settings.god); game.hint(settings.god ? 'God mode on: you cannot die' : 'God mode off', 2); }
   if (e.code === 'Escape' || e.code === 'KeyP') game.pause(true);
 });
 addEventListener('keyup', (e) => { input.keys[e.code] = false; });
@@ -2633,6 +2643,7 @@ const game = {
     this.cine = null;
     $('menu').classList.add('hidden'); $('endScreen').classList.add('hidden'); $('pauseMenu').classList.add('hidden');
     $('hud').classList.remove('hidden');
+    $('godTag').classList.toggle('hidden', !settings.god);
     for (const d of [...fx.splats, fx.drops, fx.pools, fx.scorch]) { d.i = 0; const z = new THREE.Matrix4().makeScale(0, 0, 0); for (let i = 0; i < d.max; i++) d.mesh.setMatrixAt(i, z); d.mesh.instanceMatrix.needsUpdate = true; d.grow = []; }
     this.player = this.spawn({ team: 0, isPlayer: true, look: PLAYER_LOOK, name: 'You', weapon: WEAPONS[settings.weapon] ? settings.weapon : 'longsword', stats: { atkSpeed: 1.12, maxHp: 120 } });
     this.player.castCool = 0;
@@ -2833,7 +2844,13 @@ document.querySelectorAll('.opt').forEach((b) => b.addEventListener('click', () 
   if (settings[k] === v) return;
   store.set(k, v);
   if (k === 'quality' || k === 'gore') { location.reload(); return; }
+  settings[k] = v;
+  syncOpts();
 }));
+function setGod(on) {
+  settings.god = on ? 1 : 0; store.set('god', settings.god); syncOpts();
+  $('godTag').classList.toggle('hidden', !on);
+}
 function syncWeapon() { document.querySelectorAll('.wopt').forEach((b) => b.classList.toggle('sel', b.dataset.w === settings.weapon)); }
 document.querySelectorAll('.wopt').forEach((b) => b.addEventListener('click', () => { settings.weapon = b.dataset.w; store.set('weapon', settings.weapon); syncWeapon(); }));
 syncWeapon();
