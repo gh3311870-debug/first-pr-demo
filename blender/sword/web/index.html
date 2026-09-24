@@ -302,7 +302,7 @@ function toPhysical(m, extra) {
   });
 }
 const loader = new GLTFLoader();
-loader.load("sword.json", (gltf) => {
+function onModel(gltf) {
   const root = gltf.scene;
   const maxAniso = renderer.capabilities.getMaxAnisotropy();
   let table, blade, guard;
@@ -396,16 +396,78 @@ loader.load("sword.json", (gltf) => {
   goTo("whole");
 
   loaderEl.classList.add("done");
-}, (e) => {
-  if (e.total) {
-    const p = Math.round((e.loaded / e.total) * 100);
-    document.getElementById("fill").style.width = p + "%";
-    document.getElementById("pct").textContent = p + "%";
-  }
-}, (err) => {
+}
+
+function showProgress(p) {
+  document.getElementById("fill").style.width = p + "%";
+  document.getElementById("pct").textContent = p + "%";
+}
+
+function showError(err) {
   console.error(err);
-  loaderEl.querySelector(".label").textContent = "The model file didn't load. Reload the page to try again.";
-});
+  loaderEl.querySelector(".label").textContent = "The model didn't load. Reload the page to try again.";
+  document.getElementById("pct").textContent = String(err && err.message ? err.message : err).slice(0, 160);
+}
+
+// sword.json is glTF with its geometry embedded as base64. The page isn't
+// allowed to fetch data: URIs, so decode the buffer here and hand three.js
+// an in-memory .glb; the textures still load from textures/*.jpg.
+async function fetchModel(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+  const total = Number(res.headers.get("content-length")) || 0;
+  let text;
+  if (res.body && total) {
+    const reader = res.body.getReader();
+    const parts = [];
+    let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      parts.push(value);
+      got += value.length;
+      showProgress(Math.min(99, Math.round((got / total) * 100)));
+    }
+    const all = new Uint8Array(got);
+    let o = 0;
+    for (const p of parts) { all.set(p, o); o += p.length; }
+    text = new TextDecoder().decode(all);
+  } else {
+    text = await res.text();
+  }
+  const gltf = JSON.parse(text);
+  const uri = gltf.buffers[0].uri;
+  const b64 = atob(uri.slice(uri.indexOf(",") + 1));
+  const bin = new Uint8Array(b64.length);
+  for (let i = 0; i < b64.length; i++) bin[i] = b64.charCodeAt(i);
+  delete gltf.buffers[0].uri;
+  gltf.buffers[0].byteLength = bin.length;
+
+  const json = new TextEncoder().encode(JSON.stringify(gltf));
+  const jsonLen = Math.ceil(json.length / 4) * 4;
+  const binLen = Math.ceil(bin.length / 4) * 4;
+  const glb = new ArrayBuffer(12 + 8 + jsonLen + 8 + binLen);
+  const dv = new DataView(glb);
+  const bytes = new Uint8Array(glb);
+  dv.setUint32(0, 0x46546c67, true);           // "glTF"
+  dv.setUint32(4, 2, true);
+  dv.setUint32(8, glb.byteLength, true);
+  dv.setUint32(12, jsonLen, true);
+  dv.setUint32(16, 0x4e4f534a, true);          // "JSON"
+  bytes.fill(0x20, 20, 20 + jsonLen);
+  bytes.set(json, 20);
+  dv.setUint32(20 + jsonLen, binLen, true);
+  dv.setUint32(24 + jsonLen, 0x004e4942, true); // "BIN"
+  bytes.set(bin, 28 + jsonLen);
+  showProgress(100);
+  return glb;
+}
+
+fetchModel("sword.json")
+  .then((glb) => loader.parse(glb, new URL(".", location.href).href, (gltf) => {
+    try { onModel(gltf); } catch (e) { showError(e); }
+  }, showError))
+  .catch(showError);
 
 // camera moves between named views
 let tween = null;
