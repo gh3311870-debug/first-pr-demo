@@ -401,7 +401,57 @@ scrolling city skyline:
 Serve it the same way as the other demos and visit
 `http://localhost:8000/swinger.html`.
 
-All seven demos link to each other via the nav chips in the top-right corner.
+## Frontline: Dust Veil (realistic FPS)
+
+`frontline.html` is a realistic first-person tactical shooter set in a walled
+desert village. It runs on desktop (mouse + keyboard) and phones (touch), and
+uses three.js r186 as ES modules (`frontline/`, `vendor/three-r186/`).
+
+- Clear 17 hostiles: guards, patrols, and shooters on rooftops and
+  watchtowers. Enemies see and hear you, alert each other, path-find through
+  the village (A*), fire in bursts, reposition, and get suppressed when your
+  rounds crack past them
+- M4 carbine with a working red-dot optic: aim down sights, recoil and
+  weapon sway, auto/semi fire modes, and 30+1 tactical reloads. Headshots
+  kill instantly, and fallen enemies drop spare magazines
+- Movement: sprint, crouch (harder to spot, steadier aim), jump, lean
+  around corners, and climb exterior stairs onto the rooftops
+- Physical sky with image-based lighting, sun shadows, ambient occlusion
+  (High quality), PBR textures, bullet holes, dust, sparks, blood, tracers
+  and ejected brass
+- Every sound is synthesized live, including delayed distant gunshots with
+  echo, bullet cracks, surface-specific impacts, footsteps, and reloads
+
+Controls: WASD move, mouse look, left click fire, right click aim, Shift
+sprint, C crouch, Space jump, Q/E lean, R reload, V fire mode, Esc pause.
+On touch: left stick moves (push to the top to sprint), drag the right side
+to look, and use the on-screen buttons.
+
+Graphics quality (Low / Medium / High), difficulty, look speed and FOV are
+in **Settings** on the start screen.
+
+### How the assets were made
+
+- The rifle, the first-person arm and enemy animations (IK-driven grips,
+  reload, aim, run, death), and all level props were built with Blender's
+  Python API. The scripts are in `tools/frontline/`
+- Textures were generated with Python/NumPy (`tools/frontline/make_textures.py`)
+- The soldier character comes from the three.js examples
+- Sources and licenses are listed in
+  [`assets/frontline/CREDITS.md`](assets/frontline/CREDITS.md)
+
+To rebuild the assets (requires `pip install bpy numpy scipy pillow`):
+
+```
+python3 tools/frontline/build_operator.py Soldier.glb assets/frontline/operator.glb
+python3 tools/frontline/build_props.py assets/frontline/props.glb
+python3 tools/frontline/make_textures.py assets/frontline/tex <three.js>/examples/textures
+```
+
+Serve it the same way as the other demos and visit
+`http://localhost:8000/frontline.html`.
+
+All eight demos link to each other via the nav chips in the top-right corner.
 
 ### Playing on your phone via GitHub Pages
 
@@ -410,7 +460,7 @@ To play without running a local server, enable GitHub Pages for this repo:
 1. Go to the repo's **Settings > Pages**.
 2. Under "Build and deployment", set **Source** to "Deploy from a branch".
 3. Pick branch `main`, folder `/ (root)`, then **Save**.
-4. After a minute, all seven demos will be live at
+4. After a minute, all eight demos will be live at
    `https://gh3311870-debug.github.io/first-pr-demo/index.html` (builder),
    `https://gh3311870-debug.github.io/first-pr-demo/fps.html` (shooter),
    `https://gh3311870-debug.github.io/first-pr-demo/powers.html` (flight),
@@ -419,9 +469,11 @@ To play without running a local server, enable GitHub Pages for this repo:
    `https://gh3311870-debug.github.io/first-pr-demo/netrunner.html`
    (twin-stick shooter),
    `https://gh3311870-debug.github.io/first-pr-demo/hero.html`
-   (superhero brawler), and
+   (superhero brawler),
    `https://gh3311870-debug.github.io/first-pr-demo/swinger.html`
-   (web-swinging runner) — open any of them on your phone.
+   (web-swinging runner), and
+   `https://gh3311870-debug.github.io/first-pr-demo/frontline.html`
+   (realistic FPS) — open any of them on your phone.
 
 Each merge to `main` kicks off a fresh Pages deployment automatically. It
 usually finishes in under a minute, but if a page seems to be missing a

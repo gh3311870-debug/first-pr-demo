@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Frontline: Dust Veil</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%228%22 r=%226%22 fill=%22none%22 stroke=%22%23d9a441%22 stroke-width=%222%22/%3E%3Ccircle cx=%228%22 cy=%228%22 r=%221.5%22 fill=%22%23d9a441%22/%3E%3C/svg%3E">
+<style>
+  :root {
+    --ui: #e9e4d8;
+    --dim: rgba(233, 228, 216, 0.6);
+    --accent: #d9a441;
+    --danger: #d8453a;
+    --panel: rgba(14, 14, 12, 0.72);
+    --font: "Bahnschrift", "DIN Alternate", "Roboto Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+  }
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden; background: #15130f;
+    font-family: var(--font); color: var(--ui); touch-action: none; -webkit-user-select: none; user-select: none;
+  }
+  canvas { display: block; }
+  .hidden { display: none !important; }
+  button {
+    font-family: var(--font); cursor: pointer; letter-spacing: 0.12em; text-transform: uppercase;
+  }
+
+  /* ------------------------------------------------ loading + menus */
+  .screen {
+    position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at 50% 30%, rgba(40, 32, 20, 0.35), rgba(8, 8, 6, 0.88));
+    padding: 16px; box-sizing: border-box;
+  }
+  #loading { background: #12100c; flex-direction: column; gap: 18px; }
+  .title { font-size: clamp(34px, 7vw, 72px); font-weight: 700; letter-spacing: 0.08em; line-height: 0.95; text-align: center; }
+  .title small { display: block; font-size: 0.32em; letter-spacing: 0.5em; color: var(--accent); margin-top: 10px; }
+  .loadBar { width: min(420px, 80vw); height: 4px; background: rgba(255,255,255,0.12); }
+  #loadFill { height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
+  #loadLabel { font-size: 12px; color: var(--dim); letter-spacing: 0.15em; text-transform: uppercase; }
+  .card {
+    background: var(--panel); border: 1px solid rgba(255,255,255,0.08); padding: clamp(18px, 4vw, 36px);
+    max-width: 640px; width: 100%; box-sizing: border-box; backdrop-filter: blur(6px); max-height: 100%; overflow: auto;
+  }
+  .brief { color: var(--dim); font-size: 15px; line-height: 1.5; margin: 18px 0 22px; }
+  .brief b { color: var(--ui); font-weight: 600; }
+  .btnRow { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn {
+    background: transparent; color: var(--ui); border: 1px solid rgba(255,255,255,0.35); padding: 12px 20px; font-size: 13px;
+  }
+  .btn:hover { border-color: var(--ui); background: rgba(255,255,255,0.06); }
+  .btn.primary { background: var(--accent); color: #17130a; border-color: var(--accent); font-weight: 700; padding: 14px 34px; }
+  .btn.primary:hover { filter: brightness(1.1); }
+  .opts { display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; align-items: center; margin: 18px 0; font-size: 13px; }
+  .opts label { color: var(--dim); letter-spacing: 0.1em; text-transform: uppercase; font-size: 11px; }
+  select, input[type=range] { width: 100%; font-family: var(--font); }
+  select { background: #1d1b16; color: var(--ui); border: 1px solid rgba(255,255,255,0.25); padding: 6px; }
+  .sub { margin-top: 18px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 14px; font-size: 13px; color: var(--dim); line-height: 1.6; }
+  .sub h3 { color: var(--ui); font-size: 12px; letter-spacing: 0.2em; margin: 0 0 8px; }
+  .keys { display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px; }
+  .keys b { color: var(--ui); font-weight: 600; }
+  .sub a { color: var(--accent); }
+  #end .card { text-align: center; }
+  #endTitle { font-size: clamp(30px, 6vw, 54px); font-weight: 700; letter-spacing: 0.1em; }
+  #endTitle.win { color: var(--accent); }
+  #endTitle.lose { color: var(--danger); }
+  #endStats { display: flex; justify-content: center; gap: clamp(14px, 4vw, 40px); margin: 24px 0; flex-wrap: wrap; }
+  #endStats b { display: block; font-size: 30px; }
+  #endStats span { font-size: 11px; letter-spacing: 0.2em; color: var(--dim); text-transform: uppercase; }
+  .gameLink { position: fixed; top: 12px; right: 12px; z-index: 40; color: var(--dim); font-size: 12px; letter-spacing: 0.15em; text-decoration: none; }
+
+  /* ------------------------------------------------ HUD */
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; text-shadow: 0 1px 2px rgba(0,0,0,0.7); }
+  #bloodOverlay {
+    position: absolute; inset: 0; opacity: 0;
+    background: radial-gradient(ellipse at center, transparent 45%, rgba(120, 0, 0, 0.55) 85%, rgba(70, 0, 0, 0.85) 100%);
+  }
+  #cross { position: absolute; left: 50%; top: 50%; --gap: 8px; }
+  #cross i { position: absolute; background: rgba(255,255,255,0.85); box-shadow: 0 0 2px rgba(0,0,0,0.9); }
+  #cross i:nth-child(1) { width: 2px; height: 9px; left: -1px; bottom: var(--gap); }
+  #cross i:nth-child(2) { width: 2px; height: 9px; left: -1px; top: var(--gap); }
+  #cross i:nth-child(3) { height: 2px; width: 9px; top: -1px; right: var(--gap); }
+  #cross i:nth-child(4) { height: 2px; width: 9px; top: -1px; left: var(--gap); }
+  #cross b { position: absolute; width: 2px; height: 2px; left: -1px; top: -1px; background: rgba(255,255,255,0.8); }
+  #hitmark { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; opacity: 0; }
+  #hitmark::before, #hitmark::after {
+    content: ""; position: absolute; left: 12px; top: -2px; width: 2px; height: 30px; background: #fff;
+    -webkit-mask: linear-gradient(#000 0 35%, transparent 35% 65%, #000 65%); mask: linear-gradient(#000 0 35%, transparent 35% 65%, #000 65%);
+  }
+  #hitmark::before { transform: rotate(45deg); }
+  #hitmark::after { transform: rotate(-45deg); }
+  #hitmark.kill::before, #hitmark.kill::after { background: var(--danger); }
+  #dmgRing { position: absolute; left: 50%; top: 50%; }
+  .dmgArc {
+    position: absolute; left: -90px; top: -90px; width: 180px; height: 180px; border-radius: 50%;
+    border-top: 5px solid rgba(220, 40, 30, 0.9); box-sizing: border-box; filter: blur(0.5px);
+    -webkit-mask: linear-gradient(90deg, transparent 30%, #000 42%, #000 58%, transparent 70%);
+    mask: linear-gradient(90deg, transparent 30%, #000 42%, #000 58%, transparent 70%);
+  }
+  #compass {
+    position: absolute; top: 14px; left: 50%; width: 360px; height: 30px; margin-left: -180px; overflow: hidden;
+    -webkit-mask: linear-gradient(90deg, transparent, #000 25%, #000 75%, transparent);
+    mask: linear-gradient(90deg, transparent, #000 25%, #000 75%, transparent);
+  }
+  #compassStrip { position: absolute; left: 180px; top: 0; height: 100%; }
+  .tick { position: absolute; top: 4px; transform: translateX(-50%); font-size: 10px; color: var(--dim); }
+  .tick.major { font-size: 14px; color: var(--ui); font-weight: 700; top: 2px; }
+  #heading { position: absolute; top: 44px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--dim); letter-spacing: 0.15em; }
+  #heading::before { content: ""; position: absolute; left: 50%; top: -9px; border: 4px solid transparent; border-top-color: var(--accent); margin-left: -4px; }
+  #objective { position: absolute; top: 16px; left: 18px; font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; }
+  #objective .t { color: var(--accent); font-weight: 700; }
+  #objective .h { font-size: 22px; font-weight: 700; margin-top: 4px; letter-spacing: 0.05em; }
+  #objective .h small { font-size: 11px; color: var(--dim); letter-spacing: 0.2em; margin-left: 6px; }
+  #ammo { position: absolute; right: 24px; bottom: 22px; text-align: right; }
+  #ammo .w { font-size: 11px; letter-spacing: 0.25em; color: var(--dim); }
+  #ammoNum { font-size: 46px; font-weight: 700; line-height: 1; }
+  #ammoNum.low { color: var(--danger); }
+  #ammoRes { font-size: 20px; color: var(--dim); margin-left: 4px; }
+  #fireMode { font-size: 11px; letter-spacing: 0.2em; border: 1px solid var(--dim); padding: 1px 6px; margin-left: 8px; vertical-align: middle; }
+  #health { position: absolute; left: 24px; bottom: 26px; width: 220px; }
+  #health .lbl { font-size: 11px; letter-spacing: 0.25em; color: var(--dim); display: flex; justify-content: space-between; }
+  #hpNum { color: var(--ui); font-weight: 700; font-size: 16px; }
+  .hpBar { height: 5px; background: rgba(255,255,255,0.15); margin-top: 5px; }
+  #hpFill { height: 100%; width: 100%; background: var(--ui); transition: width 0.15s; }
+  #hpFill.crit { background: var(--danger); }
+  #reloadHint { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); font-size: 13px; letter-spacing: 0.25em; color: var(--accent); opacity: 0; }
+  #notify { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); font-size: 15px; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0; white-space: nowrap; }
+  #notify.show { animation: note 3.2s ease forwards; }
+  @keyframes note { 0% { opacity: 0; transform: translate(-50%, 6px); } 10%, 75% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+  #killfeed { position: absolute; right: 24px; top: 70px; text-align: right; font-size: 13px; letter-spacing: 0.15em; }
+  .feedItem { animation: feed 3.5s ease forwards; margin-bottom: 4px; }
+  .feedItem.head { color: var(--accent); }
+  @keyframes feed { 0% { opacity: 0; transform: translateX(10px); } 8%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+  /* ------------------------------------------------ touch controls */
+  #touch { display: none; position: fixed; inset: 0; z-index: 12; pointer-events: none; }
+  body.touch #touch { display: block; }
+  #tLook { position: absolute; left: 40%; right: 0; top: 0; bottom: 0; pointer-events: auto; }
+  #tStick {
+    position: absolute; left: 28px; bottom: 28px; width: 130px; height: 130px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.18); pointer-events: auto;
+  }
+  #tKnob { position: absolute; left: 40px; top: 40px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.45); }
+  .tBtn {
+    position: absolute; border-radius: 50%; border: 2px solid rgba(255,255,255,0.4); background: rgba(0,0,0,0.25);
+    color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; letter-spacing: 0.1em;
+    pointer-events: auto; font-weight: 700;
+  }
+  .tBtn.on { background: rgba(255,255,255,0.3); }
+  #tFire { right: 34px; bottom: 120px; width: 92px; height: 92px; border-color: rgba(216, 69, 58, 0.8); background: rgba(216, 69, 58, 0.3); }
+  #tAim { right: 142px; bottom: 150px; width: 60px; height: 60px; }
+  #tReload { right: 142px; bottom: 76px; width: 54px; height: 54px; }
+  #tJump { right: 34px; bottom: 30px; width: 56px; height: 56px; }
+  #tCrouch { right: 104px; bottom: 16px; width: 50px; height: 50px; }
+  body.touch #ammo { bottom: auto; top: 70px; }
+  body.touch #health { bottom: auto; top: 70px; left: 18px; width: 150px; }
+  body.touch #objective { display: none; }
+</style>
+</head>
+<body>
+<div id="view"></div>
+
+<div id="loading" class="screen">
+  <div class="title">FRONTLINE<small>DUST VEIL</small></div>
+  <div class="loadBar"><div id="loadFill"></div></div>
+  <div id="loadLabel">Loading</div>
+</div>
+
+<div id="menu" class="screen hidden">
+  <div class="card">
+    <div class="title" style="text-align:left">FRONTLINE<small>DUST VEIL</small></div>
+    <p class="brief">
+      <b>0600 hrs.</b> Insurgents have taken the village of Qal'at Rahim. Enter through the south checkpoint and
+      <b>clear every hostile</b> from the compound. Watch the rooftops and towers, use cover, and make your magazines count &mdash;
+      pick up spare mags from fallen enemies.
+    </p>
+    <div class="btnRow">
+      <button class="btn primary" id="deployBtn">Deploy</button>
+      <button class="btn" data-panel="controlsPanel">Controls</button>
+      <button class="btn" data-panel="optsPanel">Settings</button>
+      <button class="btn" data-panel="creditsPanel">Credits</button>
+    </div>
+    <div id="optsPanel" class="sub hidden">
+      <h3>SETTINGS</h3>
+      <div class="opts">
+        <label for="optQuality">Graphics</label>
+        <select id="optQuality">
+          <option value="low">Low (phones)</option>
+          <option value="medium">Medium</option>
+          <option value="high">High (AO, 4K shadows)</option>
+        </select>
+        <label for="optDifficulty">Difficulty</label>
+        <select id="optDifficulty">
+          <option value="recruit">Recruit</option>
+          <option value="regular">Regular</option>
+          <option value="veteran">Veteran</option>
+        </select>
+        <label for="optSens">Look speed</label>
+        <input id="optSens" type="range" min="0.3" max="2.5" step="0.05">
+        <label for="optFov">Field of view <span id="fovVal"></span></label>
+        <input id="optFov" type="range" min="60" max="95" step="1">
+      </div>
+    </div>
+    <div id="controlsPanel" class="sub hidden">
+      <h3>CONTROLS</h3>
+      <div class="keys">
+        <b>WASD</b><span>Move</span>
+        <b>Mouse</b><span>Look &nbsp;&middot;&nbsp; Left: fire &nbsp;&middot;&nbsp; Right: aim down sights</span>
+        <b>Shift</b><span>Sprint</span>
+        <b>C / Ctrl</b><span>Crouch (harder to spot, steadier aim)</span>
+        <b>Space</b><span>Jump</span>
+        <b>Q / E</b><span>Lean around corners</span>
+        <b>R</b><span>Reload</span>
+        <b>V</b><span>Toggle auto / semi-auto</span>
+        <b>Esc</b><span>Pause</span>
+        <b>Touch</b><span>Left stick moves (push to the top to sprint), drag right side to look, buttons for fire / aim / reload / jump / crouch</span>
+      </div>
+    </div>
+    <div id="creditsPanel" class="sub hidden">
+      <h3>CREDITS &amp; SOURCES</h3>
+      Rifle, arms rig animations, props and level built with <b>Blender 5.0</b> (Python API) &mdash; scripts in
+      <code>tools/frontline/</code>. Textures generated procedurally with Python/NumPy.<br>
+      Soldier character &amp; base animations: <b>Soldier.glb</b> from the
+      <a href="https://github.com/mrdoob/three.js/tree/dev/examples/models/gltf" target="_blank" rel="noopener">three.js examples</a>
+      (Mixamo-rigged).<br>
+      Brick, hardwood and smoke textures: three.js examples.<br>
+      Engine: <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> r186 (MIT). All audio synthesized live with Web Audio.
+      Full list: <code>assets/frontline/CREDITS.md</code>.
+    </div>
+  </div>
+</div>
+
+<div id="pause" class="screen hidden">
+  <div class="card" style="max-width:420px;text-align:center">
+    <div class="title" style="font-size:40px">PAUSED</div>
+    <div class="btnRow" style="justify-content:center;margin-top:22px">
+      <button class="btn primary" id="resumeBtn">Resume</button>
+      <button class="btn" id="quitBtn">Restart</button>
+    </div>
+  </div>
+</div>
+
+<div id="end" class="screen hidden">
+  <div class="card">
+    <div id="endTitle">MISSION COMPLETE</div>
+    <div id="endStats"></div>
+    <button class="btn primary" id="retryBtn">Play again</button>
+  </div>
+</div>
+
+<div id="hud" class="hidden">
+  <div id="bloodOverlay"></div>
+  <div id="cross"><i></i><i></i><i></i><i></i><b></b></div>
+  <div id="hitmark"></div>
+  <div id="dmgRing"></div>
+  <div id="compass"><div id="compassStrip"></div></div>
+  <div id="heading">000</div>
+  <div id="objective"><div class="t">Clear the village</div><div class="h"><span id="hostiles">0</span><small>HOSTILES</small></div></div>
+  <div id="killfeed"></div>
+  <div id="notify"></div>
+  <div id="reloadHint">RELOAD</div>
+  <div id="health"><div class="lbl"><span>HEALTH</span><span id="hpNum">100</span></div><div class="hpBar"><div id="hpFill"></div></div></div>
+  <div id="ammo"><div class="w">M4A1 CARBINE<span id="fireMode">AUTO</span></div><span id="ammoNum">30</span><span id="ammoRes">180</span></div>
+</div>
+
+<div id="touch">
+  <div id="tLook"></div>
+  <div id="tStick"><div id="tKnob"></div></div>
+  <div class="tBtn" id="tFire">FIRE</div>
+  <div class="tBtn" id="tAim">AIM</div>
+  <div class="tBtn" id="tReload">RLD</div>
+  <div class="tBtn" id="tJump">JUMP</div>
+  <div class="tBtn" id="tCrouch">CRCH</div>
+</div>
+
+<a class="gameLink" href="index.html">&larr; GAMES</a>
+
+<script type="module" src="frontline/main.js"></script>
+</body>
+</html>
