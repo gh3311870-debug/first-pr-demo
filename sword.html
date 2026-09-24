@@ -7,6 +7,7 @@
 <link rel="icon" href="data:,">
 <style>
   :root {
+    color-scheme: dark;
     --safe-t: env(safe-area-inset-top, 0px);
     --safe-r: env(safe-area-inset-right, 0px);
     --safe-b: env(safe-area-inset-bottom, 0px);
@@ -1976,21 +1977,27 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('keyup', (e) => { input.keys[e.code] = false; });
 const canvas = renderer.domElement;
+// Pointer lock is optional: where the browser or an embedding frame refuses it,
+// clicks strike directly and plain mouse movement drives aiming and the camera.
 function lockPointer() {
-  try { const r = canvas.requestPointerLock && canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) { /* needs a user gesture */ }
+  if (input.noLock || !canvas.requestPointerLock) { input.noLock = true; return; }
+  try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { input.noLock = true; }); } catch (e) { input.noLock = true; }
 }
+document.addEventListener('pointerlockerror', () => { input.noLock = true; });
+const mouseActive = () => document.pointerLockElement === canvas || input.noLock;
 canvas.addEventListener('mousedown', (e) => {
   sfx.init();
   if (game.state !== 'playing' || IS_TOUCH) return;
-  if (document.pointerLockElement !== canvas) { lockPointer(); return; }
+  if (!mouseActive()) { lockPointer(); if (!input.noLock) return; }
   if (e.button === 0) input.attack = driftDir();
   if (e.button === 2) input.block = true;
   if (e.button === 1) { input.lockEnabled = !input.lockEnabled; e.preventDefault(); }
 });
+canvas.addEventListener('pointerdown', () => sfx.init());
 addEventListener('mouseup', (e) => { if (e.button === 2) input.block = false; });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 addEventListener('mousemove', (e) => {
-  if (document.pointerLockElement !== canvas) return;
+  if (!mouseActive() || game.state !== 'playing') return;
   input.drift.x += e.movementX; input.drift.y += e.movementY;
   if (!game.lockTarget) {
     input.camYaw -= e.movementX * 0.0024;
