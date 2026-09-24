@@ -332,11 +332,11 @@ export function styleRifleMaterials(root) {
       o.material = new THREE.MeshBasicMaterial({ color: 0xff2a12, toneMapped: false });
       o.renderOrder = 5;
     } else if (n === "Rifle_Anodized") {
-      Object.assign(o.material, { metalness: 0.25, roughness: 0.55, envMapIntensity: 0.6 });
+      Object.assign(o.material, { metalness: 0.15, roughness: 0.78, envMapIntensity: 0.35 });
     } else if (n === "Rifle_Steel") {
-      Object.assign(o.material, { metalness: 0.6, roughness: 0.45, envMapIntensity: 0.6 });
+      Object.assign(o.material, { metalness: 0.5, roughness: 0.55, envMapIntensity: 0.45 });
     } else if (n.startsWith("Rifle_")) {
-      o.material.envMapIntensity = 0.6;
+      o.material.envMapIntensity = 0.4;
     }
   });
 }

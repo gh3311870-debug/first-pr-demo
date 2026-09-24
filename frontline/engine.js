@@ -27,7 +27,7 @@ export class Engine {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.82;
+    this.renderer.toneMappingExposure = 0.74;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.autoClear = false;
@@ -81,9 +81,9 @@ export class Engine {
     envScene.add(ground);
     this.envMap = pmrem.fromScene(envScene, 0.02).texture;
     this.scene.environment = this.envMap;
-    this.scene.environmentIntensity = 0.42;
+    this.scene.environmentIntensity = 0.32;
     this.vmScene.environment = this.envMap;
-    this.vmScene.environmentIntensity = 0.4;
+    this.vmScene.environmentIntensity = 0.28;
     pmrem.dispose();
 
     // Dusty haze that fades distant terrain into the horizon.
@@ -103,14 +103,14 @@ export class Engine {
     sun.shadow.radius = 2;
     this.scene.add(sun, sun.target);
     this.sun = sun;
-    const hemi = new THREE.HemisphereLight(0xa9c2e6, 0x7a5c3e, 0.35);
+    const hemi = new THREE.HemisphereLight(0xb9c6d6, 0x9a7650, 0.55);
     this.scene.add(hemi);
 
     // viewmodel lights mirror the world lights (no shadows)
     const vmSun = new THREE.DirectionalLight(0xffdcb4, 2.0);
     this.vmScene.add(vmSun, vmSun.target);
     this.vmSun = vmSun;
-    this.vmScene.add(new THREE.HemisphereLight(0xa9c2e6, 0x7a5c3e, 0.45));
+    this.vmScene.add(new THREE.HemisphereLight(0xb9c6d6, 0x9a7650, 0.55));
     // muzzle flash light for the viewmodel
     this.vmFlash = new THREE.PointLight(0xffb060, 0, 3, 2);
     this.vmScene.add(this.vmFlash);

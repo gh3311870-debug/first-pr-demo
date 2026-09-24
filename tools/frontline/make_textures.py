@@ -322,10 +322,10 @@ def palm_leaf():
     yy, xx = np.mgrid[0:hgt, 0:w]
     u = xx / w - 0.5
     v = 1 - yy / hgt  # 0 at base, 1 at tip
-    rachis = np.abs(u) < 0.012 * (1.2 - v)
+    rachis = np.abs(u) < 0.02 * (1.2 - v)
     # leaflets: thin stripes angled toward the tip
-    phase = (np.abs(u) * 3.2 + v * 34) % 1
-    leaflet = (phase < 0.36) & (np.abs(u) < 0.5 * np.sin(np.pi * np.clip(v * 1.05, 0, 1)) + 0.02) & (v > 0.12)
+    phase = (np.abs(u) * 2.6 + v * 26) % 1
+    leaflet = (phase < 0.62) & (np.abs(u) < 0.5 * np.sin(np.pi * np.clip(v * 1.05, 0, 1)) + 0.02) & (v > 0.1)
     shade = 0.75 + 0.25 * np.cos(phase * np.pi * 2)
     base = np.array([62, 84, 38]) / 255
     tip_dry = np.array([150, 132, 80]) / 255

@@ -59,9 +59,9 @@ export class Assets {
 
   _buildMaterials() {
     const M = this.materials;
-    M.sand = this.pbr("sand", { normal: 1.2 });
+    M.sand = this.pbr("sand", { normal: 1.2, color: 0xf4dcc0 });
     M.dirt = this.pbr("dirt", { normal: 1.2 });
-    M.plaster = this.pbr("plaster");
+    M.plaster = this.pbr("plaster", { color: 0xf6e2c6 });
     M.plasterInterior = this.pbr("plaster", { color: 0xb8ad9c });
     M.plasterInterior.envMapIntensity = 0.25;
     M.concrete = this.pbr("concrete", { color: 0xe6dccb });
