@@ -45,7 +45,9 @@ export class Assets {
 
   async load() {
     const glb = (f) => this.gltfLoader.loadAsync(BASE + f);
-    const [operator, props] = await Promise.all([glb("operator.glb"), glb("props.glb")]);
+    // hosts that can't serve .glb get self-contained .gltf JSON copies instead
+    const ext = window.FRONTLINE_MODEL_EXT || ".glb";
+    const [operator, props] = await Promise.all([glb("operator" + ext), glb("props" + ext)]);
     this.operator = operator;
     this.props = props;
     this._buildMaterials();
