@@ -28,6 +28,7 @@ Options:
 import argparse
 import math
 import os
+import random
 import sys
 
 import bpy  # must come first when running via the bpy pip module
@@ -69,6 +70,10 @@ AURA = {
                 "outer": (0.0, 0.0, 0.0), "smoke": True, "light": (1.0, 0.12, 0.06)},
     "violet": {"core": (1.0, 0.05, 0.08), "hot": (1.0, 0.30, 0.25),
                "outer": (0.42, 0.05, 1.0), "smoke": False, "light": (0.75, 0.12, 0.85)},
+    # electric: a faint ionised glow, branching bolts, and a blue-charged blade
+    "lightning": {"core": (0.12, 0.42, 1.0), "hot": (0.6, 0.82, 1.0),
+                  "outer": (0.05, 0.22, 1.0), "smoke": False, "light": (0.30, 0.55, 1.0),
+                  "lightning": True, "gain": 0.3},
 }
 
 
@@ -344,10 +349,15 @@ def mat_blade(scheme):
                    distortion=1.2)
     polished = g.maprange(zone, 0.0, 1.5, 1.0, 0.0)   # shinogi-ji and mune are burnished
 
-    base = g.mix_color(g.math("MULTIPLY", g.math("SUBTRACT", hada, 0.3), 0.6),
-                       (0.34, 0.36, 0.39, 1), (0.46, 0.48, 0.51, 1))
-    base = g.mix_color(hard, base, (0.80, 0.80, 0.79, 1))
-    base = g.mix_color(g.math("MULTIPLY", polished, 0.85), base, (0.30, 0.31, 0.33, 1))
+    electric = AURA[scheme].get("lightning", False)
+    ji_a, ji_b, hamon_c, burnish = ((0.34, 0.36, 0.39, 1), (0.46, 0.48, 0.51, 1), (0.80, 0.80, 0.79, 1),
+                                    (0.30, 0.31, 0.33, 1))
+    if electric:   # cold, blued steel
+        ji_a, ji_b, hamon_c, burnish = ((0.10, 0.17, 0.36, 1), (0.17, 0.27, 0.50, 1), (0.52, 0.68, 0.95, 1),
+                                        (0.08, 0.13, 0.28, 1))
+    base = g.mix_color(g.math("MULTIPLY", g.math("SUBTRACT", hada, 0.3), 0.6), ji_a, ji_b)
+    base = g.mix_color(hard, base, hamon_c)
+    base = g.mix_color(g.math("MULTIPLY", polished, 0.85), base, burnish)
     base = g.mix_color(nie, base, (0.95, 0.95, 0.95, 1))
 
     rough = g.math("ADD", 0.07, g.math("MULTIPLY", g.math("SUBTRACT", hada, 0.5), 0.05))
@@ -365,11 +375,25 @@ def mat_blade(scheme):
     glow = g.math("MULTIPLY", g.math("MULTIPLY", edge, g.maprange(zone, 1.5, 2.0, 0.0, 1.0)),
                   g.maprange(flicker, 0.3, 0.7, 0.4, 1.6))
 
+    strength = g.math("MULTIPLY", glow, 3.5)
+    if electric:
+        # lightning veins crawling through the ji, and a charged hamon line
+        in_ji = g.maprange(zone, 1.5, 2.0, 0.0, 1.0)
+        cells = g.node("ShaderNodeTexVoronoi", feature="DISTANCE_TO_EDGE", inputs={"Scale": 1.0, "Randomness": 1.0})
+        warp = g.noise(g.combine(g.math("MULTIPLY", s, 60.0), g.math("MULTIPLY", v, 8.0), 0.0), 1.0, detail=3.0)
+        g.set(cells.inputs["Vector"], g.combine(g.math("ADD", g.math("MULTIPLY", s, 55.0), g.math("MULTIPLY", warp, 1.2)),
+                                                g.math("MULTIPLY", v, 5.0), 0.0))
+        veins = g.maprange(cells.outputs["Distance"], 0.0, 0.035, 1.0, 0.0)
+        patches = g.maprange(g.noise(g.combine(g.math("MULTIPLY", s, 9.0), g.math("MULTIPLY", v, 2.0), 3.0), 1.0,
+                                     detail=2.0), 0.48, 0.62, 0.0, 1.0)
+        veins = g.math("MULTIPLY", g.math("MULTIPLY", veins, patches), in_ji)
+        strength = g.math("ADD", g.math("MULTIPLY", glow, 6.0), g.math("MULTIPLY", veins, 9.0))
+        strength = g.math("ADD", strength, g.math("MULTIPLY", nioi, 5.0))
     bsdf = principled(g, **{"Emission Color": (*AURA[scheme]["core"], 1.0)})
     for name, val in (("Base Color", base), ("Roughness", rough), ("Metallic", metallic),
                       ("Normal", normal)):
         g.set(bsdf.inputs[name], val)
-    g.set(bsdf.inputs["Emission Strength"], g.math("MULTIPLY", glow, 3.5))
+    g.set(bsdf.inputs["Emission Strength"], strength)
     g.output(bsdf)
     return mat
 
@@ -580,10 +604,129 @@ def mat_aura(scheme):
         emit = g.math("ADD", g.math("MULTIPLY", fire, 45.0), g.math("MULTIPLY", haze, 7.0))
     g.set(vol.inputs["Density"], density)
     g.set(vol.inputs["Emission Color"], emit_col)
-    g.set(vol.inputs["Emission Strength"], emit)
+    g.set(vol.inputs["Emission Strength"], g.math("MULTIPLY", emit, cfg.get("gain", 1.0)))
     out = g.node("ShaderNodeOutputMaterial")
     g.set(out.inputs["Volume"], vol.outputs[0])
     return mat
+
+
+# ---------------------------------------------------------------------------
+# Lightning
+# ---------------------------------------------------------------------------
+def jagged(a, b, rng, depth, rough, bulge=None):
+    """Midpoint-displacement bolt from a to b (optionally through a bulge point)."""
+    pts = [a, bulge, b] if bulge is not None else [a, b]
+    for _ in range(depth):
+        out = [pts[0]]
+        for p, q in zip(pts, pts[1:]):
+            seg = q - p
+            ln = seg.length
+            r = Vector((rng.gauss(0, 1), rng.gauss(0, 1), rng.gauss(0, 1)))
+            r -= seg.normalized() * r.dot(seg.normalized())
+            out += [(p + q) / 2 + r * ln * rough * 0.5, q]
+        pts = out
+    return pts
+
+
+def blade_point(s, e_frac, y=0.0):
+    p, _, n = spine(s)
+    e0, w, _, _ = blade_profile(s)
+    return p - n * (e0 + w * e_frac) + Vector((0, y, 0))
+
+
+def build_bolts(col, rng):
+    """Branching bolts: arcs that jump along the blade, strikes reaching into the
+    air, and discharges off the point. Returns (curve objects, flash positions)."""
+    paths = []
+    for _ in range(5):                       # arcs hopping along the edge / spine
+        s1 = rng.uniform(0.07, 0.58)
+        s2 = min(s1 + rng.uniform(0.06, 0.16), NAGASA - 0.02)
+        side = rng.choice((1.0, 0.0))
+        a = blade_point(s1, side, rng.uniform(-0.002, 0.002))
+        b = blade_point(s2, rng.choice((1.0, 0.0)), rng.uniform(-0.002, 0.002))
+        _, _, n = spine((s1 + s2) / 2)
+        out = -n if side else n
+        mid = (a + b) / 2 + out * rng.uniform(0.018, 0.045) + Vector((0, rng.uniform(-0.03, 0.03), 0))
+        paths.append((jagged(a, b, rng, 5, 0.32, mid), 0.00055))
+    for _ in range(4):                       # strikes reaching out into the air
+        s1 = rng.uniform(0.1, 0.62)
+        side = rng.choice((1.0, 0.0))
+        a = blade_point(s1, side)
+        _, t, n = spine(s1)
+        out = (-n if side else n) * rng.uniform(0.6, 1.0) + Vector((0, rng.uniform(-0.8, 0.8), 0)) + t * rng.uniform(0.1, 0.6)
+        b = a + out.normalized() * rng.uniform(0.09, 0.17)
+        paths.append((jagged(a, b, rng, 6, 0.36), 0.0006))
+    tip = spine(NAGASA)[0]
+    _, t_tip, _ = spine(NAGASA)
+    for _ in range(2):                       # discharges off the point
+        d = t_tip + Vector((rng.uniform(-0.5, 0.5), rng.uniform(-0.5, 0.5), 0))
+        paths.append((jagged(tip, tip + d.normalized() * rng.uniform(0.08, 0.14), rng, 6, 0.4), 0.0005))
+
+    # branches split off the main bolts
+    branches = []
+    for pts, radius in paths:
+        for _ in range(rng.randint(1, 3)):
+            i = rng.randint(len(pts) // 5, len(pts) * 4 // 5)
+            a = pts[i]
+            main_dir = (pts[-1] - pts[0]).normalized()
+            d = (main_dir + Vector((rng.gauss(0, 0.7), rng.gauss(0, 0.7), rng.gauss(0, 0.7)))).normalized()
+            b = a + d * (pts[-1] - pts[0]).length * rng.uniform(0.25, 0.5)
+            branches.append((jagged(a, b, rng, 4, 0.4), radius * 0.45))
+
+    core = bpy.data.materials.new("Bolt Core")
+    gc = Graph(core)
+    em = gc.node("ShaderNodeEmission", inputs={"Color": (0.55, 0.76, 1.0, 1.0), "Strength": 60.0})
+    gc.output(em)
+    branch_mat = bpy.data.materials.new("Bolt Branch")
+    gb = Graph(branch_mat)
+    emb = gb.node("ShaderNodeEmission", inputs={"Color": (0.25, 0.52, 1.0, 1.0), "Strength": 40.0})
+    gb.output(emb)
+
+    objs, flashes = [], []
+    for k, (pts, radius) in enumerate(paths + branches):
+        cu = bpy.data.curves.new(f"Bolt{k}", type="CURVE")
+        cu.dimensions = "3D"
+        cu.bevel_depth = radius
+        cu.bevel_resolution = 1
+        sp = cu.splines.new("POLY")
+        sp.points.add(len(pts) - 1)
+        for i, q in enumerate(pts):
+            taper = 1.0 - 0.7 * (i / (len(pts) - 1))
+            sp.points[i].co = (q.x, q.y, q.z, 1.0)
+            sp.points[i].radius = taper
+        cu.materials.append(core if k < len(paths) else branch_mat)
+        ob = bpy.data.objects.new(f"Bolt{k}", cu)
+        col.objects.link(ob)
+        ob.visible_shadow = False
+        objs.append(ob)
+        if k < len(paths):
+            flashes.append(pts[len(pts) // 2])
+    return objs, flashes
+
+
+def add_glare(scene):
+    """Bloom in the compositor so the bolts and veins glow like real light."""
+    scene.use_nodes = True
+    nt = scene.node_tree
+    nt.nodes.clear()
+    rl = nt.nodes.new("CompositorNodeRLayers")
+    glare = nt.nodes.new("CompositorNodeGlare")
+    for kind in ("BLOOM", "FOG_GLOW"):
+        try:
+            glare.glare_type = kind
+            break
+        except TypeError:
+            continue
+    for attr, val in (("quality", "HIGH"), ("threshold", 0.9), ("size", 8), ("mix", 0.0)):
+        try:
+            setattr(glare, attr, val)
+        except (AttributeError, TypeError):
+            sock = glare.inputs.get(attr.capitalize())
+            if sock is not None and not isinstance(val, str):
+                sock.default_value = val
+    comp = nt.nodes.new("CompositorNodeComposite")
+    nt.links.new(rl.outputs["Image"], glare.inputs["Image"])
+    nt.links.new(glare.outputs["Image"], comp.inputs["Image"])
 
 
 # ---------------------------------------------------------------------------
@@ -628,6 +771,12 @@ def build_scene(scheme="crimson"):
     aura.parent = root
     ame.materials.append(mat_aura(scheme))
 
+    flashes = []
+    if AURA[scheme].get("lightning"):
+        bolts, flashes = build_bolts(col, random.Random(7))
+        for ob in bolts:
+            ob.parent = root
+
     # float the katana diagonally, point up and to the right, edge up-left
     root.matrix_world = Matrix.Translation((0.0, 0.0, 0.42)) @ Matrix.Rotation(math.radians(58), 4, "Y")
 
@@ -671,7 +820,8 @@ def build_scene(scheme="crimson"):
         cd.dof.focus_distance = (Vector(focus) - Vector(loc)).length
         return cam
 
-    hero_loc = center + Vector((0.06, -1.42, 0.14))
+    # the lightning reaches further out, so pull back a little to keep it in frame
+    hero_loc = center + (Vector((0.06, -1.62, 0.12)) if AURA[scheme].get("lightning") else Vector((0.06, -1.42, 0.14)))
     hero = make_cam("Cam_Hero", hero_loc, center + Vector((0, 0, -0.03)), 45, 4.0, blade_mid)
     close_target = M @ Vector((0.0, 0.0, 0.07))
     close_loc = close_target + Vector((0.16, -0.40, 0.05))
@@ -709,6 +859,18 @@ def build_scene(scheme="crimson"):
                      2.4, 4.0, bd)
     back.visible_camera = True
     back.visible_glossy = False
+
+    # the bolts light up their surroundings
+    for i, f in enumerate(flashes[:6]):
+        data = bpy.data.lights.new(f"Flash{i}", "POINT")
+        data.energy = 2.5
+        data.color = (0.55, 0.75, 1.0)
+        data.shadow_soft_size = 0.01
+        fl = bpy.data.objects.new(f"Flash{i}", data)
+        scene.collection.objects.link(fl)
+        fl.location = M @ f
+    if AURA[scheme].get("lightning"):
+        add_glare(scene)
 
     scene.render.engine = "CYCLES"
     cy = scene.cycles
