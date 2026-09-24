@@ -875,6 +875,16 @@ def build_scene(hdri=None):
         cy.denoiser = "OPENIMAGEDENOISE"
     except TypeError:
         pass
+    # interactive viewport: denoise from the first sample so "Rendered" view
+    # looks clean in a second or two instead of starting grainy and blocky
+    cy.preview_samples = 64
+    cy.use_preview_denoising = True
+    try:
+        cy.preview_denoiser = "AUTO"
+        cy.preview_denoising_input_passes = "RGB_ALBEDO_NORMAL"
+    except TypeError:
+        pass
+    cy.preview_denoising_start_sample = 1
     cy.max_bounces = 12
     cy.glossy_bounces = 8
     cy.diffuse_bounces = 4
