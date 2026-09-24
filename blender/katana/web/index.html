@@ -1,0 +1,742 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aura Katana</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --ground: #070506;
+    --panel: rgba(14, 10, 12, 0.72);
+    --ink: #ece6e1;
+    --muted: #9b8f8c;
+    --accent: #ff3b2f;
+    --accent-ink: #160605;
+    --line: rgba(236, 230, 225, 0.13);
+    --focus: #ffb3a8;
+    --display: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", "Times New Roman", serif;
+    --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  :root[data-aura="violet"] { --accent: #b36bff; --accent-ink: #12061c; --focus: #dcb8ff; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 15px/1.5 var(--body); overflow: hidden; }
+  #stage { position: fixed; inset: 0; }
+  #stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  #stage canvas:active { cursor: grabbing; }
+
+  .hud {
+    position: fixed; inset: 0; pointer-events: none;
+    display: grid; grid-template-rows: auto 1fr auto; gap: 16px;
+    padding: calc(env(safe-area-inset-top, 0px) + 20px) 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
+  }
+  .hud > * { pointer-events: auto; }
+  header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+  .name h1 { margin: 0; font: 700 clamp(28px, 4.2vw, 46px)/1 var(--display); letter-spacing: 0.02em; }
+  .name h1 span { color: var(--accent); font-weight: 500; margin-left: 0.3em; transition: color 0.4s; }
+  .name p { margin: 8px 0 0; color: var(--muted); font-size: 14px; max-width: 44ch; }
+
+  .panel {
+    background: var(--panel);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--line); border-radius: 4px;
+  }
+  .specs { padding: 12px 16px; }
+  .specs summary {
+    cursor: pointer; list-style: none;
+    font: 500 11px/1 var(--body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent);
+  }
+  .specs summary::-webkit-details-marker { display: none; }
+  .specs summary::after { content: " +"; }
+  .specs[open] summary::after { content: " \2013"; }
+  .specs dl { margin: 12px 0 0; display: grid; grid-template-columns: auto auto auto; column-gap: 14px; row-gap: 6px; font-size: 13px; }
+  .specs dt { color: var(--ink); }
+  .specs .jp { color: var(--muted); font-family: var(--display); }
+  .specs dd { margin: 0; font: 400 13px/1.5 var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+
+  footer { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; }
+  .group { display: flex; flex-wrap: wrap; gap: 4px; padding: 5px; }
+  .group button {
+    appearance: none; border: 1px solid transparent; background: transparent; color: var(--ink);
+    font: 500 13px/1 var(--body); padding: 10px 13px; border-radius: 3px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .group button:hover { border-color: var(--line); }
+  .group button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  .group button:focus-visible, .specs summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .swatch { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1px rgba(255,255,255,0.25) inset; }
+  .sw-crimson { background: radial-gradient(circle at 35% 35%, #ff4a30 0 38%, #0a0a0a 62%); }
+  .sw-violet { background: radial-gradient(circle at 35% 35%, #ff4a30 0 30%, #9b4dff 55%); }
+  .hint { color: var(--muted); font-size: 12px; margin: 0; }
+  .hint kbd { font: 500 11px var(--mono); color: var(--ink); }
+
+  #loader {
+    position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 14px;
+    background: var(--ground); transition: opacity 0.6s ease; z-index: 2;
+  }
+  #loader.done { opacity: 0; pointer-events: none; }
+  #loader .label { font: 500 20px var(--display); letter-spacing: 0.04em; text-align: center; max-width: 30ch; }
+  #loader .bar { width: min(260px, 70vw); height: 2px; background: var(--line); overflow: hidden; }
+  #loader .fill { height: 100%; width: 0; background: var(--accent); transition: width 0.2s linear; }
+  #loader .pct { font: 400 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; max-width: 80vw; text-align: center; }
+
+  @media (max-width: 700px) {
+    .hud { padding-left: 16px; padding-right: 16px; }
+    .name p, .hint { display: none; }
+    .controls, .group { width: 100%; }
+    .group { justify-content: space-between; }
+    .group button { padding: 10px 8px; flex: 1 1 auto; justify-content: center; }
+  }
+  @media (prefers-reduced-motion: reduce) { #loader, #loader .fill { transition: none; } }
+</style>
+
+<div id="stage"></div>
+
+<div class="hud">
+  <header>
+    <div class="name">
+      <h1>Katana<span id="aura-name">黒炎</span></h1>
+      <p>Procedural Blender katana with a live, ray-marched aura. Drag to turn it, scroll or pinch to zoom.</p>
+    </div>
+    <details class="specs panel" id="specs" open>
+      <summary>Specifications</summary>
+      <dl>
+        <dt>Blade length</dt><dd class="jp">刃長</dd><dd>70.5 cm</dd>
+        <dt>Curvature</dt><dd class="jp">反り</dd><dd>1.8 cm</dd>
+        <dt>Width at base</dt><dd class="jp">元幅</dd><dd>3.1 cm</dd>
+        <dt>Thickness</dt><dd class="jp">重ね</dd><dd>7.3 mm</dd>
+        <dt>Temper line</dt><dd class="jp">刃文</dd><dd>notare-gunome</dd>
+        <dt>Handle</dt><dd class="jp">柄</dd><dd>26 cm</dd>
+        <dt>Guard</dt><dd class="jp">鍔</dd><dd>7.9 × 7.5 cm</dd>
+      </dl>
+    </details>
+  </header>
+  <div></div>
+  <footer>
+    <div class="controls">
+      <div class="group panel" role="group" aria-label="Aura colour">
+        <button type="button" id="a-crimson" data-aura="crimson" aria-pressed="true"><span class="swatch sw-crimson"></span>Black &amp; red</button>
+        <button type="button" id="a-violet" data-aura="violet" aria-pressed="false"><span class="swatch sw-violet"></span>Purple &amp; red</button>
+      </div>
+      <div class="group panel" role="group" aria-label="Camera views">
+        <button type="button" id="v-whole" data-view="whole" aria-pressed="true">Whole</button>
+        <button type="button" id="v-hilt" data-view="hilt" aria-pressed="false">Hilt</button>
+        <button type="button" id="v-hamon" data-view="hamon" aria-pressed="false">Hamon</button>
+        <button type="button" id="v-point" data-view="point" aria-pressed="false">Point</button>
+        <button type="button" id="v-spin" aria-pressed="false">Turntable</button>
+        <button type="button" id="v-pause" aria-pressed="false">Pause aura</button>
+      </div>
+    </div>
+    <p class="hint"><kbd>Drag</kbd> orbit · <kbd>Right-drag</kbd> pan · <kbd>Scroll</kbd> zoom</p>
+  </footer>
+</div>
+
+<div id="loader" role="status" aria-live="polite">
+  <div class="label">Drawing the blade</div>
+  <div class="bar"><div class="fill" id="fill"></div></div>
+  <div class="pct" id="pct">0%</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+
+// --- katana geometry constants (match make_katana.py) ---
+const NAGASA = 0.705, SORI = 0.018, RADIUS = NAGASA * NAGASA / (8 * SORI);
+const MOTOHABA = 0.031, SAKIHABA = 0.021, HABAKI_LEN = 0.033;
+const TSUKA_X = -MOTOHABA * 0.47, KASHIRA_Z = -0.284;
+
+const AURAS = {
+  crimson: { name: "黒炎", core: [1.0, 0.06, 0.03], hot: [1.0, 0.35, 0.12], outer: [0, 0, 0], smoke: 1, light: 0xff2a14, glow: [255, 40, 20] },
+  violet: { name: "紫炎", core: [1.0, 0.05, 0.08], hot: [1.0, 0.30, 0.25], outer: [0.42, 0.05, 1.0], smoke: 0, light: 0xa338ff, glow: [150, 50, 255] },
+};
+
+const stage = document.getElementById("stage");
+const loaderEl = document.getElementById("loader");
+const small = innerWidth < 700;
+if (small) document.getElementById("specs").open = false;
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+} catch (e) {
+  loaderEl.querySelector(".label").textContent = "This browser can't show 3D (WebGL is turned off).";
+  throw e;
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, small ? 1.5 : 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.AgXToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stage.appendChild(renderer.domElement);
+
+const BG = 0x070506;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(BG);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.03).texture;
+scene.environmentIntensity = 0.3;
+
+const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 30);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 0.1;
+controls.maxDistance = 3.0;
+controls.maxPolarAngle = Math.PI / 2 - 0.04;
+controls.autoRotateSpeed = 0.8;
+
+// lights
+const key = new THREE.DirectionalLight(0xfff0e0, 1.8);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.bias = -0.0003;
+key.shadow.normalBias = 0.002;
+Object.assign(key.shadow.camera, { left: -0.8, right: 0.8, top: 0.8, bottom: -0.8, near: 0.1, far: 6 });
+scene.add(key, key.target);
+const rim = new THREE.DirectionalLight(0xb4c8ff, 1.4);
+scene.add(rim, rim.target);
+const auraLight = new THREE.PointLight(0xff2a14, 1.6, 1.4, 1.6);
+scene.add(auraLight);
+const auraLight2 = new THREE.PointLight(0xff2a14, 1.0, 1.2, 1.6);
+scene.add(auraLight2);
+
+// floor: dark, faintly glossy, fading out into the void
+const floorTex = radialTexture([[0, "rgba(255,255,255,1)"], [0.55, "rgba(255,255,255,0.55)"], [1, "rgba(255,255,255,0)"]]);
+const floor = new THREE.Mesh(
+  new THREE.CircleGeometry(2.4, 96),
+  new THREE.MeshStandardMaterial({ color: 0x0b0a0b, roughness: 0.32, metalness: 0.0, alphaMap: floorTex, transparent: true })
+);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+const floorGlow = new THREE.Mesh(
+  new THREE.PlaneGeometry(1.6, 1.6),
+  new THREE.MeshBasicMaterial({ map: radialTexture([[0, "rgba(255,255,255,0.9)"], [0.35, "rgba(255,255,255,0.25)"], [1, "rgba(255,255,255,0)"]]),
+    color: 0xff2a14, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.35 })
+);
+floorGlow.rotation.x = -Math.PI / 2;
+floorGlow.position.y = 0.001;
+scene.add(floorGlow);
+
+// backdrop glow that always sits behind the katana, so black smoke reads in silhouette
+const backdrop = new THREE.Mesh(
+  new THREE.PlaneGeometry(4.2, 3.2),
+  new THREE.MeshBasicMaterial({ map: radialTexture([[0, "rgba(255,255,255,1)"], [0.4, "rgba(255,255,255,0.35)"], [1, "rgba(255,255,255,0)"]]),
+    color: 0xff2a14, transparent: true, depthWrite: false, opacity: 0.16, fog: false })
+);
+scene.add(backdrop);
+
+function radialTexture(stops) {
+  const c = document.createElement("canvas");
+  c.width = c.height = 256;
+  const g = c.getContext("2d");
+  const grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+  for (const [o, col] of stops) grad.addColorStop(o, col);
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 256, 256);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+// --- the aura: a ray-marched volume in a box around the blade ---
+const AURA_MIN = new THREE.Vector3(0.02 - 0.15, 0.39 - 0.46, -0.12);
+const AURA_MAX = new THREE.Vector3(0.02 + 0.15, 0.39 + 0.46, 0.12);
+const auraUniforms = {
+  uTime: { value: 0 },
+  uCamObj: { value: new THREE.Vector3() },
+  uMV: { value: new THREE.Matrix4() },
+  uDepth: { value: null },
+  uRes: { value: new THREE.Vector2(1, 1) },
+  uNear: { value: camera.near },
+  uFar: { value: camera.far },
+  uMin: { value: AURA_MIN },
+  uMax: { value: AURA_MAX },
+  uCore: { value: new THREE.Vector3() },
+  uHot: { value: new THREE.Vector3() },
+  uOuter: { value: new THREE.Vector3() },
+  uSmoke: { value: 1 },
+  uSteps: { value: small ? 32 : 48 },
+};
+const auraMat = new THREE.ShaderMaterial({
+  uniforms: auraUniforms,
+  side: THREE.BackSide,
+  transparent: true,
+  depthTest: false,
+  depthWrite: false,
+  blending: THREE.CustomBlending,
+  blendSrc: THREE.OneFactor,
+  blendDst: THREE.OneMinusSrcAlphaFactor,
+  toneMapped: false,
+  vertexShader: /* glsl */ `
+    varying vec3 vPos;
+    void main() {
+      vPos = position;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }`,
+  fragmentShader: /* glsl */ `
+    #include <packing>
+    precision highp float;
+    varying vec3 vPos;
+    uniform float uTime, uNear, uFar, uSmoke;
+    uniform int uSteps;
+    uniform vec3 uCamObj, uMin, uMax, uCore, uHot, uOuter;
+    uniform mat4 uMV;
+    uniform sampler2D uDepth;
+    uniform vec2 uRes;
+
+    // Ashima / Stefan Gustavson 3D simplex noise (MIT)
+    vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+    vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+    vec4 permute(vec4 x) { return mod289(((x * 34.0) + 10.0) * x); }
+    vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+    float snoise(vec3 v) {
+      const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
+      const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+      vec3 i = floor(v + dot(v, C.yyy));
+      vec3 x0 = v - i + dot(i, C.xxx);
+      vec3 g = step(x0.yzx, x0.xyz);
+      vec3 l = 1.0 - g;
+      vec3 i1 = min(g.xyz, l.zxy);
+      vec3 i2 = max(g.xyz, l.zxy);
+      vec3 x1 = x0 - i1 + C.xxx;
+      vec3 x2 = x0 - i2 + C.yyy;
+      vec3 x3 = x0 - D.yyy;
+      i = mod289(i);
+      vec4 p = permute(permute(permute(i.z + vec4(0.0, i1.z, i2.z, 1.0)) + i.y + vec4(0.0, i1.y, i2.y, 1.0)) + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+      float n_ = 0.142857142857;
+      vec3 ns = n_ * D.wyz - D.xzx;
+      vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+      vec4 x_ = floor(j * ns.z);
+      vec4 y_ = floor(j - 7.0 * x_);
+      vec4 x = x_ * ns.x + ns.yyyy;
+      vec4 y = y_ * ns.x + ns.yyyy;
+      vec4 h = 1.0 - abs(x) - abs(y);
+      vec4 b0 = vec4(x.xy, y.xy);
+      vec4 b1 = vec4(x.zw, y.zw);
+      vec4 s0 = floor(b0) * 2.0 + 1.0;
+      vec4 s1 = floor(b1) * 2.0 + 1.0;
+      vec4 sh = -step(h, vec4(0.0));
+      vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+      vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+      vec3 p0 = vec3(a0.xy, h.x);
+      vec3 p1 = vec3(a0.zw, h.y);
+      vec3 p2 = vec3(a1.xy, h.z);
+      vec3 p3 = vec3(a1.zw, h.w);
+      vec4 norm = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
+      p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+      vec4 m = max(0.5 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0);
+      m = m * m;
+      return 105.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
+    }
+    float fbm(vec3 p, float t) {
+      float s = 0.0, a = 0.5, n = 0.0;
+      for (int i = 0; i < 4; i++) {
+        s += a * snoise(p + vec3(0.0, 0.0, t * float(i + 1) * 0.37));
+        n += a;
+        p = p * 2.07 + vec3(1.7, 9.2, 3.1);
+        a *= 0.58;
+      }
+      return 0.5 + 0.5 * s / n;
+    }
+    float remap(float v, float a, float b) { return clamp((v - a) / (b - a), 0.0, 1.0); }
+    float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+
+    const float NAGASA = ${NAGASA.toFixed(5)};
+    const float RADIUS = ${RADIUS.toFixed(5)};
+    const float HALFW0 = ${(MOTOHABA / 2).toFixed(5)};
+    const float HALFW1 = ${(SAKIHABA / 2 * 0.6).toFixed(5)};
+    const float HABAKI = ${HABAKI_LEN.toFixed(5)};
+
+    // distance from the blade, in Blender's katana frame (z along the blade)
+    float bladeDist(vec3 b) {
+      float bend = b.z * b.z / (2.0 * RADIUS);
+      float halfw = mix(HALFW0, HALFW1, clamp(b.z / NAGASA, 0.0, 1.0));
+      float across = b.x - bend + halfw;
+      float dx = max(abs(across) - halfw, 0.0);
+      float zc = clamp(b.z, HABAKI, NAGASA);
+      return length(vec3(dx, b.y, (b.z - zc) * 0.55));
+    }
+
+    void main() {
+      vec3 ro = uCamObj;
+      vec3 rd = normalize(vPos - uCamObj);
+      vec3 inv = 1.0 / rd;
+      vec3 t0 = (uMin - ro) * inv, t1 = (uMax - ro) * inv;
+      vec3 tmin = min(t0, t1), tmax = max(t0, t1);
+      float tNear = max(max(max(tmin.x, tmin.y), tmin.z), 0.0);
+      float tFar = min(min(tmax.x, tmax.y), tmax.z);
+      if (tFar <= tNear) discard;
+
+      // stop at whatever opaque surface is in front (the blade, the hilt, the floor)
+      float sceneZ = perspectiveDepthToViewZ(texture2D(uDepth, gl_FragCoord.xy / uRes).x, uNear, uFar);
+
+      float dt = (tFar - tNear) / float(uSteps);
+      float t = tNear + dt * hash(gl_FragCoord.xy + fract(uTime) * 61.0);
+      vec3 col = vec3(0.0);
+      float T = 1.0;
+      float time = uTime;
+      vec3 flow = vec3(0.02 * time, -0.015 * time, -0.32 * time);
+
+      for (int i = 0; i < 64; i++) {
+        if (i >= uSteps || T < 0.02) break;
+        vec3 p = ro + rd * t;
+        t += dt;
+        if ((uMV * vec4(p, 1.0)).z < sceneZ) break;
+        vec3 b = vec3(p.x, -p.z, p.y);             // three -> Blender katana frame
+        float dist = bladeDist(b);
+        if (dist > 0.17) continue;
+        float along = remap(b.z, -0.01, 0.06);
+        if (along <= 0.0) continue;
+
+        vec3 pf = b + flow;
+        vec3 warp = vec3(snoise(pf * 9.0 + vec3(0.0, 0.0, time * 0.35)), snoise(pf * 9.0 + vec3(5.2, 1.3, time * 0.35)), 0.0);
+        vec3 pw = pf + vec3(warp.x * 0.025, warp.y * 0.025, warp.x * 0.04);
+
+        float n = fbm(pw * vec3(1.0, 1.0, 0.45) * 22.0, time * 0.6);
+        float reach = 0.012 + remap(n, 0.35, 0.75) * 0.075;
+        float core = pow(clamp(1.0 - dist / reach, 0.0, 1.0), 1.6);
+        float wisp = remap(n, 0.45, 0.72);
+        float fire = clamp(core * (0.06 + pow(wisp, 1.4) * 1.1), 0.0, 1.0) * along;
+
+        float sn = fbm(pw * vec3(1.0, 1.0, 0.6) * 12.0 + vec3(7.0), time * 0.25);
+        float outerReach = 0.04 + remap(sn, 0.3, 0.8) * 0.12;
+        float halo = pow(clamp(1.0 - (dist - 0.004) / (outerReach - 0.004), 0.0, 1.0), 1.2);
+        float haze = halo * remap(sn, 0.48, 0.66) * along;
+
+        vec3 fireCol = mix(uCore, uHot, remap(fire, 0.55, 1.0));
+        float density, emit;
+        vec3 emitCol;
+        if (uSmoke > 0.5) {
+          density = haze * 160.0 + fire * 6.0;
+          emitCol = fireCol;
+          emit = fire * 45.0;
+        } else {
+          density = haze * 6.0 + fire * 4.0;
+          emitCol = mix(uOuter, fireCol, remap(fire, 0.05, 0.4));
+          emit = fire * 45.0 + haze * 7.0;
+        }
+        col += T * emitCol * emit * dt;
+        T *= exp(-density * dt);
+      }
+      float a = 1.0 - T;
+      if (a < 0.002 && dot(col, col) < 1e-6) discard;
+      gl_FragColor = vec4(col, a);
+    }`,
+});
+
+// depth pre-pass so the aura stops at the blade instead of shining through it
+const depthRT = new THREE.WebGLRenderTarget(1, 1, { depthTexture: new THREE.DepthTexture(1, 1), depthBuffer: true });
+auraUniforms.uDepth.value = depthRT.depthTexture;
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.85, 0.55, 0.72);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  composer.setSize(w, h);
+  const pr = renderer.getPixelRatio();
+  depthRT.setSize(Math.floor(w * pr), Math.floor(h * pr));
+  auraUniforms.uRes.value.set(Math.floor(w * pr), Math.floor(h * pr));
+  camera.aspect = w / h;
+  camera.fov = w / h < 1 ? 52 : 35;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+resize();
+
+// --- blade edge glow: an emissive strip along the cutting edge in UV space ---
+function edgeGlowTexture() {
+  const H = 1024;
+  const c = document.createElement("canvas");
+  c.width = 4; c.height = H;
+  const g = c.getContext("2d");
+  const img = g.createImageData(4, H);
+  for (let row = 0; row < H; row++) {
+    const vb = 1 - (row + 0.5) / H;                     // glTF v -> Blender v
+    let e = -1;
+    if (vb >= 0.015 && vb <= 0.485) e = (vb - 0.015) / 0.47;
+    else if (vb >= 0.515 && vb <= 0.985) e = (vb - 0.515) / 0.47;
+    const k = e < 0 ? 0 : Math.pow(Math.min(Math.max((e - 0.9) / 0.1, 0), 1), 1.5);
+    for (let x = 0; x < 4; x++) {
+      const i = (row * 4 + x) * 4;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = Math.round(k * 255);
+      img.data[i + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.flipY = false;
+  return t;
+}
+
+function toPhysical(m, extra) {
+  return new THREE.MeshPhysicalMaterial({
+    name: m.name, color: m.color, map: m.map,
+    roughness: m.roughness, roughnessMap: m.roughnessMap,
+    metalness: m.metalness, metalnessMap: m.metalnessMap,
+    normalMap: m.normalMap, normalScale: m.normalScale,
+    ...extra,
+  });
+}
+
+// --- load the model (katana.json embeds its geometry as base64; the page
+// can't fetch data: URIs, so decode it and parse an in-memory .glb) ---
+function showProgress(p) {
+  document.getElementById("fill").style.width = p + "%";
+  document.getElementById("pct").textContent = p + "%";
+}
+function showError(err) {
+  console.error(err);
+  loaderEl.querySelector(".label").textContent = "The katana didn't load. Reload the page to try again.";
+  document.getElementById("pct").textContent = String(err && err.message ? err.message : err).slice(0, 160);
+}
+async function fetchModel(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+  const total = Number(res.headers.get("content-length")) || 0;
+  let text;
+  if (res.body && total) {
+    const reader = res.body.getReader();
+    const parts = [];
+    let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      parts.push(value);
+      got += value.length;
+      showProgress(Math.min(99, Math.round((got / total) * 100)));
+    }
+    const all = new Uint8Array(got);
+    let o = 0;
+    for (const p of parts) { all.set(p, o); o += p.length; }
+    text = new TextDecoder().decode(all);
+  } else {
+    text = await res.text();
+  }
+  const gltf = JSON.parse(text);
+  const uri = gltf.buffers[0].uri;
+  const b64 = atob(uri.slice(uri.indexOf(",") + 1));
+  const bin = new Uint8Array(b64.length);
+  for (let i = 0; i < b64.length; i++) bin[i] = b64.charCodeAt(i);
+  delete gltf.buffers[0].uri;
+  gltf.buffers[0].byteLength = bin.length;
+  const json = new TextEncoder().encode(JSON.stringify(gltf));
+  const jsonLen = Math.ceil(json.length / 4) * 4;
+  const binLen = Math.ceil(bin.length / 4) * 4;
+  const glb = new ArrayBuffer(28 + jsonLen + binLen);
+  const dv = new DataView(glb);
+  const bytes = new Uint8Array(glb);
+  dv.setUint32(0, 0x46546c67, true);
+  dv.setUint32(4, 2, true);
+  dv.setUint32(8, glb.byteLength, true);
+  dv.setUint32(12, jsonLen, true);
+  dv.setUint32(16, 0x4e4f534a, true);
+  bytes.fill(0x20, 20, 20 + jsonLen);
+  bytes.set(json, 20);
+  dv.setUint32(20 + jsonLen, binLen, true);
+  dv.setUint32(24 + jsonLen, 0x004e4942, true);
+  bytes.set(bin, 28 + jsonLen);
+  showProgress(100);
+  return glb;
+}
+
+const holder = new THREE.Group();          // floats and bobs
+const katana = new THREE.Group();          // tilted like the Blender scene
+holder.add(katana);
+scene.add(holder);
+holder.position.y = 0.42;
+katana.rotation.z = THREE.MathUtils.degToRad(-58);
+let blade = null;
+const views = {};
+
+function onModel(gltf) {
+  const root = gltf.scene;
+  const maxAniso = renderer.capabilities.getMaxAnisotropy();
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    const m = o.material;
+    for (const k of ["map", "normalMap", "roughnessMap", "metalnessMap"]) if (m[k]) m[k].anisotropy = maxAniso;
+    o.castShadow = true;
+    o.receiveShadow = true;
+    const name = o.name.toLowerCase();
+    if (name.startsWith("blade")) {
+      blade = o;
+      o.material = toPhysical(m, { emissive: new THREE.Color(1, 0.1, 0.05), emissiveMap: edgeGlowTexture(), emissiveIntensity: 2.0, envMapIntensity: 1.6 });
+    } else if (name.startsWith("tsuka")) {
+      o.material = toPhysical(m, { sheen: 0.6, sheenRoughness: 0.35, sheenColor: new THREE.Color(0x8890a0) });
+    }
+  });
+  katana.add(root);
+
+  const aura = new THREE.Mesh(
+    new THREE.BoxGeometry(AURA_MAX.x - AURA_MIN.x, AURA_MAX.y - AURA_MIN.y, AURA_MAX.z - AURA_MIN.z)
+      .translate((AURA_MAX.x + AURA_MIN.x) / 2, (AURA_MAX.y + AURA_MIN.y) / 2, 0),
+    auraMat
+  );
+  aura.renderOrder = 10;
+  aura.frustumCulled = false;
+  aura.onBeforeRender = (r, s, cam) => {
+    auraUniforms.uMV.value.multiplyMatrices(cam.matrixWorldInverse, aura.matrixWorld);
+    auraUniforms.uCamObj.value.copy(aura.worldToLocal(cam.position.clone()));
+  };
+  katana.add(aura);
+  holder.updateMatrixWorld(true);
+
+  // key points (three's katana frame: blade along +Y, spine +X, flats face ±Z)
+  const a = NAGASA / RADIUS;
+  const L = (x, y, z) => katana.localToWorld(new THREE.Vector3(x, y, z));
+  const tip = L(RADIUS * (1 - Math.cos(a)), RADIUS * Math.sin(a), 0);
+  const butt = L(TSUKA_X, KASHIRA_Z, 0);
+  const guard = L(TSUKA_X, -0.005, 0);
+  const hamon = L(0.0, 0.26, 0);
+  const center = tip.clone().add(butt).multiplyScalar(0.5);
+  const fwd = new THREE.Vector3(0, 0, 1);    // camera side (Blender -Y)
+  const up = new THREE.Vector3(0, 1, 0);
+  const place = (target, dist, elev, swing) => {
+    const dir = fwd.clone().applyAxisAngle(up, swing).multiplyScalar(Math.cos(elev));
+    dir.y = Math.sin(elev);
+    return { target: target.clone(), pos: target.clone().addScaledVector(dir.normalize(), dist) };
+  };
+  views.whole = camera.aspect < 1 ? place(center, 2.25, 0.12, 0.05) : place(center, 1.5, 0.12, 0.05);
+  views.hilt = place(guard.clone().lerp(butt, 0.35), 0.42, 0.25, 0.45);
+  views.hamon = place(hamon, 0.34, 0.1, -0.25);
+  views.point = place(tip.clone().lerp(center, 0.12), 0.3, 0.2, 0.55);
+
+  key.position.copy(center).add(new THREE.Vector3(-1.1, 1.1, 1.0));
+  key.target.position.copy(center);
+  rim.position.copy(center).add(new THREE.Vector3(1.0, 0.7, -1.3));
+  rim.target.position.copy(center);
+  floorGlow.position.x = center.x;
+  floorGlow.position.z = center.z;
+  floor.position.x = center.x;
+  floor.position.z = center.z;
+  views.center = center;
+
+  camera.position.copy(views.whole.pos).add(new THREE.Vector3(0.35, 0.2, 0.3));
+  controls.target.copy(views.whole.target);
+  controls.update();
+  goTo("whole");
+  setAura("crimson");
+  loaderEl.classList.add("done");
+}
+
+const loader = new GLTFLoader();
+fetchModel("katana.json")
+  .then((glb) => loader.parse(glb, new URL(".", location.href).href, (g) => {
+    try { onModel(g); } catch (e) { showError(e); }
+  }, showError))
+  .catch(showError);
+
+// --- UI ---
+let tween = null;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function goTo(name) {
+  const v = views[name];
+  if (!v) return;
+  document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === name)));
+  if (reduceMotion) { camera.position.copy(v.pos); controls.target.copy(v.target); return; }
+  tween = { t0: performance.now(), dur: 1200, p0: camera.position.clone(), p1: v.pos.clone(), q0: controls.target.clone(), q1: v.target.clone() };
+}
+document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => goTo(b.dataset.view)));
+controls.addEventListener("start", () => {
+  tween = null;
+  document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-pressed", "false"));
+});
+
+let auraKey = "crimson";
+function setAura(k) {
+  auraKey = k;
+  const a = AURAS[k];
+  auraUniforms.uCore.value.set(...a.core);
+  auraUniforms.uHot.value.set(...a.hot);
+  auraUniforms.uOuter.value.set(...a.outer);
+  auraUniforms.uSmoke.value = a.smoke;
+  auraLight.color.setHex(a.light);
+  auraLight2.color.setHex(a.light);
+  floorGlow.material.color.setHex(a.light);
+  backdrop.material.color.setHex(a.light);
+  backdrop.material.opacity = k === "violet" ? 0.12 : 0.16;
+  if (blade) blade.material.emissive.setRGB(...a.core);
+  document.documentElement.dataset.aura = k;
+  document.getElementById("aura-name").textContent = a.name;
+  document.querySelectorAll("[data-aura]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.aura === k)));
+}
+document.querySelectorAll("[data-aura]").forEach((b) => b.addEventListener("click", () => setAura(b.dataset.aura)));
+
+const spin = document.getElementById("v-spin");
+spin.addEventListener("click", () => {
+  controls.autoRotate = !controls.autoRotate;
+  spin.setAttribute("aria-pressed", String(controls.autoRotate));
+});
+let paused = false;
+const pauseBtn = document.getElementById("v-pause");
+pauseBtn.addEventListener("click", () => {
+  paused = !paused;
+  pauseBtn.setAttribute("aria-pressed", String(paused));
+  pauseBtn.textContent = paused ? "Play aura" : "Pause aura";
+});
+
+// --- loop ---
+const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const clock = new THREE.Clock();
+let auraTime = 0;
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.1);
+  if (!paused) auraTime += dt;
+  auraUniforms.uTime.value = auraTime;
+
+  if (tween) {
+    const k = Math.min((performance.now() - tween.t0) / tween.dur, 1);
+    const e = ease(k);
+    camera.position.lerpVectors(tween.p0, tween.p1, e);
+    controls.target.lerpVectors(tween.q0, tween.q1, e);
+    if (k >= 1) tween = null;
+  }
+  controls.update();
+
+  // gentle float, and firelight that flickers with the aura
+  if (!reduceMotion && !paused) holder.position.y = 0.42 + Math.sin(auraTime * 0.9) * 0.008;
+  const flick = 0.75 + 0.25 * Math.sin(auraTime * 13.0) * Math.sin(auraTime * 7.3 + 1.0);
+  if (views.center) {
+    auraLight.position.copy(katana.localToWorld(new THREE.Vector3(0.0, 0.25, 0.08)));
+    auraLight2.position.copy(katana.localToWorld(new THREE.Vector3(0.03, 0.55, -0.08)));
+    backdrop.position.copy(views.center).addScaledVector(camera.getWorldDirection(new THREE.Vector3()), 1.9);
+    backdrop.lookAt(camera.position);
+  }
+  auraLight.intensity = 1.6 * flick;
+  auraLight2.intensity = 1.1 * (1.6 - flick);
+  floorGlow.material.opacity = 0.28 + 0.1 * flick;
+  if (blade) blade.material.emissiveIntensity = 1.6 + 1.2 * flick;
+
+  // depth pre-pass without the aura, then the full frame with bloom
+  auraMat.visible = false;
+  renderer.setRenderTarget(depthRT);
+  renderer.render(scene, camera);
+  renderer.setRenderTarget(null);
+  auraMat.visible = true;
+  composer.render();
+});
+</script>

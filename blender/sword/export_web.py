@@ -187,8 +187,8 @@ def web_table(scene, size):
     return ob
 
 
-def glb_to_web(glb_path, out_dir):
-    """Split a .glb into sword.json (glTF JSON with the geometry buffer embedded)
+def glb_to_web(glb_path, out_dir, name="sword.json"):
+    """Split a .glb into `name` (glTF JSON with the geometry buffer embedded)
     plus plain .jpg textures, for hosts that only serve common web file types."""
     data = open(glb_path, "rb").read()
     jlen = struct.unpack_from("<I", data, 12)[0]
@@ -230,7 +230,7 @@ def glb_to_web(glb_path, out_dir):
         "byteLength": len(out),
         "uri": "data:application/octet-stream;base64," + base64.b64encode(bytes(out)).decode(),
     }]
-    with open(os.path.join(out_dir, "sword.json"), "w") as f:
+    with open(os.path.join(out_dir, name), "w") as f:
         json.dump(gltf, f, separators=(",", ":"))
 
 
