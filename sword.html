@@ -1474,6 +1474,8 @@ class Fighter {
       this.vel.multiplyScalar(Math.exp(-dt * 8));
       this.pos.addScaledVector(this.vel, dt);
     }
+    // fighters always stand on the arena floor (falls and kneels are animated, not simulated)
+    this.vel.y = 0; this.pos.y = 0;
     // arena bounds + obstacles
     const r = Math.hypot(this.pos.x, this.pos.z);
     if (r > FIGHT_R) { this.pos.x *= FIGHT_R / r; this.pos.z *= FIGHT_R / r; }
@@ -2108,7 +2110,7 @@ function explode(fb, direct) {
     if (fatal) { d.ignite(4); d.die({ cause: 'fire', dir: d.blastDir, attacker: o }); continue; }
     if (!guarded) d.ignite(3.5);
     if (d.state !== 'crippled' && d.state !== 'executed') { d.stopFull(0.05); d.setState('stagger'); d.playFull('stagger', { fade: 0.05 }); }
-    d.vel.addScaledVector(d.blastDir, 4);
+    d.vel.addScaledVector(_v3.copy(d.blastDir).setY(0).normalize(), 4); // knockback stays on the ground
   }
 }
 function burnFX(f, dt) {
