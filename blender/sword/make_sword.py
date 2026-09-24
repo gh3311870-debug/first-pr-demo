@@ -375,11 +375,9 @@ class Graph:
 
     def maprange(self, v, fmin, fmax, tmin, tmax, clamp=True):
         n = self.node("ShaderNodeMapRange", clamp=clamp)
-        self.set(n.inputs["Value"], v)
-        n.inputs["From Min"].default_value = fmin
-        n.inputs["From Max"].default_value = fmax
-        n.inputs["To Min"].default_value = tmin
-        n.inputs["To Max"].default_value = tmax
+        for name, val in (("Value", v), ("From Min", fmin), ("From Max", fmax),
+                          ("To Min", tmin), ("To Max", tmax)):
+            self.set(n.inputs[name], val)
         return n.outputs["Result"]
 
     def mix_color(self, fac, a, b, blend="MIX"):
