@@ -5,12 +5,18 @@ for real-time viewers (three.js, model-viewer, Sketchfab, game engines).
     python export_web.py                 # bpy pip module
     blender -b -P export_web.py --       # Blender binary
 
+Also writes sword.json + textures/*.jpg next to the .glb: the same model as
+glTF JSON, which web/index.html loads.
+
 Options: --out PATH (default web/sword.glb), --size N (table texture size,
 default 2048; the blade uses 2N x N/4 and the hilt parts N/2).
 """
 
 import argparse
+import base64
+import json
 import math
+import struct
 import os
 import sys
 
@@ -181,6 +187,53 @@ def web_table(scene, size):
     return ob
 
 
+def glb_to_web(glb_path, out_dir):
+    """Split a .glb into sword.json (glTF JSON with the geometry buffer embedded)
+    plus plain .jpg textures, for hosts that only serve common web file types."""
+    data = open(glb_path, "rb").read()
+    jlen = struct.unpack_from("<I", data, 12)[0]
+    gltf = json.loads(data[20:20 + jlen])
+    blob = data[20 + jlen + 8:]
+    views = gltf["bufferViews"]
+    image_views = {im["bufferView"] for im in gltf.get("images", [])}
+
+    tex_dir = os.path.join(out_dir, "textures")
+    os.makedirs(tex_dir, exist_ok=True)
+    for im in gltf.get("images", []):
+        bv = views[im["bufferView"]]
+        off = bv.get("byteOffset", 0)
+        ext = ".png" if im.get("mimeType") == "image/png" else ".jpg"
+        rel = f"textures/{im['name']}{ext}"
+        with open(os.path.join(out_dir, rel), "wb") as f:
+            f.write(blob[off:off + bv["byteLength"]])
+        im["uri"] = rel
+        del im["bufferView"]
+        im.pop("mimeType", None)
+
+    # rebuild the binary buffer from the non-image views only
+    remap, new_views, out = {}, [], bytearray()
+    for i, bv in enumerate(views):
+        if i in image_views:
+            continue
+        while len(out) % 4:
+            out.append(0)
+        off = bv.get("byteOffset", 0)
+        nbv = dict(bv, byteOffset=len(out), buffer=0)
+        out += blob[off:off + bv["byteLength"]]
+        remap[i] = len(new_views)
+        new_views.append(nbv)
+    gltf["bufferViews"] = new_views
+    for acc in gltf.get("accessors", []):
+        if "bufferView" in acc:
+            acc["bufferView"] = remap[acc["bufferView"]]
+    gltf["buffers"] = [{
+        "byteLength": len(out),
+        "uri": "data:application/octet-stream;base64," + base64.b64encode(bytes(out)).decode(),
+    }]
+    with open(os.path.join(out_dir, "sword.json"), "w") as f:
+        json.dump(gltf, f, separators=(",", ":"))
+
+
 def main():
     args = parse_args()
     scene, _ = make_sword.build_scene()
@@ -217,6 +270,8 @@ def main():
         export_apply=True,
     )
     print("Exported", args.out, os.path.getsize(args.out) // 1024, "KB")
+    glb_to_web(args.out, os.path.dirname(os.path.abspath(args.out)))
+    print("Wrote sword.json + textures/ for the web viewer")
 
 
 if __name__ == "__main__":

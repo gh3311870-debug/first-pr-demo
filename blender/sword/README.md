@@ -49,4 +49,18 @@ This writes `sword.blend` and `renders/sword_hero.png` + `renders/sword_closeup.
 | `--gpu` | off | Render on CUDA / OptiX / HIP / Metal if available |
 | `--out DIR` | `renders/` | Where to write the images |
 
+## Web viewer
+
+`web/index.html` is an interactive three.js viewer: orbit, zoom, and buttons that jump to the hilt, pommel or point. It loads `web/sword.json` (glTF with the textures in `web/textures/`). `web/sword.glb` is the same model as a single file for other viewers and game engines.
+
+To rebuild them, bake the procedural materials to textures and export:
+
+```bash
+python export_web.py          # or: blender -b -P export_web.py --
+```
+
+Serve the folder over HTTP to try it locally (`python -m http.server` in `web/`), since browsers block loading the model from `file://`.
+
+## Opening in Blender
+
 Open `sword.blend` to look around. `Cam_Hero` and `Cam_Closeup` are the two cameras, and all the materials can be edited in the Shader Editor.
