@@ -401,7 +401,54 @@ scrolling city skyline:
 Serve it the same way as the other demos and visit
 `http://localhost:8000/swinger.html`.
 
-All seven demos link to each other via the nav chips in the top-right corner.
+## Blood & Steel demo
+
+`sword.html` is a third-person medieval sword-fighting game with gore, set in
+a torch-lit arena at sunset. You fight waves of armoured knights with a
+two-handed longsword:
+
+- **Directional combat**: slash from the left or right, chop overhead, or
+  thrust. On desktop the strike follows the direction you last flicked the
+  mouse (or use **Q** chop / **E** thrust); on touch you swipe the right side
+  of the screen in the direction of the blow
+- Hold **block** (right click / BLOCK button) to guard against the incoming
+  blow; blocking just before it lands **parries** and staggers the attacker.
+  Blocking drains stamina and a broken guard leaves you open. **Space** /
+  DODGE sidesteps with a moment of invulnerability. **Tab** toggles lock-on
+- Hit locations matter: heads take the most damage, heavy blows can sever
+  arms and legs, a killing blow to the neck takes the head off, and a knight
+  who loses his sword arm drops to his knees and bleeds out
+- Gore: arterial blood spurts from stumps, severed limbs and heads tumble with
+  rigid-body physics, blood sprays and pools on the sand, and armour and blades
+  get progressively bloodier. A **Gore** setting (Off / Bloody / Brutal) and a
+  **Quality** setting (Fast / Pretty) are on the main menu
+- Waves of increasingly skilled enemies with different helmets, heraldry and
+  fighting styles (they block, parry, dodge and punish openings), with a
+  champion every fifth wave, a cheering crowd and slow-motion kills
+
+Everything is generated from code in this repo:
+
+- `tools/blender/build_sword_assets.py` builds all the 3D assets with Blender:
+  procedural PBR textures, the knight (rigid plate pieces on an armature, with
+  three helmet variants), the longsword, the arena, the gore pieces (stumps and
+  gibs) and all 25 animation clips. It writes `.glb` files to
+  `assets/sword/`. Run it with `blender --background --python
+  tools/blender/build_sword_assets.py`, or with `pip install bpy` and
+  `python3 tools/blender/build_sword_assets.py`
+- `tools/audio/build_sword_sfx.py` renders the sound effects to
+  `assets/sword/sfx/` with physically modelled synthesis: ringing steel blades
+  (modal synthesis), chainmail, bone cracks, blood as bubble streams, armoured
+  bodies hitting the sand, voices muffled by a helm, and a crowd built from
+  dozens of synthetic voices (`pip install numpy scipy soundfile`)
+- At runtime the arms are driven by two-bone IK so both hands stay on the
+  grip, and the game uses the ES-module build of Three.js r186 vendored in
+  `vendor/three-r186/`
+
+Serve it the same way as the other demos and visit
+`http://localhost:8000/sword.html`.
+
+All eight demos link to each other via the nav chips (top-right corner in most
+demos, on the main menu in Blood & Steel).
 
 ### Playing on your phone via GitHub Pages
 
@@ -410,7 +457,7 @@ To play without running a local server, enable GitHub Pages for this repo:
 1. Go to the repo's **Settings > Pages**.
 2. Under "Build and deployment", set **Source** to "Deploy from a branch".
 3. Pick branch `main`, folder `/ (root)`, then **Save**.
-4. After a minute, all seven demos will be live at
+4. After a minute, all eight demos will be live at
    `https://gh3311870-debug.github.io/first-pr-demo/index.html` (builder),
    `https://gh3311870-debug.github.io/first-pr-demo/fps.html` (shooter),
    `https://gh3311870-debug.github.io/first-pr-demo/powers.html` (flight),
@@ -419,9 +466,11 @@ To play without running a local server, enable GitHub Pages for this repo:
    `https://gh3311870-debug.github.io/first-pr-demo/netrunner.html`
    (twin-stick shooter),
    `https://gh3311870-debug.github.io/first-pr-demo/hero.html`
-   (superhero brawler), and
+   (superhero brawler),
    `https://gh3311870-debug.github.io/first-pr-demo/swinger.html`
-   (web-swinging runner) — open any of them on your phone.
+   (web-swinging runner), and
+   `https://gh3311870-debug.github.io/first-pr-demo/sword.html`
+   (sword fighting) — open any of them on your phone.
 
 Each merge to `main` kicks off a fresh Pages deployment automatically. It
 usually finishes in under a minute, but if a page seems to be missing a
