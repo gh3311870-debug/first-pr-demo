@@ -117,6 +117,8 @@
   #fbFill.ready { background: linear-gradient(90deg, #ff9a2e, #ffd36a); box-shadow: 0 0 8px #ff8a2a; }
   #prompt { position: absolute; left: 50%; top: 62%; transform: translateX(-50%); font-size: 15px; letter-spacing: 4px; color: var(--ink);
             text-shadow: 0 0 10px #000, 0 0 2px #000; padding: 6px 14px; border: 1px solid rgba(217,179,90,0.6); background: rgba(40,6,6,0.55); white-space: nowrap; }
+  #fireMark { position: absolute; width: 14px; height: 14px; transform: translate(-50%, -50%) rotate(45deg); border: 2px solid #ffb04a;
+              box-shadow: 0 0 10px #ff7a1a, inset 0 0 6px #ff7a1a; pointer-events: none; }
   #godTag { position: absolute; top: calc(92px + var(--safe-t)); left: calc(14px + var(--safe-l)); font-size: 10px; letter-spacing: 3px; color: var(--gold);
             border: 1px solid rgba(217,179,90,0.6); padding: 2px 6px; background: rgba(0,0,0,0.4); }
   #prompt b { color: var(--gold); font-weight: normal; margin-right: 6px; }
@@ -165,6 +167,7 @@
   <div id="banner"></div>
   <div id="prompt" class="hidden"></div>
   <div id="godTag" class="hidden">GOD MODE</div>
+  <div id="fireMark" class="hidden"></div>
   <div id="feed"></div>
   <div id="vignette"></div>
   <div id="bloodScreen"></div>
@@ -198,7 +201,7 @@
     <b>Desktop</b> — click to grab the mouse. <b>WASD</b> move, <b>Shift</b> sprint, <b>Space</b> dodge.<br>
     <b>Left click</b> strikes <i>in the direction you last moved the mouse</i>: flick left or right to slash, down to chop, up to thrust. <b>Q</b> chop, <b>E</b> thrust.<br>
     <b>Right click</b> (hold) blocks. Block just before a blow lands to <b>parry</b> and stagger your foe. <b>Tab</b> toggles lock-on.<br>
-    <b>G</b> toggles god mode (also on this menu) for testing. <b>C</b> kicks through a guard. <b>X</b> hurls a fireball that sets knights alight. <b>F</b> executes a staggered or maimed foe. <b>R</b> takes up a fallen weapon.<br>
+    <b>G</b> toggles god mode (also on this menu) for testing. <b>C</b> kicks through a guard. <b>X</b> hurls a fireball at whoever is nearest the centre of the screen (marked with a glowing diamond) and sets them alight. <b>F</b> executes a staggered or maimed foe. <b>R</b> takes up a fallen weapon.<br>
     <b>Touch</b> — left thumb moves. Swipe the right side to strike in that direction, tap for a quick slash. Hold <b>BLOCK</b>, tap <b>DODGE</b>, <b>KICK</b> or <b>FIRE</b>; <b>EXECUTE</b> and <b>TAKE</b> appear when you can use them.<br>
     Heavy blows can take limbs. A killing blow to the head takes the head. Staggered and crippled foes cannot defend themselves.
   </div>
@@ -1635,8 +1638,9 @@ class Fighter {
     } else B.valid = false;
   }
 
-  chestPos(out) { return out.setFromMatrixPosition(this.n.spine.matrixWorld).add(_v1.set(0, 0.25, 0)); }
-  headPos(out) { return out.setFromMatrixPosition(this.n.head.matrixWorld).add(_v1.set(0, 0.18, 0)); }
+  // offsets are added as scalars so callers may pass any shared scratch vector as `out`
+  chestPos(out) { out.setFromMatrixPosition(this.n.spine.matrixWorld); out.y += 0.25; return out; }
+  headPos(out) { out.setFromMatrixPosition(this.n.head.matrixWorld); out.y += 0.18; return out; }
   forward(out) { return out.set(Math.sin(this.yaw), 0, Math.cos(this.yaw)); }
 
   // ---------------- damage ----------------
@@ -1990,20 +1994,37 @@ function kickHit(f) {
 }
 
 const fireballs = [];
+const FIREBALL_SPEED = 22;
+// The player's fireball goes where the camera is looking: it picks the enemy closest to the
+// centre of the screen (within ~30 degrees), falling back to the lock-on target.
+function fireAimTarget(f) {
+  const fwd = camera.getWorldDirection(_v1);
+  let best = null, bestA = 0.52;
+  for (const o of game.fighters) {
+    if (o.team === f.team || !o.alive || o.state === 'executed') continue;
+    const to = o.chestPos(_v2).sub(camera.position);
+    const d = to.length();
+    if (d > 30) continue;
+    const a = fwd.angleTo(to.divideScalar(d));
+    if (a < bestA) { bestA = a; best = o; }
+  }
+  return best || (game.lockTarget && game.lockTarget.alive ? game.lockTarget : null);
+}
+function fireAimDir(f, from, target, out) {
+  if (target) {
+    const c = target.chestPos(_v3);
+    const t = c.distanceTo(from) / FIREBALL_SPEED;
+    return out.copy(c).addScaledVector(target.vel, t).sub(from).normalize(); // lead a moving target
+  }
+  camera.getWorldDirection(out);
+  out.y = clamp(out.y + 0.05, -0.12, 0.25);
+  return out.normalize();
+}
 function launchFireball(f) {
   const p = new V3().setFromMatrixPosition(f.n.hand_L.matrixWorld).addScaledVector(f.forward(_v1), 0.3);
   p.y = Math.max(p.y, 1.15);
-  let target = f.isPlayer ? game.lockTarget : f.target;
-  if (f.isPlayer && !target) {
-    let bd = -1;
-    for (const o of game.fighters) {
-      if (o.team === f.team || !o.alive) continue;
-      const to = _v2.subVectors(o.pos, f.pos).setY(0); const d = to.length();
-      const score = to.normalize().dot(f.forward(_v3)) - d * 0.03;
-      if (d < 16 && score > 0.8 && score > bd) { bd = score; target = o; }
-    }
-  }
-  const dir = target ? target.chestPos(new V3()).sub(p).normalize() : f.forward(new V3()).setY(0.02).normalize();
+  const target = f.isPlayer ? fireAimTarget(f) : f.target;
+  const dir = f.isPlayer ? fireAimDir(f, p, target, new V3()) : (target ? target.chestPos(new V3()).sub(p).normalize() : f.forward(new V3()));
   const g = new THREE.Group();
   g.position.copy(p);
   const core = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color(9, 4, 1.2) }));
@@ -2014,16 +2035,16 @@ function launchFireball(f) {
   scene.add(g);
   const light = fx.fireLights.find((l) => !l.userData.busy);
   if (light) light.userData.busy = true;
-  fireballs.push({ g, halo, v: dir.multiplyScalar(15), owner: f, target, life: 2.6, light, t: 0 });
+  fireballs.push({ g, halo, v: dir.multiplyScalar(FIREBALL_SPEED), owner: f, target, life: 2.2, light, t: 0 });
 }
 function updateFireballs(dt) {
   for (let i = fireballs.length - 1; i >= 0; i--) {
     const fb = fireballs[i];
     fb.life -= dt; fb.t += dt;
     const pos = fb.g.position;
-    if (fb.target && fb.target.alive) { // gentle homing
-      const want = fb.target.chestPos(_v1).sub(pos).normalize().multiplyScalar(15);
-      fb.v.lerp(want, 1 - Math.exp(-dt * 2.2)).setLength(15);
+    if (fb.target && fb.target.alive) { // homing
+      const want = fb.target.chestPos(_v1).sub(pos).normalize().multiplyScalar(FIREBALL_SPEED);
+      fb.v.lerp(want, 1 - Math.exp(-dt * (fb.owner.isPlayer ? 7 : 3))).setLength(FIREBALL_SPEED);
     }
     pos.addScaledVector(fb.v, dt);
     const fl = 0.85 + 0.3 * Math.sin(fb.t * 40);
@@ -2041,7 +2062,7 @@ function updateFireballs(dt) {
       for (const c of d.caps) {
         if (d.severed.has(c.part)) continue;
         const l = new THREE.Line3(c.a, c.b).closestPointToPoint(pos, true, _v5);
-        if (l.distanceTo(pos) < c.r + 0.25) { hit = d; break; }
+        if (l.distanceTo(pos) < c.r + 0.32) { hit = d; break; }
       }
       if (hit) break;
     }
@@ -2410,7 +2431,7 @@ function updatePlayerInput(dt) {
   const T = game.lockTarget;
   let fwd;
   if (T) fwd = _v1.subVectors(T.pos, p.pos).setY(0).normalize();
-  else fwd = _v1.set(-Math.sin(input.camYaw), 0, -Math.cos(input.camYaw)).negate();
+  else fwd = _v1.set(-Math.sin(input.camYaw), 0, -Math.cos(input.camYaw)); // the camera sits at +(sin, cos) and looks the other way
   const right = _v2.set(-fwd.z, 0, fwd.x);
   p.moveIntent.set(0, 0, 0).addScaledVector(fwd, mz).addScaledVector(right, mx);
   p.sprint = !!(input.keys.ShiftLeft || input.keys.ShiftRight || (IS_TOUCH && Math.hypot(input.joy.x, input.joy.y) > 0.95 && !T));
@@ -2437,7 +2458,18 @@ function updatePlayerInput(dt) {
   if (input.exec) { input.exec = false; if (game.execTarget) startExecution(p, game.execTarget); }
   if (input.take) { input.take = false; if (game.pickTarget) takePickup(p, game.pickTarget); }
   if (input.kick) { input.kick = false; p.startKick(); }
-  if (input.cast) { input.cast = false; if (!p.startCast() && p.castCool > 0) game.hint('Fireball ready in ' + Math.ceil(p.castCool) + 's', 1); }
+  if (input.cast) {
+    input.cast = false;
+    if (p.castCool <= 0 && (p.state === 'free' || p.state === 'block')) {
+      const at = fireAimTarget(p);
+      const d = at ? _v3.subVectors(at.pos, p.pos) : camera.getWorldDirection(_v3);
+      p.castAimYaw = Math.atan2(d.x, d.z);
+      p.yaw = p.faceYaw = p.castAimYaw;
+      p.root.rotation.y = p.yaw;
+    }
+    if (!p.startCast() && p.castCool > 0) game.hint('Fireball ready in ' + Math.ceil(p.castCool) + 's', 1);
+  }
+  if (p.state === 'cast' && p.castAimYaw !== undefined) p.faceYaw = p.castAimYaw;
   if (input.dodge) {
     input.dodge = false;
     const dir = p.moveIntent.lengthSq() > 0.05 ? p.moveIntent.clone() : _v3.set(-Math.sin(p.yaw), 0, -Math.cos(p.yaw)).clone();
@@ -2738,6 +2770,11 @@ function updateHUD() {
   $('fbFill').style.transform = `scaleX(${fireK})`;
   $('fbFill').classList.toggle('ready', fireK >= 1);
   $('btnFire').style.background = `conic-gradient(rgba(255,120,30,0.65) ${fireK * 360}deg, rgba(20,8,8,0.5) 0deg)`;
+  const fm = $('fireMark');
+  const aim = p.castCool <= 0 && p.alive ? fireAimTarget(p) : null;
+  const ap = aim ? aim.headPos(_v1).add(_v2.set(0, 0.55, 0)).project(camera) : null;
+  if (ap && ap.z < 1) { fm.classList.remove('hidden'); fm.style.left = ((ap.x + 1) / 2 * innerWidth) + 'px'; fm.style.top = ((1 - ap.y) / 2 * innerHeight) + 'px'; }
+  else fm.classList.add('hidden');
   let prompt = '';
   if (game.execTarget) prompt = (IS_TOUCH ? '' : '<b>F</b> ') + (p.wcfg.crush ? 'CRUSH ' : 'EXECUTE ') + game.execTarget.name.toUpperCase();
   else if (game.pickTarget) prompt = (IS_TOUCH ? '' : '<b>R</b> ') + 'TAKE THE ' + WEAPONS[game.pickTarget.pickup].name.toUpperCase();
