@@ -9,6 +9,12 @@ export class Assets {
     this.manager.onProgress = (url, loaded, total) => onProgress && onProgress(loaded / total, url);
     this.texLoader = new THREE.TextureLoader(this.manager);
     this.gltfLoader = new THREE.GLTFLoader(this.manager);
+    // Decode embedded textures through <img> rather than fetch(): strict hosts block fetching
+    // blob: URLs but still allow them as image sources.
+    this.gltfLoader.register((parser) => {
+      parser.textureLoader = new THREE.TextureLoader(parser.options.manager);
+      return { name: "frontline_image_textures" };
+    });
     this.maxAniso = renderer.capabilities.getMaxAnisotropy();
     this.textures = {};
     this.materials = {};
@@ -44,10 +50,19 @@ export class Assets {
   }
 
   async load() {
-    const glb = (f) => this.gltfLoader.loadAsync(BASE + f);
-    // hosts that can't serve .glb get self-contained .gltf JSON copies instead
-    const ext = window.FRONTLINE_MODEL_EXT || ".glb";
-    const [operator, props] = await Promise.all([glb("operator" + ext), glb("props" + ext)]);
+    // Hosts that can't serve .glb files get the same GLB base64-encoded in a JSON file
+    // ({"glb": "..."}); it is decoded here so no data: URL ever has to be fetched.
+    const wrapped = window.FRONTLINE_MODEL_EXT === ".glb.json";
+    const glb = async (name) => {
+      if (!wrapped) return this.gltfLoader.loadAsync(BASE + name + ".glb");
+      const res = await fetch(BASE + name + ".glb.json");
+      if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
+      const bin = atob((await res.json()).glb);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return this.gltfLoader.parseAsync(bytes.buffer, BASE);
+    };
+    const [operator, props] = await Promise.all([glb("operator"), glb("props")]);
     this.operator = operator;
     this.props = props;
     this._buildMaterials();
