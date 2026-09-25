@@ -431,7 +431,8 @@ Gameplay:
   brackets, power-up timers and a boss health bar
 - Keyboard works too: WASD / arrows to fly, Space to fire, Shift to boost
 - **GOD** button (or the G key) opens a cheat menu for testing: God Mode
-  (no damage), Infinite Boost, Endless Power-ups, Wide Lock-on, buttons to
+  (no damage), Infinite Boost, Endless Power-ups, Wide Lock-on, Slow Motion
+  (also the T key), Engine Glow Off, buttons to
   grant any power-up, and spawners for fighters, aces, the Dreadnought, the
   next wave or destroying everything on screen
 

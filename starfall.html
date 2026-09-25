@@ -523,6 +523,8 @@
       <button type="button" class="toggle" id="cheatBoost" data-toggle="boost">Infinite Boost</button>
       <button type="button" class="toggle" id="cheatPowers" data-toggle="powers">Endless Power-ups</button>
       <button type="button" class="toggle" id="cheatAim" data-toggle="aim">Wide Lock-on</button>
+      <button type="button" class="toggle" id="cheatSlow" data-toggle="slowmo">Slow Motion</button>
+      <button type="button" class="toggle" id="cheatGlow" data-toggle="noglow">Engine Glow Off</button>
     </div>
     <div class="label">Give power-up</div>
     <div class="grid">
@@ -1311,8 +1313,8 @@
 
   function bakeSky() {
     var w = hdr ? 2048 : 1024;
-    tex.sky = bake([
-      "uniform vec3 sunDir;",
+    var skyFrag = [
+      "uniform vec3 sunDir; uniform float sunScale;",
       "vec3 skyDir(vec2 uv){ float phi = (uv.x - 0.5) * 6.28318530718; float lat = (uv.y - 0.5) * 3.14159265359;",
       "  return vec3(cos(lat) * cos(phi), sin(lat), cos(lat) * sin(phi)); }",
       "vec3 starLayer(vec3 d, float scale, float thresh, float bright, float size){",
@@ -1347,16 +1349,21 @@
       "  col += starLayer(d, 55.0, 0.996, 3.5, 0.003);",
       "  col += starLayer(d, 22.0, 0.997, 9.0, 0.0034);",
       "  float a = acos(clamp(dot(d, sunDir), -1.0, 1.0));",
-      "  col += vec3(1.0, 0.94, 0.85) * 55.0 * smoothstep(0.014, 0.010, a);",
-      "  col += vec3(1.0, 0.72, 0.45) * 0.9 * exp(-a * 22.0);",
+      "  col += vec3(1.0, 0.94, 0.85) * 55.0 * sunScale * smoothstep(0.014, 0.010, a);",
+      "  col += vec3(1.0, 0.72, 0.45) * 0.9 * sunScale * exp(-a * 22.0);",
       "  col += vec3(1.0, 0.55, 0.3) * 0.12 * exp(-a * 4.0);",
       "  gl_FragColor = vec4(col, 1.0);",
       "}"
-    ].join("\n"), w, w / 2, { sunDir: { value: SUN_DIR } }, true);
+    ].join("\n");
+    tex.sky = bake(skyFrag, w, w / 2, { sunDir: { value: SUN_DIR }, sunScale: { value: 1 } }, true);
     tex.sky.mapping = THREE.EquirectangularReflectionMapping;
     scene.background = tex.sky;
+    // Reflections use a copy with a much dimmer sun so glossy hulls and
+    // canopies don't flare into a bloom blob
+    var envSky = bake(skyFrag, 1024, 512, { sunDir: { value: SUN_DIR }, sunScale: { value: 0.03 } }, true);
+    envSky.mapping = THREE.EquirectangularReflectionMapping;
     var pmrem = new THREE.PMREMGenerator(renderer);
-    scene.environment = pmrem.fromEquirectangular(tex.sky).texture;
+    scene.environment = pmrem.fromEquirectangular(envSky).texture;
     pmrem.dispose();
   }
 
@@ -1463,7 +1470,7 @@
       "    paint = mix(paint, vec3(0.16, 0.10, 0.48), stripe);",
       "    gl_FragColor = vec4(paint, 1.0);",
       "  } else {",
-      "    float r = 0.32 + h21(id + 3.0) * 0.18 + (1.0 - seam) * 0.4 + grime * 0.12;",
+      "    float r = 0.58 + h21(id + 3.0) * 0.14 + (1.0 - seam) * 0.25 + grime * 0.08;",
       "    gl_FragColor = vec4(vec3(r), 1.0);",
       "  }",
       "}"
@@ -1777,18 +1784,19 @@
     });
   }
   function paint(color) {
-    return new THREE.MeshPhysicalMaterial({ color: color, metalness: 0.5, roughness: 0.35, clearcoat: 1,
-      clearcoatRoughness: 0.12, envMapIntensity: 1.8 });
+    return new THREE.MeshPhysicalMaterial({ color: color, metalness: 0.45, roughness: 0.55, clearcoat: 0.35,
+      clearcoatRoughness: 0.45, envMapIntensity: 1.4 });
   }
   function buildMaterials() {
     mats.hull = new THREE.MeshStandardMaterial({ map: tex.hull, roughnessMap: tex.hullRough, roughness: 1,
-      metalness: 0.65, envMapIntensity: 1.6 });
+      metalness: 0.55, envMapIntensity: 1.4 });
     mats.dark = new THREE.MeshStandardMaterial({ color: 0x1b1f2a, metalness: 0.85, roughness: 0.4, envMapIntensity: 1.2 });
-    mats.glass = new THREE.MeshPhysicalMaterial({ color: 0x0a2230, metalness: 0.2, roughness: 0.04, clearcoat: 1,
-      envMapIntensity: 3, emissive: 0x03161f });
+    mats.glass = new THREE.MeshStandardMaterial({ color: 0x0c2632, metalness: 0.1, roughness: 0.45,
+      envMapIntensity: 1.0, emissive: 0x041c26 });
     mats.styles = {
-      player: { paint: paint(0x241a6e), glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(0.22, 0.55, 0.95) }),
-        plume: makePlumeMat([0.04, 0.09, 0.32], [0.3, 0.45, 0.8]) },
+      player: { paint: paint(0x241a6e), glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(0.1, 0.25, 0.5) }),
+        core: new THREE.MeshBasicMaterial({ color: new THREE.Color(0.02, 0.06, 0.14) }),
+        plume: makePlumeMat([0.03, 0.06, 0.2], [0.18, 0.28, 0.5]) },
       enemy: { paint: paint(0x6e1a1a), glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 1.2, 0.4) }),
         plume: makePlumeMat([2.2, 0.5, 0.2], [6, 3.2, 1.2]) },
       ace: { paint: paint(0x8a6414), glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 3.5, 0.6) }),
@@ -1845,7 +1853,7 @@
       wing.rotation.z = side * -0.06;
       var nacelle = add(G.nacelle, mats.dark, side * 1.15, -0.05, 1.2);
       nacelle.rotation.x = Math.PI / 2;
-      add(G.core, st.glow, side * 1.15, -0.05, 2.41);
+      add(G.core, st.core || st.glow, side * 1.15, -0.05, 2.41);
       var fin = add(G.fin, st.paint, side * 0.55, 0.55, 1.7);
       fin.rotation.z = side * -0.35;
       fin.rotation.x = -0.25;
@@ -3474,7 +3482,7 @@
   // ======================================================================
   // God menu (cheats for testing)
   // ======================================================================
-  var cheats = { god: false, boost: false, powers: false, aim: false };
+  var cheats = { god: false, boost: false, powers: false, aim: false, slowmo: false, noglow: false };
   var godBtn = document.getElementById("godBtn");
   var godPanel = document.getElementById("godPanel");
   var godTag = document.getElementById("godTag");
@@ -3494,11 +3502,16 @@
     }
   }
   function refreshCheatUi() {
-    ["god", "boost", "powers", "aim"].forEach(function (k) {
+    ["god", "boost", "powers", "aim", "slowmo", "noglow"].forEach(function (k) {
       godPanel.querySelector('[data-toggle="' + k + '"]').classList.toggle("on", cheats[k]);
     });
     godBtn.classList.toggle("on", cheats.god);
-    godTag.hidden = !cheats.god;
+    var tags = [];
+    if (cheats.god) tags.push("GOD MODE");
+    if (cheats.slowmo) tags.push("SLOW-MO");
+    godTag.textContent = tags.join(" \u00B7 ");
+    godTag.hidden = !tags.length;
+    if (audio.ctx) audio.musicFilter.frequency.setTargetAtTime(cheats.slowmo ? 1400 : 18000, audio.ctx.currentTime, 0.2);
     if (cheats.boost) boostReadyAt = Math.min(boostReadyAt, clockTime);
   }
   function toggleGodPanel(open) {
@@ -3636,6 +3649,7 @@
     if (e.code === "ShiftLeft" || e.code === "ShiftRight") doBoost();
     if ((e.code === "Enter" || e.code === "Space") && (state === "menu" || state === "dead")) startGame();
     if (e.code === "KeyG" && state === "playing") toggleGodPanel();
+    if (e.code === "KeyT" && state === "playing") { cheats.slowmo = !cheats.slowmo; refreshCheatUi(); }
   });
   window.addEventListener("keyup", function (e) {
     keys[e.code] = false;
@@ -3756,14 +3770,17 @@
   function updateShipVisuals(dt, boosting) {
     if (state === "playing") ship.visible = clockTime >= player.invuln || Math.floor(clockTime * 14) % 2 === 0;
     var pu = shipParts.plumeMat.uniforms;
-    pu.power.value += ((boosting ? 1.8 : 1) - pu.power.value) * Math.min(1, dt * 8);
+    var plumeTarget = cheats.noglow ? 0 : boosting ? 2.2 : 0.6;
+    pu.power.value += (plumeTarget - pu.power.value) * Math.min(1, dt * 8);
+    mats.styles.player.core.visible = !cheats.noglow;
+    mats.styles.player.glow.visible = !cheats.noglow;
     for (var i = 0; i < shipParts.plumes.length; i++) {
       var p = shipParts.plumes[i];
       var len = (boosting ? 2.2 : 1) * (0.9 + Math.random() * 0.2);
       p.scale.set(1, len, 1);
       p.position.z = 2.4 + 1.6 * len;
     }
-    shipParts.engineLight.intensity = (boosting ? 2 : 0.8) * (0.85 + Math.random() * 0.3);
+    shipParts.engineLight.intensity = boosting && !cheats.noglow ? 2 * (0.85 + Math.random() * 0.3) : 0;
     shieldFlash = Math.max(0, shieldFlash - dt * 2.5);
     var su = shipParts.shieldMat.uniforms;
     var sAmt = Math.max(boostAmt, shieldFlash);
@@ -3773,7 +3790,7 @@
     for (var n = 0; n < shipParts.navLights.length; n++) shipParts.navLights[n].visible = phase < 0.08 || phase > 0.6;
     shipParts.muzzleLight.intensity *= Math.exp(-dt * 30);
     if (ship.visible && (state === "playing" || state === "menu")) {
-      engineTrail(player.pos, player.fwd, player.right, 0.92, 0.12, 0.25, boosting ? 0.9 : 0.5, 1);
+      if (boosting && !cheats.noglow) engineTrail(player.pos, player.fwd, player.right, 0.92, 0.12, 0.25, 0.9, 1);
     }
   }
 
@@ -3897,6 +3914,7 @@
     lastTime = now;
     var dt = Math.min(0.05, raw);
     if (state === "dying") dt *= 0.45;
+    else if (cheats.slowmo && state === "playing") dt *= 0.3;
     clockTime += dt;
     update(dt);
     renderFrame();
@@ -3953,6 +3971,13 @@
       while (powerups.length) removePowerupAt(powerups.length - 1);
       while (missiles.length) scene.remove(missiles.pop().group);
       while (bolts.length) scene.remove(bolts.pop().mesh);
+      // Clear the warm-up explosion so it never shows on the title screen
+      [fx.fire, fx.smoke, fx.glow].forEach(function (pool) { pool.active.forEach(function (q) { q.age = q.life; q.delay = 0; }); pool.update(0); });
+      fx.sparks.n = 0; fx.embers.n = 0;
+      fx.lights.forEach(function (L) { L.t = L.life; L.light.intensity = 0; });
+      fx.rings.forEach(function (R) { R.mesh.visible = false; });
+      fx.debris.forEach(function (D) { D.mesh.visible = false; fx.debrisFree.push(D); });
+      fx.debris.length = 0;
     }]
   ];
   var stepIndex = 0;
