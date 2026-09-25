@@ -404,18 +404,33 @@ Serve it the same way as the other demos and visit
 ## Starfall: Asteroid Run demo
 
 `starfall.html` is a mobile-friendly 3D space shooter, also built with
-Three.js. Pilot a starfighter through an endless asteroid storm, with a
-ringed planet and nebulae in the background:
+Three.js. Pilot a starfighter through an endless asteroid storm. Every
+texture, model and sound is generated in code when the page loads:
+
+- HDR rendering with bloom, filmic tone mapping, lens flare, chromatic
+  aberration and a warp-speed radial blur while boosting
+- GPU-baked nebula skybox with a sun and Milky Way band, a banded gas giant
+  with an atmosphere glow and rings, cratered asteroids with glowing cracks
+  that spread as they take damage, and a panel-plated metal ship with engine
+  plumes and blinking nav lights
+- Layered explosions: fireballs, smoke, spark streaks, glowing debris,
+  shockwaves and dynamic lights
+- Synthesized audio with reverb and stereo panning, an engine rumble that
+  follows your speed, and a soundtrack that builds as the run gets harder
+
+Controls and rules:
 
 - Left on-screen joystick: steer the ship up, down, left and right
 - Hold the right side of the screen to fire twin lasers
 - **HYPER BOOST** button: a few seconds of warp speed with a shield that
   smashes straight through asteroids (5 second cooldown)
 - Big asteroids take several hits and shatter into smaller fragments
+- Chain kills to build a score multiplier up to &times;5
 - Green crystals are worth bonus points; blue rings repair one point of hull
 - Your hull takes three hits, and the field speeds up and gets denser the
   longer you survive. Your best score is saved locally in the browser
 - Keyboard works too: WASD / arrows to steer, Space to fire, Shift to boost
+- Rendering resolution adjusts automatically to keep the frame rate smooth
 
 Serve it the same way as the other demos and visit
 `http://localhost:8000/starfall.html`.
