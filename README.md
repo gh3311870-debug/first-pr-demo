@@ -401,7 +401,26 @@ scrolling city skyline:
 Serve it the same way as the other demos and visit
 `http://localhost:8000/swinger.html`.
 
-All seven demos link to each other via the nav chips in the top-right corner.
+## Starfall: Asteroid Run demo
+
+`starfall.html` is a mobile-friendly 3D space shooter, also built with
+Three.js. Pilot a starfighter through an endless asteroid storm, with a
+ringed planet and nebulae in the background:
+
+- Left on-screen joystick: steer the ship up, down, left and right
+- Hold the right side of the screen to fire twin lasers
+- **HYPER BOOST** button: a few seconds of warp speed with a shield that
+  smashes straight through asteroids (5 second cooldown)
+- Big asteroids take several hits and shatter into smaller fragments
+- Green crystals are worth bonus points; blue rings repair one point of hull
+- Your hull takes three hits, and the field speeds up and gets denser the
+  longer you survive. Your best score is saved locally in the browser
+- Keyboard works too: WASD / arrows to steer, Space to fire, Shift to boost
+
+Serve it the same way as the other demos and visit
+`http://localhost:8000/starfall.html`.
+
+All eight demos link to each other via the nav chips in the top-right corner.
 
 ### Playing on your phone via GitHub Pages
 
@@ -410,7 +429,7 @@ To play without running a local server, enable GitHub Pages for this repo:
 1. Go to the repo's **Settings > Pages**.
 2. Under "Build and deployment", set **Source** to "Deploy from a branch".
 3. Pick branch `main`, folder `/ (root)`, then **Save**.
-4. After a minute, all seven demos will be live at
+4. After a minute, all eight demos will be live at
    `https://gh3311870-debug.github.io/first-pr-demo/index.html` (builder),
    `https://gh3311870-debug.github.io/first-pr-demo/fps.html` (shooter),
    `https://gh3311870-debug.github.io/first-pr-demo/powers.html` (flight),
@@ -419,9 +438,11 @@ To play without running a local server, enable GitHub Pages for this repo:
    `https://gh3311870-debug.github.io/first-pr-demo/netrunner.html`
    (twin-stick shooter),
    `https://gh3311870-debug.github.io/first-pr-demo/hero.html`
-   (superhero brawler), and
+   (superhero brawler),
    `https://gh3311870-debug.github.io/first-pr-demo/swinger.html`
-   (web-swinging runner) — open any of them on your phone.
+   (web-swinging runner), and
+   `https://gh3311870-debug.github.io/first-pr-demo/starfall.html`
+   (space shooter) — open any of them on your phone.
 
 Each merge to `main` kicks off a fresh Pages deployment automatically. It
 usually finishes in under a minute, but if a page seems to be missing a
