@@ -430,6 +430,10 @@ Gameplay:
 - The HUD has a radar, arrows pointing to off-screen enemies, target
   brackets, power-up timers and a boss health bar
 - Keyboard works too: WASD / arrows to fly, Space to fire, Shift to boost
+- **GOD** button (or the G key) opens a cheat menu for testing: God Mode
+  (no damage), Infinite Boost, Endless Power-ups, Wide Lock-on, buttons to
+  grant any power-up, and spawners for fighters, aces, the Dreadnought, the
+  next wave or destroying everything on screen
 
 Graphics and audio:
 

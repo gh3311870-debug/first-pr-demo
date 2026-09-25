@@ -398,6 +398,63 @@
   }
   .marker.arrow.ace { border-bottom-color: #ffcf4d; }
   .marker.arrow.boss { border-left-width: 12px; border-right-width: 12px; border-bottom: 20px solid #ffb347; margin: -10px 0 0 -12px; }
+  #muteBtn, #godBtn, #gameNav { z-index: 3; }
+  #godBtn {
+    position: absolute;
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    right: calc(56px + env(safe-area-inset-right, 0px));
+    height: 36px;
+    padding: 0 10px;
+    border-radius: 6px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    display: flex;
+    align-items: center;
+    pointer-events: auto;
+    cursor: pointer;
+  }
+  #godBtn.on { border-color: var(--amber); color: var(--amber); box-shadow: 0 0 12px rgba(255,179,71,0.5); }
+  #godPanel {
+    position: absolute;
+    top: calc(56px + env(safe-area-inset-top, 0px));
+    right: calc(12px + env(safe-area-inset-right, 0px));
+    width: min(330px, calc(100vw - 24px));
+    max-height: calc(100% - 70px - env(safe-area-inset-top, 0px));
+    overflow-y: auto;
+    padding: 10px;
+    box-sizing: border-box;
+    background: rgba(6, 9, 22, 0.9);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: auto;
+    z-index: 4;
+    touch-action: pan-y;
+  }
+  #godPanel .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  #godPanel button {
+    font-family: var(--hud-font);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--ink);
+    background: rgba(127,227,255,0.08);
+    border: 1px solid rgba(127,227,255,0.3);
+    border-radius: 4px;
+    padding: 6px 3px;
+    cursor: pointer;
+  }
+  #godPanel button:active { background: rgba(127,227,255,0.25); }
+  #godPanel button:focus-visible { outline: 2px solid var(--cyan); }
+  #godPanel button.toggle.on { background: rgba(255,179,71,0.2); border-color: var(--amber); color: var(--amber); }
+  #godPanel button.danger { border-color: rgba(255,77,94,0.5); background: rgba(255,77,94,0.1); }
+  #godTag { font-size: 10px; letter-spacing: 0.2em; font-weight: 700; color: var(--amber); }
   #lockBox {
     position: absolute; left: 0; top: 0; width: 44px; height: 44px; margin: -22px 0 0 -22px;
     pointer-events: none; will-change: transform;
@@ -438,6 +495,7 @@
     <div id="scoreRow"><div id="scoreLine">0</div><div id="comboChip">&times;2</div></div>
     <div id="bestLine">BEST 0</div>
     <div id="waveLine">WAVE 1</div>
+    <div id="godTag" hidden>GOD MODE</div>
     <div id="bars">
       <div class="barRow"><span class="label">Hull</span><div class="bar"><div id="hullFill"></div></div></div>
       <div class="barRow"><span class="label">Shield</span><div class="bar"><div id="shieldFill"></div></div></div>
@@ -457,6 +515,34 @@
   <canvas id="radar" width="192" height="192"></canvas>
   <div id="velLine">VEL <b id="velValue">0.0</b> km/s</div>
   <div id="muteBtn" role="button" aria-label="Toggle sound">&#128266;</div>
+  <div id="godBtn" role="button" aria-label="Open god menu">GOD</div>
+  <div id="godPanel" hidden>
+    <div class="label">Cheats</div>
+    <div class="grid">
+      <button type="button" class="toggle" id="cheatGod" data-toggle="god">God Mode</button>
+      <button type="button" class="toggle" id="cheatBoost" data-toggle="boost">Infinite Boost</button>
+      <button type="button" class="toggle" id="cheatPowers" data-toggle="powers">Endless Power-ups</button>
+      <button type="button" class="toggle" id="cheatAim" data-toggle="aim">Wide Lock-on</button>
+    </div>
+    <div class="label">Give power-up</div>
+    <div class="grid">
+      <button type="button" data-power="triple">Triple Shot</button>
+      <button type="button" data-power="rapid">Rapid Fire</button>
+      <button type="button" data-power="missile">Missiles</button>
+      <button type="button" data-power="wing">Squadron</button>
+      <button type="button" data-power="shield">Shield + Repair</button>
+      <button type="button" data-act="allpowers">All Power-ups</button>
+    </div>
+    <div class="label">Spawn</div>
+    <div class="grid">
+      <button type="button" data-act="fighters">3 Fighters</button>
+      <button type="button" data-act="ace">Ace Pilot</button>
+      <button type="button" data-act="boss">Dreadnought</button>
+      <button type="button" data-act="nextwave">Next Wave</button>
+      <button type="button" class="danger" data-act="clear">Destroy All</button>
+      <button type="button" data-act="close">Close</button>
+    </div>
+  </div>
   <div id="gameNav">
     <a class="navLink" href="index.html">Builder</a>
     <a class="navLink" href="fps.html">Range</a>
@@ -1701,8 +1787,8 @@
     mats.glass = new THREE.MeshPhysicalMaterial({ color: 0x0a2230, metalness: 0.2, roughness: 0.04, clearcoat: 1,
       envMapIntensity: 3, emissive: 0x03161f });
     mats.styles = {
-      player: { paint: paint(0x241a6e), glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(0.45, 1.3, 2.2) }),
-        plume: makePlumeMat([0.12, 0.25, 0.9], [0.9, 1.3, 2.2]) },
+      player: { paint: paint(0x241a6e), glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(0.22, 0.55, 0.95) }),
+        plume: makePlumeMat([0.04, 0.09, 0.32], [0.3, 0.45, 0.8]) },
       enemy: { paint: paint(0x6e1a1a), glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 1.2, 0.4) }),
         plume: makePlumeMat([2.2, 0.5, 0.2], [6, 3.2, 1.2]) },
       ace: { paint: paint(0x8a6414), glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 3.5, 0.6) }),
@@ -3276,6 +3362,7 @@
 
   function damagePlayer(amount, from) {
     if (state !== "playing") return;
+    if (cheats.god) { shieldFlash = 0.6; return; }
     if (clockTime < boostUntil) { shieldFlash = 0.6; return; }
     player.lastHit = clockTime;
     if (player.shield > 0) {
@@ -3325,6 +3412,7 @@
 
   function showGameOver() {
     state = "dead";
+    toggleGodPanel(false);
     var total = Math.floor(score);
     var isBest = total > bestScore;
     if (isBest) {
@@ -3382,6 +3470,80 @@
     }
     waveState = "active";
   }
+
+  // ======================================================================
+  // God menu (cheats for testing)
+  // ======================================================================
+  var cheats = { god: false, boost: false, powers: false, aim: false };
+  var godBtn = document.getElementById("godBtn");
+  var godPanel = document.getElementById("godPanel");
+  var godTag = document.getElementById("godTag");
+  function spawnAhead(count, ace) {
+    for (var i = 0; i < count; i++) {
+      tmpC.set(rand(-1, 1), rand(-0.3, 0.3), rand(-1, 1)).normalize().addScaledVector(player.fwd, 1.5).normalize();
+      tmpA.copy(player.pos).addScaledVector(tmpC, rand(250, 380));
+      spawnEnemy(tmpA, ace);
+    }
+    if (waveState === "intermission") { waveState = "active"; if (wave === 0) wave = 1; }
+  }
+  function destroyAll() {
+    for (var i = 0; i < enemies.length; i++) killEnemy(enemies[i]);
+    if (boss && boss.dying <= 0) {
+      for (var t = 0; t < boss.turrets.length; t++) boss.turrets[t].dead = true;
+      hitCore(1e9, boss.pos);
+    }
+  }
+  function refreshCheatUi() {
+    ["god", "boost", "powers", "aim"].forEach(function (k) {
+      godPanel.querySelector('[data-toggle="' + k + '"]').classList.toggle("on", cheats[k]);
+    });
+    godBtn.classList.toggle("on", cheats.god);
+    godTag.hidden = !cheats.god;
+    if (cheats.boost) boostReadyAt = Math.min(boostReadyAt, clockTime);
+  }
+  function toggleGodPanel(open) {
+    godPanel.hidden = open == null ? !godPanel.hidden : !open;
+    if (!godPanel.hidden) { fireHeld = false; fireTouches = 0; }
+  }
+  godBtn.addEventListener("click", function () { ensureAudio(); sfxUi(); toggleGodPanel(); });
+  godPanel.addEventListener("touchstart", function (e) { e.stopPropagation(); }, { passive: true });
+  godPanel.addEventListener("click", function (e) {
+    var btn = e.target.closest("button");
+    if (!btn) return;
+    sfxUi();
+    if (btn.dataset.toggle) {
+      cheats[btn.dataset.toggle] = !cheats[btn.dataset.toggle];
+      refreshCheatUi();
+      return;
+    }
+    if (state !== "playing" && btn.dataset.act !== "close") return;
+    if (btn.dataset.power) { applyPower(btn.dataset.power); return; }
+    switch (btn.dataset.act) {
+      case "allpowers":
+        ["triple", "rapid", "missile", "wing", "shield"].forEach(function (k) { applyPower(k); });
+        break;
+      case "fighters": spawnAhead(3, false); break;
+      case "ace": spawnAhead(1, true); break;
+      case "boss":
+        if (!boss) {
+          if (wave < 3) wave = 3;
+          spawnBoss();
+          waveState = "active";
+          hintEl.style.opacity = 0;
+          showBanner("DREADNOUGHT", "Destroy its turrets to break the shield", "#ff8a70", 3);
+          sfxBossAlarm();
+        }
+        break;
+      case "nextwave":
+        while (enemies.length) scene.remove(enemies.pop().jet.group);
+        if (boss) { scene.remove(boss.group); boss = null; document.getElementById("bossBar").hidden = true; }
+        waveState = "intermission";
+        waveTimer = 0.4;
+        break;
+      case "clear": destroyAll(); break;
+      case "close": toggleGodPanel(false); break;
+    }
+  });
 
   // ======================================================================
   // Input
@@ -3461,7 +3623,7 @@
     if (state !== "playing") return;
     if (clockTime < boostReadyAt) return;
     boostUntil = clockTime + BOOST_DURATION;
-    boostReadyAt = clockTime + BOOST_COOLDOWN;
+    boostReadyAt = clockTime + (cheats.boost ? 0.3 : BOOST_COOLDOWN);
     shake = Math.max(shake, 0.45);
     sfxBoost();
   }
@@ -3473,6 +3635,7 @@
     if (e.code === "Space") { fireHeld = true; e.preventDefault(); }
     if (e.code === "ShiftLeft" || e.code === "ShiftRight") doBoost();
     if ((e.code === "Enter" || e.code === "Space") && (state === "menu" || state === "dead")) startGame();
+    if (e.code === "KeyG" && state === "playing") toggleGodPanel();
   });
   window.addEventListener("keyup", function (e) {
     keys[e.code] = false;
@@ -3502,7 +3665,7 @@
     return lockTarget;
   }
   function findAimTarget() {
-    var best = null, bestDot = 0.94;
+    var best = null, bestDot = cheats.aim ? 0.75 : 0.94;
     for (var i = 0; i < targetList.length; i++) {
       var t = targetList[i];
       tmpA.subVectors(t.pos, player.pos);
@@ -3600,7 +3763,7 @@
       p.scale.set(1, len, 1);
       p.position.z = 2.4 + 1.6 * len;
     }
-    shipParts.engineLight.intensity = (boosting ? 4 : 1.5) * (0.85 + Math.random() * 0.3);
+    shipParts.engineLight.intensity = (boosting ? 2 : 0.8) * (0.85 + Math.random() * 0.3);
     shieldFlash = Math.max(0, shieldFlash - dt * 2.5);
     var su = shipParts.shieldMat.uniforms;
     var sAmt = Math.max(boostAmt, shieldFlash);
@@ -3610,7 +3773,7 @@
     for (var n = 0; n < shipParts.navLights.length; n++) shipParts.navLights[n].visible = phase < 0.08 || phase > 0.6;
     shipParts.muzzleLight.intensity *= Math.exp(-dt * 30);
     if (ship.visible && (state === "playing" || state === "menu")) {
-      engineTrail(player.pos, player.fwd, player.right, 0.92, 0.25, 0.5, boosting ? 1.8 : 1.0, 1);
+      engineTrail(player.pos, player.fwd, player.right, 0.92, 0.12, 0.25, boosting ? 0.9 : 0.5, 1);
     }
   }
 
@@ -3643,7 +3806,7 @@
         }
       }
       for (var k in powerState) {
-        if (powerState[k] > 0) {
+        if (powerState[k] > 0 && !cheats.powers) {
           powerState[k] = Math.max(0, powerState[k] - dt);
           if (k === "wing" && powerState[k] === 0) { removeWingmen(true); sfxWarpIn(); }
         }
