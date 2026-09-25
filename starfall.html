@@ -254,7 +254,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 14px;
     text-align: center;
     z-index: 50;
@@ -263,6 +263,8 @@
     box-sizing: border-box;
     overflow-y: auto;
   }
+  #overlay > :first-child { margin-top: auto; }
+  #overlay > :last-child { margin-bottom: auto; }
   #titleBlock { display: flex; flex-direction: column; align-items: center; gap: 2px; }
   #overlay h1 {
     font-size: clamp(38px, 9vw, 72px);
@@ -391,6 +393,7 @@
   .marker.box.ace { border-color: #ffcf4d; }
   .marker.box.boss { width: 34px; height: 34px; margin: -18px 0 0 -18px; border-color: #ffb347; border-width: 2px; }
   .marker.box.power { width: 12px; height: 12px; margin: -7px 0 0 -7px; }
+  .marker.box.rig { width: 26px; height: 26px; margin: -14px 0 0 -14px; border-width: 2px; }
   .marker.arrow {
     width: 0; height: 0; margin: -7px 0 0 -8px;
     border-left: 8px solid transparent; border-right: 8px solid transparent;
@@ -455,6 +458,94 @@
   #godPanel button.toggle.on { background: rgba(255,179,71,0.2); border-color: var(--amber); color: var(--amber); }
   #godPanel button.danger { border-color: rgba(255,77,94,0.5); background: rgba(255,77,94,0.1); }
   #godTag { font-size: 10px; letter-spacing: 0.2em; font-weight: 700; color: var(--amber); }
+  #objLine { font-size: 11px; letter-spacing: 0.12em; color: var(--ink); font-weight: 600; max-width: 220px; }
+  #objLine .count { color: var(--cyan); font-variant-numeric: tabular-nums; }
+  #metaRow { display: flex; gap: 18px; align-items: baseline; font-size: 12px; letter-spacing: 0.14em; color: var(--dim); }
+  #metaRow b { color: var(--amber); font-variant-numeric: tabular-nums; }
+  #btnRow { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  #hangarBtn {
+    font-family: var(--hud-font);
+    background: transparent;
+    color: var(--amber);
+    border: 1px solid var(--amber);
+    border-radius: 2px;
+    padding: 12px 26px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  #hangarBtn:hover, #hangarBtn:focus-visible { background: rgba(255,179,71,0.14); outline: none; }
+  #salvageGain { font-size: 14px; letter-spacing: 0.16em; color: var(--amber); font-weight: 700; min-height: 1em; }
+  .modal {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: rgba(4,5,12,0.82);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 14px;
+    padding: 16px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    pointer-events: auto;
+  }
+  .modal > :first-child { margin-top: auto; }
+  .modal > :last-child { margin-bottom: auto; }
+  .modal h2 { margin: 0; font-size: clamp(22px, 4vw, 30px); letter-spacing: 0.3em; margin-left: 0.3em; text-align: center; }
+  .modal .sub { font-size: 12px; letter-spacing: 0.16em; color: var(--dim); text-transform: uppercase; text-align: center; }
+  #cards { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .card {
+    font-family: var(--hud-font);
+    width: 190px;
+    min-height: 150px;
+    text-align: left;
+    color: var(--ink);
+    background: linear-gradient(160deg, rgba(20,28,60,0.95), rgba(8,10,24,0.95));
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  }
+  .card:hover, .card:focus-visible { transform: translateY(-3px); border-color: var(--cyan); box-shadow: 0 0 22px rgba(127,227,255,0.35); outline: none; }
+  .card .glyph { font-size: 22px; font-weight: 700; color: var(--cyan); letter-spacing: 0.05em; }
+  .card .name { font-size: 15px; font-weight: 700; letter-spacing: 0.06em; }
+  .card .desc { font-size: 12px; color: var(--dim); line-height: 1.4; flex: 1; }
+  .card .lvl { font-size: 10px; letter-spacing: 0.2em; color: var(--amber); }
+  #hangarList { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; width: min(820px, 100%); }
+  .hItem {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 14px;
+    align-items: center;
+    background: rgba(12,18,40,0.9);
+    border: 1px solid rgba(127,227,255,0.2);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+  .hItem .name { font-size: 14px; font-weight: 700; letter-spacing: 0.05em; }
+  .hItem .desc { font-size: 11px; color: var(--dim); grid-column: 1; }
+  .hItem .pips { display: flex; gap: 3px; grid-column: 1; }
+  .hItem .pip { width: 14px; height: 4px; background: rgba(255,255,255,0.15); transform: skewX(-20deg); }
+  .hItem .pip.on { background: var(--amber); box-shadow: 0 0 6px rgba(255,179,71,0.7); }
+  .hItem button {
+    grid-column: 2; grid-row: 1 / span 3;
+    font-family: var(--hud-font); font-size: 12px; font-weight: 700; letter-spacing: 0.1em;
+    color: var(--void); background: var(--amber); border: 0; border-radius: 4px; padding: 9px 12px; cursor: pointer;
+    font-variant-numeric: tabular-nums; min-width: 92px;
+  }
+  .hItem button:disabled { background: rgba(255,255,255,0.12); color: var(--dim); cursor: default; }
+  #hangarClose {
+    font-family: var(--hud-font); background: transparent; color: var(--ink); border: 1px solid var(--cyan);
+    border-radius: 2px; padding: 10px 30px; font-size: 13px; font-weight: 700; letter-spacing: 0.3em; cursor: pointer;
+  }
   #lockBox {
     position: absolute; left: 0; top: 0; width: 44px; height: 44px; margin: -22px 0 0 -22px;
     pointer-events: none; will-change: transform;
@@ -496,6 +587,7 @@
     <div id="bestLine">BEST 0</div>
     <div id="waveLine">WAVE 1</div>
     <div id="godTag" hidden>GOD MODE</div>
+    <div id="objLine"></div>
     <div id="bars">
       <div class="barRow"><span class="label">Hull</span><div class="bar"><div id="hullFill"></div></div></div>
       <div class="barRow"><span class="label">Shield</span><div class="bar"><div id="shieldFill"></div></div></div>
@@ -540,7 +632,7 @@
       <button type="button" data-act="fighters">3 Fighters</button>
       <button type="button" data-act="ace">Ace Pilot</button>
       <button type="button" data-act="boss">Dreadnought</button>
-      <button type="button" data-act="nextwave">Next Wave</button>
+      <button type="button" data-act="nextwave">Skip Mission</button>
       <button type="button" class="danger" data-act="clear">Destroy All</button>
       <button type="button" data-act="close">Close</button>
     </div>
@@ -568,16 +660,35 @@
   <div id="stats" hidden>
     <div class="stat"><span class="label">Score</span><span class="v" id="statScore">0</span></div>
     <div class="stat"><span class="label">Kills</span><span class="v" id="statKills">0</span></div>
-    <div class="stat"><span class="label">Wave</span><span class="v" id="statWave">1</span></div>
+    <div class="stat"><span class="label">Sector</span><span class="v" id="statWave">1-1</span></div>
     <div class="stat"><span class="label">Time</span><span class="v" id="statTime">0:00</span></div>
   </div>
   <div id="controls">
     <span><b>Left pad</b> &middot; fly</span><span><b>WASD / arrows</b> &middot; fly</span>
     <span><b>Hold right side</b> &middot; fire</span><span><b>Space</b> &middot; fire</span>
     <span><b>Hyper Boost</b> &middot; ram &amp; shield</span><span><b>Shift</b> &middot; boost</span>
+    <span style="grid-column: 1 / span 2; margin-top: 4px;">Clear 5 sectors of missions. Pick an upgrade after each mission, and spend salvage in the Hangar between runs.</span>
   </div>
   <div id="overlayBest"></div>
-  <button id="startBtn" type="button">Launch</button>
+  <div id="salvageGain"></div>
+  <div id="metaRow"><span>SALVAGE <b id="salvageLine">0</b></span><span>FURTHEST <b id="reachLine">1-1</b></span></div>
+  <div id="btnRow">
+    <button id="startBtn" type="button">Launch</button>
+    <button id="hangarBtn" type="button">Hangar</button>
+  </div>
+</div>
+
+<div id="draft" class="modal" hidden>
+  <h2>MISSION COMPLETE</h2>
+  <div class="sub" id="draftSub">Choose an upgrade for this run</div>
+  <div id="cards"></div>
+</div>
+
+<div id="hangar" class="modal" hidden>
+  <h2>HANGAR</h2>
+  <div class="sub">Permanent upgrades &middot; Salvage <b id="hangarSalvage" style="color:var(--amber)">0</b></div>
+  <div id="hangarList"></div>
+  <button id="hangarClose" type="button">Done</button>
 </div>
 
 <script src="vendor/three.min.js"></script>
@@ -1119,7 +1230,7 @@
   var compositeMat = passMaterial([
     "uniform sampler2D tScene; uniform sampler2D tBloom;",
     "uniform float bloomStrength; uniform float exposure; uniform float aberration; uniform float radial;",
-    "uniform float damage; uniform float time; uniform float grain; uniform vec2 resolution;",
+    "uniform float damage; uniform float time; uniform float grain; uniform vec2 resolution; uniform float flash;",
     "varying vec2 vUv;",
     "vec3 aces(vec3 x){ return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }",
     "vec3 toSRGB(vec3 c){ return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c)); }",
@@ -1142,6 +1253,7 @@
     "  col += texture2D(tBloom, vUv).rgb * bloomStrength;",
     "  col *= exposure;",
     "  col = aces(col);",
+    "  col = mix(col, vec3(1.0), flash);",
     "  float vig = smoothstep(0.85, 0.2, r2 * 1.6);",
     "  col *= mix(0.55, 1.0, vig);",
     "  col = mix(col, vec3(0.9, 0.05, 0.08), clamp(damage, 0.0, 1.0) * smoothstep(0.08, 0.5, r2 * 1.8) * 0.75);",
@@ -1153,7 +1265,8 @@
   ].join("\n"), {
     tScene: { value: rtScene.texture }, tBloom: { value: null },
     bloomStrength: { value: 0.9 }, exposure: { value: 1.0 }, aberration: { value: 0.004 }, radial: { value: 0 },
-    damage: { value: 0 }, time: { value: 0 }, grain: { value: 0.035 }, resolution: { value: new THREE.Vector2() }
+    damage: { value: 0 }, time: { value: 0 }, grain: { value: 0.035 }, resolution: { value: new THREE.Vector2() },
+    flash: { value: 0 }
   });
 
   // Screen-space lens flare drawn over the graded image
@@ -1311,10 +1424,26 @@
 
   var tex = {};
 
-  function bakeSky() {
+  var SECTORS = [
+    { name: "KEPLER DRIFT", a: [0.30, 0.04, 0.34], b: [0.03, 0.16, 0.36], hot: [0.55, 0.16, 0.08], planet: [520, 170, -1500] },
+    { name: "CRIMSON VEIL", a: [0.42, 0.03, 0.05], b: [0.22, 0.05, 0.10], hot: [0.9, 0.35, 0.05], planet: [-600, 120, -1400] },
+    { name: "FROSTLINE", a: [0.04, 0.22, 0.30], b: [0.12, 0.26, 0.42], hot: [0.3, 0.6, 0.9], planet: [450, -200, -1500] },
+    { name: "EMERALD REACH", a: [0.03, 0.30, 0.12], b: [0.02, 0.12, 0.22], hot: [0.5, 0.8, 0.2], planet: [-500, 260, -1400] },
+    { name: "THE MAW", a: [0.18, 0.04, 0.22], b: [0.06, 0.02, 0.03], hot: [1.0, 0.45, 0.1], planet: [600, -100, -1300] }
+  ];
+  var skyRTs = [];
+  function bakeSky(sector) {
+    var sec = sector || SECTORS[0];
+    var pal = {
+      nebA: { value: new THREE.Vector3().fromArray(sec.a) },
+      nebB: { value: new THREE.Vector3().fromArray(sec.b) },
+      hotC: { value: new THREE.Vector3().fromArray(sec.hot) }
+    };
+    skyRTs.forEach(function (t) { t.dispose(); });
+    skyRTs = [];
     var w = hdr ? 2048 : 1024;
     var skyFrag = [
-      "uniform vec3 sunDir; uniform float sunScale;",
+      "uniform vec3 sunDir; uniform float sunScale; uniform vec3 nebA; uniform vec3 nebB; uniform vec3 hotC;",
       "vec3 skyDir(vec2 uv){ float phi = (uv.x - 0.5) * 6.28318530718; float lat = (uv.y - 0.5) * 3.14159265359;",
       "  return vec3(cos(lat) * cos(phi), sin(lat), cos(lat) * sin(phi)); }",
       "vec3 starLayer(vec3 d, float scale, float thresh, float bright, float size){",
@@ -1339,9 +1468,9 @@
       "  float n = fbm(q + w1 * 0.9 + vec3(3.1));",
       "  float neb = smoothstep(-0.05, 0.75, n);",
       "  float hue = smoothstep(-0.35, 0.45, fbm3(q * 0.8 + vec3(9.0)));",
-      "  vec3 nebCol = mix(vec3(0.30, 0.04, 0.34), vec3(0.03, 0.16, 0.36), hue);",
+      "  vec3 nebCol = mix(nebA, nebB, hue);",
       "  col += nebCol * neb * neb * 0.42;",
-      "  col += vec3(0.55, 0.16, 0.08) * pow(max(n - 0.35, 0.0), 2.0) * 1.2;",
+      "  col += hotC * pow(max(n - 0.35, 0.0), 2.0) * 1.2;",
       "  float lanes = smoothstep(-0.2, 0.5, fbm(d * 5.0 + vec3(2.0)));",
       "  col *= 0.35 + 0.65 * lanes;",
       "  col += starLayer(d, 260.0, 0.996 - band * 0.02, 0.6, 0.0022);",
@@ -1355,15 +1484,19 @@
       "  gl_FragColor = vec4(col, 1.0);",
       "}"
     ].join("\n");
-    tex.sky = bake(skyFrag, w, w / 2, { sunDir: { value: SUN_DIR }, sunScale: { value: 1 } }, true);
+    tex.sky = bake(skyFrag, w, w / 2, Object.assign({ sunDir: { value: SUN_DIR }, sunScale: { value: 1 } }, pal), true);
+    skyRTs.push(tex.sky);
     tex.sky.mapping = THREE.EquirectangularReflectionMapping;
     scene.background = tex.sky;
     // Reflections use a copy with a much dimmer sun so glossy hulls and
     // canopies don't flare into a bloom blob
-    var envSky = bake(skyFrag, 1024, 512, { sunDir: { value: SUN_DIR }, sunScale: { value: 0.03 } }, true);
+    var envSky = bake(skyFrag, 1024, 512, Object.assign({ sunDir: { value: SUN_DIR }, sunScale: { value: 0.03 } }, pal), true);
+    skyRTs.push(envSky);
     envSky.mapping = THREE.EquirectangularReflectionMapping;
     var pmrem = new THREE.PMREMGenerator(renderer);
-    scene.environment = pmrem.fromEquirectangular(envSky).texture;
+    var envRT = pmrem.fromEquirectangular(envSky);
+    scene.environment = envRT.texture;
+    skyRTs.push(envRT.texture);
     pmrem.dispose();
   }
 
@@ -1897,7 +2030,7 @@
   var player = {
     pos: new V3(), yaw: 0, pitch: 0, roll: 0, yawRate: 0, pitchRate: 0, speed: CRUISE_SPEED,
     fwd: new V3(0, 0, -1), up: new V3(0, 1, 0), right: new V3(1, 0, 0), vel: new V3(),
-    hull: MAX_HULL, shield: MAX_SHIELD, lastHit: -99, invuln: 0
+    hull: MAX_HULL, shield: MAX_SHIELD, maxHull: MAX_HULL, maxShield: MAX_SHIELD, lastHit: -99, invuln: 0
   };
   var eul = new THREE.Euler(0, 0, 0, "YXZ");
   var qBase = new THREE.Quaternion();
@@ -2378,7 +2511,14 @@
         m.scale.setScalar(rk.radius * (1 - Math.pow(1 - rk.grow, 3)));
       }
       if (rk.flash > 0) rk.flash -= dt;
-      m.material.emissiveIntensity = (1 - rk.hp / rk.maxHp) * 3.5 + (rk.flash > 0 ? 9 : 0);
+      m.material.emissiveIntensity = (1 - rk.hp / rk.maxHp) * 3.5 + (rk.flash > 0 ? 9 : 0) + (rk.meteor ? 3 : 0);
+      if (rk.meteor) {
+        tmpC.copy(rk.vel).normalize();
+        fx.embers.spawn(rk.pos.x - tmpC.x * rk.radius, rk.pos.y - tmpC.y * rk.radius, rk.pos.z - tmpC.z * rk.radius,
+          -tmpC.x * 10 + rand(-3, 3), -tmpC.y * 10 + rand(-3, 3), -tmpC.z * 10 + rand(-3, 3), rand(0.3, 0.6), 5, 1.8, 0.3);
+        if (Math.random() < 0.25) fx.smoke.spawn({ x: rk.pos.x - tmpC.x * rk.radius, y: rk.pos.y - tmpC.y * rk.radius,
+          z: rk.pos.z - tmpC.z * rk.radius, s0: rk.radius * 0.6, s1: rk.radius * 2, life: 0.9, kind: "smoke", opacity: 0.35 });
+      }
       var dx = rk.pos.x - player.pos.x, dy = rk.pos.y - player.pos.y, dz = rk.pos.z - player.pos.z;
       var d2 = dx * dx + dy * dy + dz * dz;
       if (d2 > (FIELD_R + 200) * (FIELD_R + 200)) { removeRockAt(i); continue; }
@@ -2445,7 +2585,15 @@
       if (friendly) {
         for (var e = 0; e < enemies.length && !hit; e++) {
           var en = enemies[e];
-          if (!en.dead && segSphere(bo.prev, bo.pos, en.pos, 3.3 + bo.r)) { hitEnemy(en, bo.dmg, bo.pos); hit = true; }
+          if (!en.dead && en !== bo.lastHit && segSphere(bo.prev, bo.pos, en.pos, 3.3 + bo.r)) {
+            if (bo.crit) fx.glow.spawn({ x: bo.pos.x, y: bo.pos.y, z: bo.pos.z, s0: 4, s1: 1, life: 0.15, kind: "tint", color: CRIT_COLOR });
+            hitEnemy(en, bo.dmg, bo.pos);
+            if (bo.pierce > 0) { bo.pierce--; bo.lastHit = en; } else hit = true;
+          }
+        }
+        for (var ri = 0; ri < rigs.length && !hit; ri++) {
+          var rg = rigs[ri];
+          if (!rg.dead && segSphere(bo.prev, bo.pos, rg.pos, rg.hitR + bo.r)) { hitRig(rg, bo.dmg, bo.pos); hit = true; }
         }
         if (!hit && boss && boss.dying <= 0) {
           for (var t = 0; t < boss.turrets.length && !hit; t++) {
@@ -2555,6 +2703,7 @@
   function gatherTargets() {
     targetList.length = 0;
     for (var i = 0; i < enemies.length; i++) if (!enemies[i].dead) targetList.push(enemies[i]);
+    for (var ri = 0; ri < rigs.length; ri++) if (!rigs[ri].dead) targetList.push(rigs[ri]);
     if (boss && boss.dying <= 0) {
       for (var t = 0; t < boss.turrets.length; t++) if (!boss.turrets[t].dead) targetList.push(boss.turrets[t]);
       targetList.push(boss.core);
@@ -2573,6 +2722,7 @@
     if (t.kind === "enemy") hitEnemy(t, dmg, p);
     else if (t.kind === "turret") hitTurret(t, dmg, p);
     else if (t.kind === "core") hitCore(dmg, p);
+    else if (t.kind === "rig") hitRig(t, dmg, p);
   }
 
   // ======================================================================
@@ -2613,6 +2763,8 @@
     sfxExplosion(1.6, s.pan, s.dist);
     if (state === "playing") {
       registerKill(e.ace ? 400 : 150, true);
+      if (run.lifesteal) player.hull = Math.min(player.maxHull, player.hull + run.lifesteal);
+      if (mission && missionPhase === "active" && (mission.def.type === "purge" || mission.def.type === "aces")) mission.progress++;
       if (Math.random() < (e.ace ? 0.85 : 0.3)) spawnPowerup(randomPowerType(), e.pos);
     }
     shake = Math.max(shake, clamp(0.6 - s.dist / 300, 0, 0.6));
@@ -2702,25 +2854,36 @@
   // Squadron wingmen
   // ======================================================================
   var wingmen = [];
-  var WING_SLOTS = [new V3(-8, 1.5, 7), new V3(8, 1.5, 7), new V3(0, 4, 14)];
+  var WING_SLOTS = [new V3(-8, 1.5, 7), new V3(8, 1.5, 7), new V3(0, 4, 14), new V3(-15, 0, 12), new V3(15, 0, 12)];
   var WING_FLASH = new THREE.Color(1, 7, 5);
   function slotWorld(slot, out) {
     return out.copy(player.pos).addScaledVector(player.right, slot.x).addScaledVector(player.up, slot.y)
       .addScaledVector(player.fwd, -slot.z);
   }
-  function spawnWingmen() {
-    for (var i = 0; i < WING_SLOTS.length; i++) {
-      var jet = buildJet("wing", true);
-      jet.group.scale.setScalar(0.55);
-      scene.add(jet.group);
-      var pos = slotWorld(WING_SLOTS[i], new V3()).addScaledVector(player.fwd, -25);
-      var w = { jet: jet, pos: pos, dir: player.fwd.clone(), slot: WING_SLOTS[i], cd: rand(0, 0.3), bank: 0 };
-      orientJet(jet.group, pos, w.dir, 0);
-      wingmen.push(w);
-      fx.glow.spawn({ x: pos.x, y: pos.y, z: pos.z, s0: 8, s1: 2, life: 0.35, kind: "tint", color: WING_FLASH });
-      shockwave(pos, 6, 0.4, 0.4, 3, 2);
+  function spawnWingman(i) {
+    var jet = buildJet("wing", true);
+    jet.group.scale.setScalar(0.55);
+    scene.add(jet.group);
+    var pos = slotWorld(WING_SLOTS[i], new V3()).addScaledVector(player.fwd, -25);
+    var w = { jet: jet, pos: pos, dir: player.fwd.clone(), slot: WING_SLOTS[i], cd: rand(0, 0.3), bank: 0 };
+    orientJet(jet.group, pos, w.dir, 0);
+    wingmen.push(w);
+    fx.glow.spawn({ x: pos.x, y: pos.y, z: pos.z, s0: 8, s1: 2, life: 0.35, kind: "tint", color: WING_FLASH });
+    shockwave(pos, 6, 0.4, 0.4, 3, 2);
+  }
+  // Keep the right number of wingmen: permanent drones plus Squadron
+  function syncWingmen() {
+    var want = Math.min(WING_SLOTS.length, run.drones + (powerState.wing > 0 ? 3 : 0));
+    if (state !== "playing" && state !== "warp" && state !== "draft") want = 0;
+    var changed = false;
+    while (wingmen.length > want) {
+      var w = wingmen.pop();
+      fx.glow.spawn({ x: w.pos.x, y: w.pos.y, z: w.pos.z, s0: 6, s1: 1, life: 0.3, kind: "tint", color: WING_FLASH });
+      scene.remove(w.jet.group);
+      changed = true;
     }
-    sfxWarpIn();
+    while (wingmen.length < want) { spawnWingman(wingmen.length); changed = true; }
+    if (changed) sfxWarpIn();
   }
   function removeWingmen(withFlash) {
     for (var i = 0; i < wingmen.length; i++) {
@@ -2854,13 +3017,13 @@
   function applyPower(type) {
     var P = POWER[type];
     if (type === "shield") {
-      player.shield = MAX_SHIELD;
-      player.hull = Math.min(MAX_HULL, player.hull + 35);
+      player.shield = player.maxShield;
+      player.hull = Math.min(player.maxHull, player.hull + 35);
     } else if (type === "wing") {
-      if (!wingmen.length) spawnWingmen();
-      powerState.wing = P.dur;
+      powerState.wing = P.dur * run.powerDur;
+      syncWingmen();
     } else {
-      powerState[type] = P.dur;
+      powerState[type] = P.dur * run.powerDur;
     }
     sfxPowerup();
     showBanner(P.name, "Power-up", P.css, 1.4);
@@ -2887,7 +3050,8 @@
       if (state !== "playing") continue;
       tmpA.subVectors(player.pos, p.pos);
       var d = tmpA.length();
-      if (d < 45) p.pos.addScaledVector(tmpA, Math.min(1, dt * (3 + (45 - d) * 0.12)));
+      var mag = 45 * run.magnet;
+      if (d < mag) p.pos.addScaledVector(tmpA, Math.min(1, dt * (3 + (mag - d) * 0.12)));
       if (d < 5.5) {
         applyPower(p.type);
         removePowerupAt(i);
@@ -3137,6 +3301,279 @@
   }
 
   // ======================================================================
+  // Progression: run upgrades, the Hangar (saved between runs), mining rigs
+  // ======================================================================
+  var SAVE_KEY = "starfall_save_v1";
+  var save = { salvage: 0, best: 0, reach: 0, levels: {} };
+  try {
+    var rawSave = JSON.parse(window.localStorage.getItem(SAVE_KEY) || "null");
+    if (rawSave && typeof rawSave === "object") {
+      save.salvage = rawSave.salvage | 0;
+      save.best = rawSave.best | 0;
+      save.reach = rawSave.reach | 0;
+      save.levels = rawSave.levels && typeof rawSave.levels === "object" ? rawSave.levels : {};
+    }
+  } catch (e) { /* storage unavailable */ }
+  function persist() {
+    try { window.localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* storage unavailable */ }
+  }
+  function lvl(id) { return save.levels[id] | 0; }
+
+  var HANGAR = [
+    { id: "armor", name: "Reinforced Armor", desc: "+15 max hull", max: 5, base: 120 },
+    { id: "weapons", name: "Weapon Tuning", desc: "+10% laser damage", max: 5, base: 150 },
+    { id: "shields", name: "Shield Capacitors", desc: "+12 max shield and faster recharge", max: 5, base: 130 },
+    { id: "thrusters", name: "Afterburners", desc: "-10% Hyper Boost cooldown", max: 4, base: 110 },
+    { id: "salvager", name: "Salvage Rig", desc: "+20% salvage from every run", max: 3, base: 200 },
+    { id: "arsenal", name: "Starting Arsenal", desc: "Start each run with a random power-up", max: 2, base: 450 },
+    { id: "escort", name: "Escort Drone", desc: "Start every run with a drone wingman", max: 1, base: 900 }
+  ];
+  function hangarCost(item) { return Math.round(item.base * Math.pow(lvl(item.id) + 1, 1.6) / 10) * 10; }
+
+  var run = null;
+  function resetRun() {
+    run = {
+      dmg: 1 + 0.1 * lvl("weapons"), rate: 1, spread: 0, pierce: 0, crit: 0, autoMissile: 0, lifesteal: 0,
+      powerDur: 1, magnet: 1, boostCd: Math.pow(0.9, lvl("thrusters")), regen: 1 + 0.15 * lvl("shields"),
+      drones: lvl("escort"), picks: {}
+    };
+    player.maxHull = MAX_HULL + 15 * lvl("armor");
+    player.maxShield = MAX_SHIELD + 12 * lvl("shields");
+  }
+  resetRun();
+
+  var UPGRADES = [
+    { id: "dmg", glyph: "DMG", name: "Overcharged Lasers", desc: "+25% laser damage", max: 5,
+      apply: function () { run.dmg += 0.25; } },
+    { id: "rate", glyph: "ROF", name: "Cyclic Cannons", desc: "+20% fire rate", max: 5,
+      apply: function () { run.rate += 0.2; } },
+    { id: "spread", glyph: "3-WAY", name: "Split Barrels", desc: "Every shot fires 2 extra angled bolts", max: 2,
+      apply: function () { run.spread++; } },
+    { id: "pierce", glyph: "PIERCE", name: "Piercing Rounds", desc: "Bolts punch through one more fighter", max: 3,
+      apply: function () { run.pierce++; } },
+    { id: "crit", glyph: "CRIT", name: "Targeting Computer", desc: "+15% chance to deal double damage", max: 4,
+      apply: function () { run.crit += 0.15; } },
+    { id: "hull", glyph: "HULL", name: "Armor Plating", desc: "+30 max hull and a full repair", max: 4,
+      apply: function () { player.maxHull += 30; player.hull = player.maxHull; } },
+    { id: "shield", glyph: "SHLD", name: "Shield Booster", desc: "+25 max shield and 40% faster recharge", max: 4,
+      apply: function () { player.maxShield += 25; run.regen += 0.4; player.shield = player.maxShield; } },
+    { id: "auto", glyph: "MSL", name: "Missile Pod", desc: "Auto-fires a homing missile every few seconds", max: 3,
+      apply: function () { run.autoMissile++; } },
+    { id: "drone", glyph: "WING", name: "Drone Wingman", desc: "A permanent wingman joins your flight", max: 2,
+      apply: function () { run.drones++; } },
+    { id: "leech", glyph: "REPAIR", name: "Nanite Repair", desc: "Repair 3 hull for every fighter you destroy", max: 3,
+      apply: function () { run.lifesteal += 3; } },
+    { id: "boost", glyph: "BOOST", name: "Afterburners", desc: "Hyper Boost recharges 25% faster", max: 3,
+      apply: function () { run.boostCd *= 0.75; } },
+    { id: "cells", glyph: "PWR", name: "Power Cells", desc: "Power-ups last 50% longer", max: 3,
+      apply: function () { run.powerDur += 0.5; } },
+    { id: "magnet", glyph: "PULL", name: "Tractor Beam", desc: "Pull in power-ups from twice as far", max: 2,
+      apply: function () { run.magnet += 1; } }
+  ];
+
+  // ---- Hangar screen ----
+  var hangarEl = document.getElementById("hangar");
+  var hangarList = document.getElementById("hangarList");
+  function renderHangar() {
+    document.getElementById("hangarSalvage").textContent = fmt(save.salvage);
+    hangarList.innerHTML = "";
+    HANGAR.forEach(function (item) {
+      var l = lvl(item.id), maxed = l >= item.max, cost = hangarCost(item);
+      var row = document.createElement("div");
+      row.className = "hItem";
+      var pips = "";
+      for (var i = 0; i < item.max; i++) pips += "<span class=\"pip" + (i < l ? " on" : "") + "\"></span>";
+      row.innerHTML = "<span class=\"name\"></span><button type=\"button\"></button><span class=\"desc\"></span>" +
+        "<span class=\"pips\">" + pips + "</span>";
+      row.querySelector(".name").textContent = item.name;
+      row.querySelector(".desc").textContent = item.desc;
+      var btn = row.querySelector("button");
+      btn.textContent = maxed ? "MAXED" : fmt(cost);
+      btn.disabled = maxed || save.salvage < cost;
+      btn.addEventListener("click", function () {
+        if (maxed || save.salvage < cost) return;
+        save.salvage -= cost;
+        save.levels[item.id] = l + 1;
+        persist();
+        sfxPowerup();
+        renderHangar();
+        refreshMeta();
+      });
+      hangarList.appendChild(row);
+    });
+  }
+  function refreshMeta() {
+    document.getElementById("salvageLine").textContent = fmt(save.salvage);
+    document.getElementById("reachLine").textContent = (Math.floor(save.reach / 5) + 1) + "-" + (save.reach % 5 + 1);
+  }
+  document.getElementById("hangarBtn").addEventListener("click", function () {
+    ensureAudio();
+    sfxUi();
+    renderHangar();
+    hangarEl.hidden = false;
+  });
+  document.getElementById("hangarClose").addEventListener("click", function () {
+    sfxUi();
+    hangarEl.hidden = true;
+  });
+  refreshMeta();
+
+  // ---- Upgrade draft after each mission ----
+  var draftEl = document.getElementById("draft");
+  var cardsEl = document.getElementById("cards");
+  function openDraft() {
+    var pool = UPGRADES.filter(function (u) { return (run.picks[u.id] | 0) < u.max; });
+    if (!pool.length) { afterDraft(); return; }
+    for (var i = pool.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+    }
+    cardsEl.innerHTML = "";
+    pool.slice(0, 3).forEach(function (u, n) {
+      var c = document.createElement("button");
+      c.type = "button";
+      c.className = "card";
+      c.innerHTML = "<span class=\"glyph\"></span><span class=\"name\"></span><span class=\"desc\"></span><span class=\"lvl\"></span>";
+      c.querySelector(".glyph").textContent = u.glyph;
+      c.querySelector(".name").textContent = u.name;
+      c.querySelector(".desc").textContent = u.desc;
+      c.querySelector(".lvl").textContent = "[" + (n + 1) + "]  LEVEL " + ((run.picks[u.id] | 0) + 1) + " / " + u.max;
+      c.addEventListener("click", function () { pickUpgrade(u); });
+      cardsEl.appendChild(c);
+    });
+    var isBoss = mission && mission.def.type === "boss";
+    draftEl.querySelector("h2").textContent = isBoss ? "SECTOR CLEARED" : "MISSION COMPLETE";
+    fireHeld = false;
+    fireTouches = 0;
+    state = "draft";
+    draftEl.hidden = false;
+  }
+  function pickUpgrade(u) {
+    if (state !== "draft") return;
+    run.picks[u.id] = (run.picks[u.id] | 0) + 1;
+    u.apply();
+    sfxPowerup();
+    draftEl.hidden = true;
+    state = "playing";
+    lastTime = performance.now();
+    syncWingmen();
+    showBanner(u.name.toUpperCase(), "Upgrade installed", "#7fe3ff", 1.6);
+    afterDraft();
+  }
+
+  // ---- Enemy mining rigs (Sabotage missions) ----
+  var rigs = [];
+  var rigPanelMat = null;
+  function buildRigModel() {
+    if (!rigPanelMat) {
+      rigPanelMat = new THREE.MeshStandardMaterial({ color: 0x1a2f66, metalness: 0.5, roughness: 0.35, emissive: 0x050c24 });
+    }
+    var g = new THREE.Group();
+    function add(geo, mat, x, y, z, parent) {
+      var m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z);
+      (parent || g).add(m);
+      return m;
+    }
+    add(new THREE.CylinderGeometry(4, 5, 18, 16), mats.hull, 0, 0, 0);
+    add(new THREE.TorusGeometry(9, 0.9, 10, 40), mats.dark, 0, 2, 0).rotation.x = Math.PI / 2;
+    for (var k = 0; k < 4; k++) {
+      var sp = add(new THREE.BoxGeometry(0.8, 0.8, 9), mats.dark, Math.sin(k * Math.PI / 2) * 4.5, 2, Math.cos(k * Math.PI / 2) * 4.5);
+      sp.rotation.y = k * Math.PI / 2;
+    }
+    [-1, 1].forEach(function (side) {
+      add(new THREE.BoxGeometry(6, 0.6, 0.6), mats.dark, side * 12, 2, 0);
+      add(new THREE.BoxGeometry(12, 0.3, 6), rigPanelMat, side * 20, 2, 0);
+    });
+    add(new THREE.ConeGeometry(3, 9, 12), mats.dark, 0, -13.5, 0).rotation.x = Math.PI;
+    var lights = [];
+    for (var l = 0; l < 4; l++) {
+      var a = l * Math.PI / 2 + Math.PI / 4;
+      lights.push(add(new THREE.SphereGeometry(0.6, 8, 6), mats.styles.enemy.glow, Math.cos(a) * 9, 2, Math.sin(a) * 9));
+    }
+    add(new THREE.CylinderGeometry(2.2, 2.6, 1.2, 14), mats.dark, 0, 9.6, 0);
+    var head = new THREE.Group();
+    head.position.set(0, 11, 0);
+    g.add(head);
+    add(new THREE.SphereGeometry(1.9, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), mats.hull, 0, 0, 0, head);
+    add(new THREE.BoxGeometry(0.3, 0.3, 4.5), mats.dark, -0.5, 0.5, 2.2, head);
+    add(new THREE.BoxGeometry(0.3, 0.3, 4.5), mats.dark, 0.5, 0.5, 2.2, head);
+    add(new THREE.SphereGeometry(0.6, 10, 8), mats.styles.enemy.glow, 0, 0.8, 1.1, head);
+    return { group: g, head: head, lights: lights };
+  }
+  function spawnRig(pos) {
+    var m = buildRigModel();
+    m.group.position.copy(pos);
+    m.group.rotation.set(rand(-0.3, 0.3), rand(0, 6), rand(-0.3, 0.3));
+    scene.add(m.group);
+    var hp = 260 + wave * 22;
+    rigs.push({ kind: "rig", group: m.group, pos: m.group.position, vel: new V3(), head: m.head, lights: m.lights,
+      hp: hp, maxHp: hp, dead: false, hitR: 10, cd: rand(1, 2.5), t: rand(0, 6) });
+  }
+  function hitRig(r, dmg, p) {
+    if (r.dead) return;
+    r.hp -= dmg;
+    for (var i = 0; i < 6; i++) {
+      tmpV.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize();
+      fx.sparks.spawn(p.x, p.y, p.z, tmpV.x * 25, tmpV.y * 25, tmpV.z * 25, 0.35, 5, 3, 6);
+    }
+    var s = soundPos(p);
+    sfxMetalHit(s.pan, s.dist);
+    if (r.hp <= 0) destroyRig(r);
+  }
+  function destroyRig(r) {
+    if (r.dead) return;
+    r.dead = true;
+    explosion(r.pos, 5, mats.dark);
+    tmpA.copy(r.pos).add(tmpV.set(0, 8, 0));
+    explosion(tmpA, 3, null);
+    shockwave(r.pos, 60, 1.0, 3, 1.5, 3);
+    flashLight(r.pos, 20000, 0.8, 0xc07bff);
+    var s = soundPos(r.pos);
+    sfxExplosion(3, s.pan, s.dist);
+    shake = Math.max(shake, clamp(1 - s.dist / 300, 0.2, 1));
+    if (state === "playing") {
+      registerKill(600, false);
+      if (Math.random() < 0.6) spawnPowerup(randomPowerType(), r.pos);
+    }
+    scene.remove(r.group);
+  }
+  function clearRigs() { while (rigs.length) scene.remove(rigs.pop().group); }
+  function updateRigs(dt) {
+    for (var i = rigs.length - 1; i >= 0; i--) {
+      var r = rigs[i];
+      if (r.dead) { rigs.splice(i, 1); continue; }
+      r.t += dt;
+      r.group.rotation.y += dt * 0.12;
+      var blink = Math.sin(r.t * 5) > 0.3;
+      for (var l = 0; l < r.lights.length; l++) r.lights[l].visible = blink;
+      if (state !== "playing") continue;
+      r.head.lookAt(player.pos);
+      r.cd -= dt;
+      var dist = r.pos.distanceTo(player.pos);
+      if (r.cd <= 0 && dist < 480) {
+        r.head.getWorldPosition(tmpC);
+        tmpB.copy(player.pos).addScaledVector(player.vel, tmpC.distanceTo(player.pos) / 190).sub(tmpC).normalize();
+        tmpC.addScaledVector(tmpB, 3);
+        spawnBolt(tmpC, tmpB, 190, "boss", 8, true);
+        fx.glow.spawn({ x: tmpC.x, y: tmpC.y, z: tmpC.z, s0: 4, s1: 1, life: 0.12, kind: "tint", color: BOSS_MUZZLE });
+        var s = soundPos(tmpC);
+        sfxBossCannon(s.pan, s.dist);
+        r.cd = rand(1.4, 2.2);
+      }
+      if (dist < r.hitR + 3) {
+        tmpB.subVectors(player.pos, r.pos).normalize();
+        player.pos.addScaledVector(tmpB, r.hitR + 3 - dist + 0.5);
+        if (clockTime > player.invuln) {
+          damagePlayer(20, r.pos);
+          player.invuln = clockTime + 0.8;
+          player.speed *= 0.4;
+        }
+      }
+    }
+  }
+
+  // ======================================================================
   // HUD
   // ======================================================================
   var scoreEl = document.getElementById("scoreLine");
@@ -3185,6 +3622,7 @@
 
   var bestScore = 0;
   try { bestScore = parseInt(window.localStorage.getItem(BEST_KEY), 10) || 0; } catch (e) { /* storage unavailable */ }
+  bestScore = Math.max(bestScore, save.best);
   function fmt(n) { return Math.floor(n).toLocaleString("en-US"); }
   bestEl.textContent = "BEST " + fmt(bestScore);
 
@@ -3231,6 +3669,9 @@
         placeMarker(markerEls[used++], enemies[i].pos, enemies[i].ace ? "ace" : "", "");
       }
       if (boss && used < MARKERS) placeMarker(markerEls[used++], boss.pos, "boss", "");
+      for (var ri = 0; ri < rigs.length && used < MARKERS; ri++) {
+        if (!rigs[ri].dead) placeMarker(markerEls[used++], rigs[ri].pos, "rig", "#c07bff");
+      }
       for (var p = 0; p < powerups.length && used < MARKERS; p++) {
         if (powerups[p].pos.distanceToSquared(player.pos) > 500 * 500) continue;
         placeMarker(markerEls[used++], powerups[p].pos, "power", POWER[powerups[p].type].css);
@@ -3270,24 +3711,26 @@
     for (var w = 0; w < wingmen.length; w++) radarDot(wingmen[w].pos, "#3dffd0", 5);
     for (var e = 0; e < enemies.length; e++) if (!enemies[e].dead) radarDot(enemies[e].pos, enemies[e].ace ? "#ffcf4d" : "#ff5a5a", 7);
     if (boss) radarDot(boss.pos, "#ffb347", 14);
+    for (var ri = 0; ri < rigs.length; ri++) if (!rigs[ri].dead) radarDot(rigs[ri].pos, "#c07bff", 10);
     radar.fillStyle = "#e8ecf8";
     radar.beginPath(); radar.moveTo(96, 88); radar.lineTo(90, 102); radar.lineTo(102, 102); radar.closePath(); radar.fill();
   }
 
   function updateHud(boosting) {
     scoreEl.textContent = fmt(score);
-    waveEl.textContent = "WAVE " + Math.max(1, wave);
-    hullFill.style.width = (player.hull / MAX_HULL * 100).toFixed(1) + "%";
+    waveEl.textContent = "SECTOR " + (sectorIdx + 1) + "-" + (missionIdx + 1) + " \u00B7 " + SECTORS[sectorIdx % SECTORS.length].name;
+    updateObjective();
+    hullFill.style.width = (player.hull / player.maxHull * 100).toFixed(1) + "%";
     hullFill.classList.toggle("critical", player.hull < 30);
-    shieldFill.style.width = (player.shield / MAX_SHIELD * 100).toFixed(1) + "%";
+    shieldFill.style.width = (player.shield / player.maxShield * 100).toFixed(1) + "%";
     velEl.textContent = (player.speed * 0.1).toFixed(1);
-    var charge = boosting ? 0 : clamp(1 - (boostReadyAt - clockTime) / BOOST_COOLDOWN, 0, 1);
+    var charge = boosting ? 0 : clamp(1 - (boostReadyAt - clockTime) / (BOOST_COOLDOWN * run.boostCd), 0, 1);
     boostBtn.style.setProperty("--p", charge.toFixed(3));
     boostBtn.classList.toggle("onCooldown", charge < 1);
     ["triple", "rapid", "missile", "wing"].forEach(function (k) {
       var on = powerState[k] > 0;
       chips[k].el.hidden = !on;
-      if (on) chips[k].bar.style.transform = "scaleX(" + (powerState[k] / POWER[k].dur).toFixed(3) + ")";
+      if (on) chips[k].bar.style.transform = "scaleX(" + Math.min(1, powerState[k] / (POWER[k].dur * run.powerDur)).toFixed(3) + ")";
     });
     if (boss) bossFill.style.width = (bossTotalHp() / boss.maxTotal * 100).toFixed(1) + "%";
     tmpA.copy(player.pos).addScaledVector(player.fwd, 120).project(camera);
@@ -3314,11 +3757,13 @@
   // Game state
   // ======================================================================
   var state = "loading";
-  var score = 0, wave = 0, waveState = "intermission", waveTimer = 0;
+  var score = 0, wave = 1;
+  var sectorIdx = 0, missionIdx = 0, mission = null, missionPhase = "brief", phaseTimer = 0;
+  var warpT = 0, warpFlash = 0, warpBaked = false, autoMissileT = 0;
   var boostUntil = 0, boostReadyAt = 0, fireCooldown = 0, missileTimer = 0, fireSide = 1;
   var clockTime = 0, shake = 0, deathTimer = 0, damagePulse = 0, shieldFlash = 0, alarmTimer = 0, smokeTimer = 0;
   var chainKills = 0, comboTimer = 0, multiplier = 1;
-  var stats = { kills: 0, time: 0 };
+  var stats = { kills: 0, time: 0, missions: 0, sectors: 0 };
   var boostAmt = 0;
   var aimTarget = null;
 
@@ -3331,6 +3776,7 @@
     if (boss) { scene.remove(boss.group); boss = null; }
     document.getElementById("bossBar").hidden = true;
     while (rocks.length) removeRockAt(rocks.length - 1);
+    clearRigs();
   }
 
   function resetGame() {
@@ -3338,14 +3784,18 @@
     player.pos.set(0, 0, 0);
     player.yaw = 0; player.pitch = 0; player.roll = 0; player.yawRate = 0; player.pitchRate = 0;
     player.speed = CRUISE_SPEED;
-    player.hull = MAX_HULL; player.shield = MAX_SHIELD; player.lastHit = -99; player.invuln = 0;
+    resetRun();
+    player.hull = player.maxHull; player.shield = player.maxShield; player.lastHit = -99; player.invuln = 0;
     updatePlayerFrame();
     for (var i = 0; i < ROCK_COUNT; i++) spawnFieldRock(true);
-    score = 0; wave = 0; waveState = "intermission"; waveTimer = 2.5;
+    score = 0; wave = 1;
+    sectorIdx = 0; missionIdx = 0; mission = null; missionPhase = "brief"; phaseTimer = 2.2;
+    warpFlash = 0; autoMissileT = 3;
+    PLANET_OFFSET.fromArray(SECTORS[0].planet);
     boostUntil = 0; boostReadyAt = 0; fireCooldown = 0; missileTimer = 0; shake = 0; damagePulse = 0;
     chainKills = 0; comboTimer = 0; multiplier = 1;
     powerState.triple = powerState.rapid = powerState.missile = powerState.wing = 0;
-    stats.kills = 0; stats.time = 0;
+    stats.kills = 0; stats.time = 0; stats.missions = 0; stats.sectors = 0;
     comboEl.classList.remove("on");
     ship.visible = true;
     hintEl.style.opacity = 1;
@@ -3432,7 +3882,15 @@
     document.getElementById("subtitle").textContent = "Mission over";
     document.getElementById("statScore").textContent = fmt(total);
     document.getElementById("statKills").textContent = stats.kills;
-    document.getElementById("statWave").textContent = Math.max(1, wave);
+    document.getElementById("statWave").textContent = (sectorIdx + 1) + "-" + (missionIdx + 1);
+    var gain = Math.floor((total / 40 + stats.missions * 40 + stats.sectors * 250) * (1 + 0.2 * lvl("salvager")));
+    save.salvage += gain;
+    var reach = sectorIdx * 5 + missionIdx;
+    if (reach > save.reach) save.reach = reach;
+    if (total > save.best) save.best = total;
+    persist();
+    document.getElementById("salvageGain").textContent = "+" + fmt(gain) + " SALVAGE";
+    refreshMeta();
     var secs = Math.floor(stats.time);
     document.getElementById("statTime").textContent = Math.floor(secs / 60) + ":" + ("0" + (secs % 60)).slice(-2);
     document.getElementById("stats").hidden = false;
@@ -3445,38 +3903,227 @@
     hudEl.classList.remove("live");
   }
 
+  var skySector = 0;
   function startGame() {
     if (state !== "menu" && state !== "dead") return;
     ensureAudio();
     sfxUi();
     if (audio.ctx) audio.musicFilter.frequency.setTargetAtTime(18000, audio.ctx.currentTime, 0.4);
+    if (skySector !== 0) { bakeSky(SECTORS[0]); skySector = 0; }
     resetGame();
     state = "playing";
+    syncWingmen();
+    var arsenal = lvl("arsenal");
+    var starters = ["triple", "rapid", "missile", "wing"];
+    for (var ai = 0; ai < arsenal; ai++) applyPower(starters.splice(Math.floor(Math.random() * starters.length), 1)[0]);
     overlay.hidden = true;
     hudEl.classList.add("live");
   }
   document.getElementById("startBtn").addEventListener("click", startGame);
 
-  function spawnWave() {
-    wave++;
-    var bossWave = wave % 3 === 0;
-    var count = bossWave ? 2 : Math.min(2 + wave, 9);
-    var aces = wave >= 4 ? Math.floor((wave - 2) / 2) : 0;
-    for (var i = 0; i < count; i++) {
-      tmpC.set(rand(-1, 1), rand(-0.4, 0.4), rand(-1, 1)).normalize().addScaledVector(player.fwd, 0.8).normalize();
-      tmpA.copy(player.pos).addScaledVector(tmpC, rand(380, 560));
-      spawnEnemy(tmpA, i < aces);
-    }
-    if (bossWave) {
+  // ======================================================================
+  // Missions: brief -> active -> done -> upgrade draft -> next mission,
+  // and after each sector's Dreadnought a hyperspace jump to a new sector
+  // ======================================================================
+  var MISSIONS = [
+    { type: "purge", title: "PURGE", text: "Destroy the patrol" },
+    { type: "rigs", title: "SABOTAGE", text: "Destroy the mining rigs" },
+    { type: "survive", title: "METEOR STORM", text: "Survive the storm" },
+    { type: "aces", title: "ACE HUNT", text: "Shoot down the ace squadron" },
+    { type: "boss", title: "DREADNOUGHT", text: "Destroy the Dreadnought" }
+  ];
+  var objEl = document.getElementById("objLine");
+
+  function spawnMissionEnemy(ace, near) {
+    tmpC.set(rand(-1, 1), rand(-0.4, 0.4), rand(-1, 1)).normalize().addScaledVector(player.fwd, 0.8).normalize();
+    tmpA.copy(near || player.pos).addScaledVector(tmpC, near ? rand(40, 90) : rand(380, 560));
+    spawnEnemy(tmpA, ace);
+  }
+  function spawnMeteor() {
+    tmpC.copy(player.pos).addScaledVector(player.fwd, rand(380, 520)).addScaledVector(player.right, rand(-170, 170))
+      .addScaledVector(player.up, rand(-100, 100));
+    tmpB.copy(player.pos).addScaledVector(player.right, rand(-30, 30)).addScaledVector(player.up, rand(-18, 18))
+      .addScaledVector(player.fwd, rand(20, 120));
+    tmpB.sub(tmpC).normalize().multiplyScalar(rand(95, 150));
+    var r = spawnRock(tmpC, rand(2.5, 7), tmpB, false);
+    r.meteor = true;
+    r.hp = Math.ceil(r.hp * 0.6);
+    r.maxHp = r.hp;
+  }
+
+  function startMission() {
+    var def = MISSIONS[missionIdx];
+    wave = sectorIdx * 5 + missionIdx + 1;
+    mission = { def: def, progress: 0, goal: 1, spawned: 0, timer: 0, stormT: 0, spawnCd: 0, bossSpawned: false };
+    var sub = def.text;
+    if (def.type === "purge") {
+      mission.goal = 5 + Math.floor(wave * 0.8);
+      sub += ": " + mission.goal + " fighters";
+    } else if (def.type === "aces") {
+      mission.goal = 3 + Math.floor(wave / 3);
+      sub += ": " + mission.goal + " aces";
+    } else if (def.type === "rigs") {
+      mission.goal = 3;
+      for (var i = 0; i < 3; i++) {
+        var ang = (i / 3) * Math.PI * 2 + rand(-0.4, 0.4);
+        tmpC.copy(player.fwd).multiplyScalar(Math.cos(ang) * 0.6 + 0.8).addScaledVector(player.right, Math.sin(ang))
+          .addScaledVector(player.up, rand(-0.25, 0.25)).normalize();
+        var p = new V3().copy(player.pos).addScaledVector(tmpC, rand(380, 520));
+        for (var k = rocks.length - 1; k >= 0; k--) {
+          if (rocks[k].pos.distanceTo(p) < rocks[k].radius + 30) removeRockAt(k);
+        }
+        spawnRig(p);
+      }
+      sub += ". They're guarded, and they shoot back";
+    } else if (def.type === "survive") {
+      mission.goal = 40;
+      mission.timer = 40;
+      sub += " for 40 seconds";
+    } else if (def.type === "boss") {
       spawnBoss();
-      hintEl.style.opacity = 0;
-      showBanner("WAVE " + wave, "Dreadnought inbound. Destroy its turrets to break the shield", "#ff8a70", 3.5);
+      mission.bossSpawned = true;
       sfxBossAlarm();
-    } else {
-      showBanner("WAVE " + wave, count + " hostiles" + (aces ? ", " + Math.min(aces, count) + " aces" : ""), "", 2.5);
-      sfxWave();
+      sub = "Destroy its turrets to break the shield";
     }
-    waveState = "active";
+    if (def.type !== "boss") sfxWave();
+    var color = def.type === "boss" ? "#ff8a70" : def.type === "survive" ? "#ffb347" : def.type === "rigs" ? "#c07bff" : "";
+    showBanner(def.title, sub, color, 3);
+    missionPhase = "active";
+  }
+
+  function updateMission(dt) {
+    if (missionPhase === "brief") {
+      phaseTimer -= dt;
+      if (phaseTimer <= 0) startMission();
+      return;
+    }
+    if (missionPhase === "done") {
+      phaseTimer -= dt;
+      if (phaseTimer <= 0) openDraft();
+      return;
+    }
+    if (!mission) return;
+    var t = mission.def.type;
+    var alive = 0;
+    for (var i = 0; i < enemies.length; i++) if (!enemies[i].dead) alive++;
+    mission.spawnCd -= dt;
+    if (t === "purge" || t === "aces") {
+      var maxAlive = Math.min(3 + Math.floor(wave / 3), 7);
+      while (alive < maxAlive && mission.spawned < mission.goal) {
+        spawnMissionEnemy(t === "aces" || (wave >= 6 && Math.random() < 0.2));
+        mission.spawned++;
+        alive++;
+      }
+      if (mission.progress >= mission.goal) completeMission();
+    } else if (t === "rigs") {
+      var rigAlive = 0, anyRig = null;
+      for (var r = 0; r < rigs.length; r++) if (!rigs[r].dead) { rigAlive++; anyRig = rigs[r]; }
+      mission.progress = mission.goal - rigAlive;
+      var guards = Math.min(2 + Math.floor(wave / 4), 5);
+      if (anyRig && alive < guards && mission.spawnCd <= 0) {
+        spawnMissionEnemy(false, anyRig.pos);
+        mission.spawnCd = 2.5;
+      }
+      if (rigAlive === 0) completeMission();
+    } else if (t === "survive") {
+      mission.timer -= dt;
+      mission.progress = mission.goal - Math.max(0, mission.timer);
+      mission.stormT -= dt;
+      if (mission.stormT <= 0) {
+        spawnMeteor();
+        mission.stormT = Math.max(0.12, 0.3 - wave * 0.008);
+      }
+      if (alive < 2 && mission.spawnCd <= 0) {
+        spawnMissionEnemy(false);
+        mission.spawnCd = 4;
+      }
+      if (mission.timer <= 0) completeMission();
+    } else if (t === "boss") {
+      if (mission.bossSpawned && !boss) completeMission();
+    }
+  }
+
+  function updateObjective() {
+    if (state === "warp") { objEl.textContent = "▸ Jumping to the next sector"; return; }
+    if (!mission || missionPhase !== "active") {
+      objEl.textContent = missionPhase === "brief" ? "▸ Incoming orders…" : "";
+      return;
+    }
+    var t = mission.def.type, txt;
+    if (t === "survive") txt = mission.def.text + ": " + Math.ceil(Math.max(0, mission.timer)) + "s";
+    else if (t === "boss") txt = mission.def.text;
+    else txt = mission.def.text + ": " + Math.min(mission.progress, mission.goal) + "/" + mission.goal;
+    objEl.textContent = "▸ " + txt;
+  }
+
+  var RETREAT_FLASH = new THREE.Color(6, 1.5, 1);
+  function completeMission() {
+    if (missionPhase !== "active") return;
+    missionPhase = "done";
+    phaseTimer = 2.2;
+    stats.missions++;
+    var bonus = 300 * wave;
+    score += bonus;
+    // Remaining hostiles jump away so the draft starts on a quiet field
+    for (var i = 0; i < enemies.length; i++) {
+      var e = enemies[i];
+      if (e.dead) continue;
+      fx.glow.spawn({ x: e.pos.x, y: e.pos.y, z: e.pos.z, s0: 7, s1: 1, life: 0.3, kind: "tint", color: RETREAT_FLASH });
+      e.dead = true;
+    }
+    for (var r = 0; r < rigs.length; r++) if (!rigs[r].dead) { rigs[r].dead = true; scene.remove(rigs[r].group); }
+    if (boss && boss.dying <= 0) { scene.remove(boss.group); boss = null; document.getElementById("bossBar").hidden = true; }
+    for (var b = bolts.length - 1; b >= 0; b--) {
+      if (bolts[b].team === "enemy" || bolts[b].team === "boss") { scene.remove(bolts[b].mesh); bolts.splice(b, 1); }
+    }
+    var isBoss = mission.def.type === "boss";
+    if (isBoss) stats.sectors++;
+    showBanner(isBoss ? "SECTOR CLEARED" : "MISSION COMPLETE", "+" + fmt(bonus) + " bonus", "#7fe3ff", 2.2);
+    sfxWave();
+  }
+
+  function afterDraft() {
+    if (mission && mission.def.type === "boss") { startWarp(); return; }
+    missionIdx++;
+    missionPhase = "brief";
+    phaseTimer = 1.6;
+  }
+
+  function startWarp() {
+    state = "warp";
+    warpT = 0;
+    warpBaked = false;
+    showBanner("HYPERSPACE JUMP", "Next: " + SECTORS[(sectorIdx + 1) % SECTORS.length].name, "#7fe3ff", 2.4);
+    sfxBoost();
+    sfxWarpIn();
+  }
+  function updateWarp(dt) {
+    warpT += dt;
+    warpFlash = warpT < 1.45 ? Math.pow(clamp((warpT - 0.6) / 0.85, 0, 1), 2) : clamp(1 - (warpT - 1.7) / 1.2, 0, 1);
+    if (!warpBaked && warpT >= 1.45) {
+      warpBaked = true;
+      sectorIdx++;
+      missionIdx = 0;
+      var sec = SECTORS[sectorIdx % SECTORS.length];
+      bakeSky(sec);
+      skySector = sectorIdx % SECTORS.length;
+      PLANET_OFFSET.fromArray(sec.planet);
+      while (rocks.length) removeRockAt(rocks.length - 1);
+      while (powerups.length) removePowerupAt(powerups.length - 1);
+      while (bolts.length) scene.remove(bolts.pop().mesh);
+    }
+    if (warpT >= 3.2) {
+      state = "playing";
+      player.speed = CRUISE_SPEED * 1.5;
+      warpFlash = 0;
+      while (rocks.length) removeRockAt(rocks.length - 1);
+      for (var i = 0; i < ROCK_COUNT; i++) spawnFieldRock(true);
+      wave = sectorIdx * 5 + 1;
+      missionPhase = "brief";
+      phaseTimer = 2.4;
+      var loop = Math.floor(sectorIdx / SECTORS.length);
+      showBanner("SECTOR " + (sectorIdx + 1), SECTORS[sectorIdx % SECTORS.length].name + (loop ? " · HARD +" + loop : ""), "", 2.6);
+    }
   }
 
   // ======================================================================
@@ -3492,10 +4139,11 @@
       tmpA.copy(player.pos).addScaledVector(tmpC, rand(250, 380));
       spawnEnemy(tmpA, ace);
     }
-    if (waveState === "intermission") { waveState = "active"; if (wave === 0) wave = 1; }
+
   }
   function destroyAll() {
     for (var i = 0; i < enemies.length; i++) killEnemy(enemies[i]);
+    for (var r = 0; r < rigs.length; r++) if (!rigs[r].dead) destroyRig(rigs[r]);
     if (boss && boss.dying <= 0) {
       for (var t = 0; t < boss.turrets.length; t++) boss.turrets[t].dead = true;
       hitCore(1e9, boss.pos);
@@ -3539,19 +4187,14 @@
       case "ace": spawnAhead(1, true); break;
       case "boss":
         if (!boss) {
-          if (wave < 3) wave = 3;
           spawnBoss();
-          waveState = "active";
           hintEl.style.opacity = 0;
           showBanner("DREADNOUGHT", "Destroy its turrets to break the shield", "#ff8a70", 3);
           sfxBossAlarm();
         }
         break;
       case "nextwave":
-        while (enemies.length) scene.remove(enemies.pop().jet.group);
-        if (boss) { scene.remove(boss.group); boss = null; document.getElementById("bossBar").hidden = true; }
-        waveState = "intermission";
-        waveTimer = 0.4;
+        if (missionPhase === "active") completeMission();
         break;
       case "clear": destroyAll(); break;
       case "close": toggleGodPanel(false); break;
@@ -3636,7 +4279,7 @@
     if (state !== "playing") return;
     if (clockTime < boostReadyAt) return;
     boostUntil = clockTime + BOOST_DURATION;
-    boostReadyAt = clockTime + (cheats.boost ? 0.3 : BOOST_COOLDOWN);
+    boostReadyAt = clockTime + (cheats.boost ? 0.3 : BOOST_COOLDOWN * run.boostCd);
     shake = Math.max(shake, 0.45);
     sfxBoost();
   }
@@ -3647,7 +4290,11 @@
     keys[e.code] = true;
     if (e.code === "Space") { fireHeld = true; e.preventDefault(); }
     if (e.code === "ShiftLeft" || e.code === "ShiftRight") doBoost();
-    if ((e.code === "Enter" || e.code === "Space") && (state === "menu" || state === "dead")) startGame();
+    if ((e.code === "Enter" || e.code === "Space") && (state === "menu" || state === "dead") && hangarEl.hidden) startGame();
+    if (state === "draft" && /^Digit[123]$/.test(e.code)) {
+      var card = cardsEl.children[+e.code.slice(5) - 1];
+      if (card) card.click();
+    }
     if (e.code === "KeyG" && state === "playing") toggleGodPanel();
     if (e.code === "KeyT" && state === "playing") { cheats.slowmo = !cheats.slowmo; refreshCheatUi(); }
   });
@@ -3692,6 +4339,14 @@
   }
 
   var MUZZLE = new THREE.Color(0.8, 1.8, 2.6);
+  var CRIT_COLOR = new THREE.Color(6, 4.5, 1);
+  function firePlayerBolt(from, dir, speed, dmg) {
+    var crit = Math.random() < run.crit;
+    spawnBolt(from, dir, speed, "player", crit ? dmg * 2 : dmg, false);
+    var bo = bolts[bolts.length - 1];
+    bo.pierce = run.pierce;
+    bo.crit = crit;
+  }
   var shotDir = new V3(), muzzle = new V3();
   function playerFire() {
     muzzle.copy(player.pos).addScaledVector(player.right, fireSide * 2.8).addScaledVector(player.fwd, 1.2);
@@ -3704,12 +4359,15 @@
       shotDir.copy(player.pos).addScaledVector(player.fwd, 220).sub(muzzle).normalize();
     }
     var speed = BOLT_SPEED + player.speed;
-    spawnBolt(muzzle, shotDir, speed, "player", BOLT_DMG, false);
-    if (powerState.triple > 0) {
-      tmpB.copy(shotDir).applyAxisAngle(player.up, 0.07);
-      spawnBolt(muzzle, tmpB, speed, "player", BOLT_DMG, false);
-      tmpB.copy(shotDir).applyAxisAngle(player.up, -0.07);
-      spawnBolt(muzzle, tmpB, speed, "player", BOLT_DMG, false);
+    var dmg = BOLT_DMG * run.dmg;
+    firePlayerBolt(muzzle, shotDir, speed, dmg);
+    var spreads = (powerState.triple > 0 ? 1 : 0) + run.spread;
+    for (var sp = 1; sp <= spreads; sp++) {
+      var ang = 0.07 * sp;
+      tmpB.copy(shotDir).applyAxisAngle(player.up, ang);
+      firePlayerBolt(muzzle, tmpB, speed, dmg);
+      tmpB.copy(shotDir).applyAxisAngle(player.up, -ang);
+      firePlayerBolt(muzzle, tmpB, speed, dmg);
     }
     fx.glow.spawn({ x: muzzle.x, y: muzzle.y, z: muzzle.z, s0: 1.0, s1: 0.4, life: 0.05, kind: "tint", color: MUZZLE });
     shipParts.muzzleLight.position.copy(muzzle).addScaledVector(player.up, 0.5);
@@ -3739,7 +4397,7 @@
     player.pitch = clamp(player.pitch + player.pitchRate * dt, -1.2, 1.2);
     if (!iy) player.pitch *= 1 - Math.min(1, dt * 0.35);
     player.roll += (player.yawRate * 0.55 - player.roll) * Math.min(1, dt * 6);
-    var target = state === "menu" ? 40 : boosting ? BOOST_SPEED : CRUISE_SPEED;
+    var target = state === "menu" ? 40 : state === "warp" ? 900 : boosting ? BOOST_SPEED : CRUISE_SPEED;
     if (state === "dying" || state === "dead") target = 0;
     player.speed += (target - player.speed) * Math.min(1, dt * (boosting ? 4 : 1.5));
     updatePlayerFrame();
@@ -3769,6 +4427,7 @@
 
   function updateShipVisuals(dt, boosting) {
     if (state === "playing") ship.visible = clockTime >= player.invuln || Math.floor(clockTime * 14) % 2 === 0;
+    else if (state === "warp") ship.visible = true;
     var pu = shipParts.plumeMat.uniforms;
     var plumeTarget = cheats.noglow ? 0 : boosting ? 2.2 : 0.6;
     pu.power.value += (plumeTarget - pu.power.value) * Math.min(1, dt * 8);
@@ -3789,7 +4448,7 @@
     var phase = clockTime % 1.2;
     for (var n = 0; n < shipParts.navLights.length; n++) shipParts.navLights[n].visible = phase < 0.08 || phase > 0.6;
     shipParts.muzzleLight.intensity *= Math.exp(-dt * 30);
-    if (ship.visible && (state === "playing" || state === "menu")) {
+    if (ship.visible && (state === "playing" || state === "menu" || state === "warp")) {
       if (boosting && !cheats.noglow) engineTrail(player.pos, player.fwd, player.right, 0.92, 0.12, 0.25, 0.9, 1);
     }
   }
@@ -3799,8 +4458,9 @@
   var radarTick = 0;
   function update(dt) {
     timeU.value = clockTime;
-    var boosting = state === "playing" && clockTime < boostUntil;
+    var boosting = (state === "playing" && clockTime < boostUntil) || state === "warp";
     boostAmt += ((boosting ? 1 : 0) - boostAmt) * Math.min(1, dt * 6);
+    if (state === "warp") updateWarp(dt);
     if (shake > 0) shake = Math.max(0, shake - dt * 1.6);
 
     updateFlight(dt, boosting);
@@ -3813,7 +4473,7 @@
       fireCooldown -= dt;
       if (fireHeld && fireCooldown <= 0) {
         playerFire();
-        fireCooldown = powerState.rapid > 0 ? RAPID_INTERVAL : FIRE_INTERVAL;
+        fireCooldown = (powerState.rapid > 0 ? RAPID_INTERVAL : FIRE_INTERVAL) / run.rate;
       }
       if (powerState.missile > 0) {
         missileTimer -= dt;
@@ -3825,10 +4485,10 @@
       for (var k in powerState) {
         if (powerState[k] > 0 && !cheats.powers) {
           powerState[k] = Math.max(0, powerState[k] - dt);
-          if (k === "wing" && powerState[k] === 0) { removeWingmen(true); sfxWarpIn(); }
+          if (k === "wing" && powerState[k] === 0) syncWingmen();
         }
       }
-      if (clockTime - player.lastHit > SHIELD_DELAY) player.shield = Math.min(MAX_SHIELD, player.shield + SHIELD_REGEN * dt);
+      if (clockTime - player.lastHit > SHIELD_DELAY) player.shield = Math.min(player.maxShield, player.shield + SHIELD_REGEN * run.regen * dt);
       if (comboTimer > 0) {
         comboTimer -= dt;
         if (comboTimer <= 0) { chainKills = 0; multiplier = 1; comboEl.classList.remove("on"); }
@@ -3843,17 +4503,16 @@
           smokeTimer = 0.04;
         }
       }
-      if (waveState === "intermission") {
-        waveTimer -= dt;
-        if (waveTimer <= 0) spawnWave();
-      } else if (enemies.length === 0 && !boss) {
-        waveState = "intermission";
-        waveTimer = 4;
-        var bonus = wave * 250;
-        score += bonus;
-        showBanner("WAVE " + wave + " CLEARED", "+" + fmt(bonus) + " bonus", "#7fe3ff", 2.8);
+      updateMission(dt);
+      if (run.autoMissile > 0) {
+        autoMissileT -= dt;
+        if (autoMissileT <= 0) {
+          var am = aimTarget || nearestTarget(player.pos, 700);
+          if (am) launchMissile(am);
+          autoMissileT = 3.6 / run.autoMissile;
+        }
       }
-      audio.intensity = boss ? 1 : clamp(0.35 + wave * 0.12, 0, 0.95);
+      audio.intensity = boss ? 1 : clamp(0.35 + wave * 0.06, 0, 0.95);
     } else {
       aimTarget = null;
       lockTarget = null;
@@ -3864,6 +4523,7 @@
     updateEnemies(dt);
     updateWingmen(dt);
     updateBoss(dt);
+    updateRigs(dt);
     updateBolts(dt);
     updateMissiles(dt);
     updateRocks(dt, boosting);
@@ -3871,6 +4531,7 @@
     updateEffects(dt);
     updateDust(boostAmt);
     if (planetGroup) planetGroup.position.copy(camera.position).add(PLANET_OFFSET);
+    compositeMat.uniforms.flash.value = warpFlash;
 
     damagePulse = Math.max(0, damagePulse - dt * 1.8);
     var cu = compositeMat.uniforms;
@@ -3884,7 +4545,7 @@
       bannerTimer -= dt;
       if (bannerTimer <= 0) bannerEl.classList.remove("show");
     }
-    if (state === "playing" || state === "dying") {
+    if (state === "playing" || state === "dying" || state === "warp") {
       updateHud(boosting);
       updateMarkers();
       if ((radarTick++ & 1) === 0) drawRadar();
@@ -3913,6 +4574,7 @@
     var raw = clamp((now - lastTime) / 1000, 0, 0.1);
     lastTime = now;
     var dt = Math.min(0.05, raw);
+    if (state === "draft") { renderFrame(); return; }
     if (state === "dying") dt *= 0.45;
     else if (cheats.slowmo && state === "playing") dt *= 0.3;
     clockTime += dt;
@@ -3934,7 +4596,7 @@
   var loadFill = document.getElementById("loadFill");
   var loadStep = document.getElementById("loadStep");
   var steps = [
-    ["Charting the nebula", bakeSky],
+    ["Charting the nebula", function () { bakeSky(SECTORS[0]); }],
     ["Surveying asteroids", bakeRocks],
     ["Mapping the gas giant", bakePlanet],
     ["Plating the hull", bakeHull],

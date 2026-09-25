@@ -404,9 +404,26 @@ Serve it the same way as the other demos and visit
 ## Starfall demo
 
 `starfall.html` is a mobile-friendly open-world 3D space combat game, also
-built with Three.js. Fly freely through an endless asteroid field and fight
-waves of enemy jets, with a boss battle every third wave. Every texture,
-model and sound is generated in code when the page loads.
+built with Three.js. Fight through a campaign of five sectors, each with its
+own nebula, five missions and a boss, then jump to the next sector through
+hyperspace. Every texture, model and sound is generated in code when the
+page loads.
+
+Campaign and progression:
+
+- Missions in each sector: **Purge** (destroy a patrol), **Sabotage**
+  (blow up armed mining rigs guarded by fighters), **Meteor Storm** (survive
+  40 seconds of flaming meteors), **Ace Hunt** and the **Dreadnought** boss.
+  An objective tracker under the sector name shows your progress
+- After every mission, pick one of three random upgrade cards for the rest of
+  the run (split barrels, piercing rounds, critical hits, a missile pod,
+  drone wingmen, nanite repair and more), so each run builds differently.
+  Keys 1-3 pick a card
+- Clearing all five sectors loops back with harder enemies
+- Every run earns **salvage**, even when you die. Spend it in the **Hangar**
+  on permanent upgrades: armor, weapon tuning, shield capacitors,
+  afterburners, a salvage bonus, a starting power-up and an escort drone.
+  Salvage, upgrades, best score and furthest sector are saved in the browser
 
 Gameplay:
 
@@ -417,11 +434,10 @@ Gameplay:
   shots lead the locked target and homing missiles go to it first
 - **HYPER BOOST** button: a burst of speed with a shield that blocks damage
   and smashes through asteroids (6 second cooldown)
-- Enemy fighters chase you, break away and strafe you in waves that grow
-  each round, with gold-trimmed aces from wave 4
-- Every third wave a **Dreadnought** warship arrives. Its core is shielded
-  until you destroy its four turrets, and it fires cannon barrages and
-  launches fighters
+- Enemy fighters chase you, break away and strafe you, with gold-trimmed
+  aces in later missions
+- The **Dreadnought** warship's core is shielded until you destroy its four
+  turrets, and it fires cannon barrages and launches fighters
 - Power-ups drop from wrecks and asteroids: **Triple Shot**, **Rapid Fire**,
   **Homing Missiles**, **Squadron** (three mini jets fly in formation and
   attack enemies with you) and **Shield + Repair**
@@ -433,8 +449,8 @@ Gameplay:
 - **GOD** button (or the G key) opens a cheat menu for testing: God Mode
   (no damage), Infinite Boost, Endless Power-ups, Wide Lock-on, Slow Motion
   (also the T key), Engine Glow Off, buttons to
-  grant any power-up, and spawners for fighters, aces, the Dreadnought, the
-  next wave or destroying everything on screen
+  grant any power-up, and spawners for fighters, aces, the Dreadnought,
+  skipping the current mission or destroying everything on screen
 
 Graphics and audio:
 
