@@ -398,6 +398,22 @@
   }
   .marker.arrow.ace { border-bottom-color: #ffcf4d; }
   .marker.arrow.boss { border-left-width: 12px; border-right-width: 12px; border-bottom: 20px solid #ffb347; margin: -10px 0 0 -12px; }
+  #lockBox {
+    position: absolute; left: 0; top: 0; width: 44px; height: 44px; margin: -22px 0 0 -22px;
+    pointer-events: none; will-change: transform;
+  }
+  #lockBox .c { position: absolute; width: 11px; height: 11px; border: 0 solid #ffb347; }
+  #lockBox .tl { left: 0; top: 0; border-width: 2px 0 0 2px; }
+  #lockBox .tr { right: 0; top: 0; border-width: 2px 2px 0 0; }
+  #lockBox .bl { left: 0; bottom: 0; border-width: 0 0 2px 2px; }
+  #lockBox .br { right: 0; bottom: 0; border-width: 0 2px 2px 0; }
+  #lockBox.locked .c { border-color: #ff4d5e; box-shadow: 0 0 6px rgba(255,77,94,0.8); }
+  #lockLabel {
+    position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 4px;
+    font-size: 10px; letter-spacing: 0.18em; font-weight: 700; color: #ffb347; white-space: nowrap;
+    font-variant-numeric: tabular-nums; text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+  }
+  #lockBox.locked #lockLabel { color: #ff4d5e; }
   #reticle.locked circle:first-child { stroke: #ffb347; }
   #reticle.locked path { stroke: #ffb347; }
 
@@ -432,6 +448,7 @@
   <div id="bossBar" hidden><div id="bossName">DREADNOUGHT</div><div class="bar"><div id="bossFill"></div></div></div>
   <div id="banner"><div id="bannerTitle"></div><div id="bannerSub"></div></div>
   <div id="markers"></div>
+  <div id="lockBox" hidden><div class="c tl"></div><div class="c tr"></div><div class="c bl"></div><div class="c br"></div><div id="lockLabel">LOCKING</div></div>
   <svg id="reticle" viewBox="0 0 40 40" aria-hidden="true">
     <circle cx="20" cy="20" r="11" fill="none" stroke="rgba(127,227,255,0.75)" stroke-width="1.2" stroke-dasharray="4 3.3"/>
     <path d="M20 2v8M20 30v8M2 20h8M30 20h8" stroke="rgba(127,227,255,0.9)" stroke-width="1.4"/>
@@ -902,6 +919,11 @@
   function sfxAlarm() {
     tone({ f0: 880, dur: 0.14, type: "square", vol: 0.025, filter: "lowpass", ff0: 2500 });
     tone({ f0: 660, dur: 0.14, type: "square", vol: 0.025, filter: "lowpass", ff0: 2500, delay: 0.16 });
+  }
+  function sfxLockTick() { tone({ f0: 1400, dur: 0.05, type: "square", vol: 0.018, filter: "lowpass", ff0: 3000 }); }
+  function sfxLockOn() {
+    tone({ f0: 1800, dur: 0.07, type: "square", vol: 0.025, filter: "lowpass", ff0: 4000 });
+    tone({ f0: 2300, dur: 0.1, type: "square", vol: 0.025, filter: "lowpass", ff0: 4000, delay: 0.08 });
   }
   function sfxUi() { tone({ f0: 1200, f1: 1800, dur: 0.08, type: "sine", vol: 0.06 }); }
 
@@ -1679,8 +1701,8 @@
     mats.glass = new THREE.MeshPhysicalMaterial({ color: 0x0a2230, metalness: 0.2, roughness: 0.04, clearcoat: 1,
       envMapIntensity: 3, emissive: 0x03161f });
     mats.styles = {
-      player: { paint: paint(0x241a6e), glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(1.2, 3.5, 6.0) }),
-        plume: makePlumeMat([0.3, 0.6, 2.2], [2.5, 3.5, 6.0]) },
+      player: { paint: paint(0x241a6e), glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(0.45, 1.3, 2.2) }),
+        plume: makePlumeMat([0.12, 0.25, 0.9], [0.9, 1.3, 2.2]) },
       enemy: { paint: paint(0x6e1a1a), glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 1.2, 0.4) }),
         plume: makePlumeMat([2.2, 0.5, 0.2], [6, 3.2, 1.2]) },
       ace: { paint: paint(0x8a6414), glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 3.5, 0.6) }),
@@ -1754,7 +1776,7 @@
         var tip = add(G.tip, st.glow, side * 3.3, 0.02, 0.35);
         tip.rotation.x = Math.PI / 2;
         var nav = new THREE.Mesh(G.nav, new THREE.MeshBasicMaterial({
-          color: side < 0 ? new THREE.Color(6, 0.3, 0.3) : new THREE.Color(0.3, 6, 0.6) }));
+          color: side < 0 ? new THREE.Color(2.5, 0.15, 0.15) : new THREE.Color(0.15, 2.5, 0.3) }));
         nav.position.set(side * 3.42, 0.05, -1.55);
         g.add(nav);
         jet.navLights.push(nav);
@@ -2303,7 +2325,7 @@
     boltGeoBig = new THREE.CylinderGeometry(0.22, 0.22, 5, 6, 1);
     boltGeoBig.rotateX(Math.PI / 2);
     boltMats = {
-      player: new THREE.MeshBasicMaterial({ color: new THREE.Color(1.8, 6.5, 9.0) }),
+      player: new THREE.MeshBasicMaterial({ color: new THREE.Color(1.1, 4.0, 5.5) }),
       wing: new THREE.MeshBasicMaterial({ color: new THREE.Color(1.0, 7.0, 4.0) }),
       enemy: new THREE.MeshBasicMaterial({ color: new THREE.Color(9.0, 1.2, 0.6) }),
       boss: new THREE.MeshBasicMaterial({ color: new THREE.Color(9.0, 4.0, 0.8) })
@@ -3043,6 +3065,8 @@
   var radarCv = document.getElementById("radar");
   var radar = radarCv.getContext("2d");
   var chipsEl = document.getElementById("powerChips");
+  var lockBox = document.getElementById("lockBox");
+  var lockLabel = document.getElementById("lockLabel");
 
   var chips = {};
   ["triple", "rapid", "missile", "wing"].forEach(function (k) {
@@ -3176,6 +3200,20 @@
     reticle.style.transform = "translate(" + ((tmpA.x * 0.5 + 0.5) * window.innerWidth).toFixed(1) + "px," +
       ((-tmpA.y * 0.5 + 0.5) * window.innerHeight).toFixed(1) + "px)";
     reticle.classList.toggle("locked", !!aimTarget);
+    var lockVisible = false;
+    if (lockTarget && state === "playing") {
+      projV.copy(lockTarget.pos).project(camera);
+      if (projV.z < 1 && Math.abs(projV.x) < 1 && Math.abs(projV.y) < 1) {
+        lockVisible = true;
+        var sc = 1 + (1 - lockProgress) * 1.2;
+        lockBox.style.transform = "translate(" + ((projV.x * 0.5 + 0.5) * window.innerWidth).toFixed(1) + "px," +
+          ((-projV.y * 0.5 + 0.5) * window.innerHeight).toFixed(1) + "px) scale(" + sc.toFixed(2) + ")";
+        var locked = lockProgress >= 1;
+        lockBox.classList.toggle("locked", locked);
+        lockLabel.textContent = locked ? "LOCKED " + Math.round(lockTarget.pos.distanceTo(player.pos)) + " m" : "LOCKING";
+      }
+    }
+    lockBox.hidden = !lockVisible;
   }
 
   // ======================================================================
@@ -3444,20 +3482,39 @@
   // ======================================================================
   // Update
   // ======================================================================
+  // Auto lock-on: grab the target nearest the crosshair within ~20 degrees,
+  // then hold it through maneuvers until it dies or drifts far off-axis
+  var lockTarget = null, lockProgress = 0, lockAnnounced = false;
+  function updateLock(dt) {
+    if (lockTarget) {
+      tmpA.subVectors(lockTarget.pos, player.pos);
+      var ld = tmpA.length();
+      if (lockTarget.dead || ld > 850 || tmpA.dot(player.fwd) / (ld || 1) < 0.8) lockTarget = null;
+    }
+    if (!lockTarget) {
+      var c = findAimTarget();
+      if (c) { lockTarget = c; lockProgress = 0; lockAnnounced = false; sfxLockTick(); }
+    }
+    if (lockTarget) {
+      lockProgress = Math.min(1, lockProgress + dt * 3.5);
+      if (lockProgress >= 1 && !lockAnnounced) { lockAnnounced = true; sfxLockOn(); }
+    }
+    return lockTarget;
+  }
   function findAimTarget() {
-    var best = null, bestDot = 0.982;
+    var best = null, bestDot = 0.94;
     for (var i = 0; i < targetList.length; i++) {
       var t = targetList[i];
       tmpA.subVectors(t.pos, player.pos);
       var d = tmpA.length();
-      if (d > 750 || d < 1) continue;
+      if (d > 800 || d < 1) continue;
       var dot = tmpA.dot(player.fwd) / d;
       if (dot > bestDot) { bestDot = dot; best = t; }
     }
     return best;
   }
 
-  var MUZZLE = new THREE.Color(2.5, 6, 9);
+  var MUZZLE = new THREE.Color(0.8, 1.8, 2.6);
   var shotDir = new V3(), muzzle = new V3();
   function playerFire() {
     muzzle.copy(player.pos).addScaledVector(player.right, fireSide * 2.8).addScaledVector(player.fwd, 1.2);
@@ -3477,9 +3534,9 @@
       tmpB.copy(shotDir).applyAxisAngle(player.up, -0.07);
       spawnBolt(muzzle, tmpB, speed, "player", BOLT_DMG, false);
     }
-    fx.glow.spawn({ x: muzzle.x, y: muzzle.y, z: muzzle.z, s0: 1.8, s1: 0.6, life: 0.07, kind: "tint", color: MUZZLE });
+    fx.glow.spawn({ x: muzzle.x, y: muzzle.y, z: muzzle.z, s0: 1.0, s1: 0.4, life: 0.05, kind: "tint", color: MUZZLE });
     shipParts.muzzleLight.position.copy(muzzle).addScaledVector(player.up, 0.5);
-    shipParts.muzzleLight.intensity = 90;
+    shipParts.muzzleLight.intensity = 20;
     sfxLaser(fireSide * 0.5, powerState.rapid > 0 ? 0.7 : 1);
     fireSide = -fireSide;
   }
@@ -3536,14 +3593,14 @@
   function updateShipVisuals(dt, boosting) {
     if (state === "playing") ship.visible = clockTime >= player.invuln || Math.floor(clockTime * 14) % 2 === 0;
     var pu = shipParts.plumeMat.uniforms;
-    pu.power.value += ((boosting ? 2.2 : 1) - pu.power.value) * Math.min(1, dt * 8);
+    pu.power.value += ((boosting ? 1.8 : 1) - pu.power.value) * Math.min(1, dt * 8);
     for (var i = 0; i < shipParts.plumes.length; i++) {
       var p = shipParts.plumes[i];
       var len = (boosting ? 2.2 : 1) * (0.9 + Math.random() * 0.2);
       p.scale.set(1, len, 1);
       p.position.z = 2.4 + 1.6 * len;
     }
-    shipParts.engineLight.intensity = (boosting ? 14 : 6) * (0.85 + Math.random() * 0.3);
+    shipParts.engineLight.intensity = (boosting ? 4 : 1.5) * (0.85 + Math.random() * 0.3);
     shieldFlash = Math.max(0, shieldFlash - dt * 2.5);
     var su = shipParts.shieldMat.uniforms;
     var sAmt = Math.max(boostAmt, shieldFlash);
@@ -3553,7 +3610,7 @@
     for (var n = 0; n < shipParts.navLights.length; n++) shipParts.navLights[n].visible = phase < 0.08 || phase > 0.6;
     shipParts.muzzleLight.intensity *= Math.exp(-dt * 30);
     if (ship.visible && (state === "playing" || state === "menu")) {
-      engineTrail(player.pos, player.fwd, player.right, 0.92, 0.6, 1.2, boosting ? 4 : 2.6, 1);
+      engineTrail(player.pos, player.fwd, player.right, 0.92, 0.25, 0.5, boosting ? 1.8 : 1.0, 1);
     }
   }
 
@@ -3572,7 +3629,7 @@
     if (state === "playing") {
       stats.time += dt;
       if (stats.time > 6) hintEl.style.opacity = 0;
-      aimTarget = findAimTarget();
+      aimTarget = updateLock(dt);
       fireCooldown -= dt;
       if (fireHeld && fireCooldown <= 0) {
         playerFire();
@@ -3619,6 +3676,7 @@
       audio.intensity = boss ? 1 : clamp(0.35 + wave * 0.12, 0, 0.95);
     } else {
       aimTarget = null;
+      lockTarget = null;
       audio.intensity = 0.15;
     }
 
@@ -3652,6 +3710,7 @@
       if ((radarTick++ & 1) === 0) drawRadar();
     } else {
       updateMarkers();
+      lockBox.hidden = true;
     }
     if (audio.ctx) {
       updateEngineSound(state === "playing", clamp((player.speed - 40) / (BOOST_SPEED - 40), 0, 1), boosting);

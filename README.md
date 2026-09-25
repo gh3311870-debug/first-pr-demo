@@ -411,7 +411,10 @@ model and sound is generated in code when the page loads.
 Gameplay:
 
 - Left on-screen joystick: fly (turn and climb or dive). Hold the right
-  side of the screen to fire; shots auto-aim at enemies near your crosshair
+  side of the screen to fire
+- Auto lock-on: corner brackets snap to the enemy nearest your crosshair,
+  tighten and beep when locked, and stay on it while you maneuver. Your
+  shots lead the locked target and homing missiles go to it first
 - **HYPER BOOST** button: a burst of speed with a shield that blocks damage
   and smashes through asteroids (6 second cooldown)
 - Enemy fighters chase you, break away and strafe you in waves that grow
