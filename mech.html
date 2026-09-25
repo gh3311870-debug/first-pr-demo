@@ -245,6 +245,33 @@
     50% { box-shadow: 0 0 22px rgba(255,200,60,1); }
   }
 
+  .key {
+    display: none;
+    font-size: 10px;
+    font-weight: 700;
+    opacity: 0.85;
+    margin-top: 2px;
+  }
+  body.desktop .key { display: block; }
+  body.desktop #joystick { display: none; }
+  body.desktop #lookPad { width: 100%; top: 0; }
+  #keyHint {
+    display: none;
+    position: absolute;
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    color: #fff;
+    font-size: 12px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 6px;
+    padding: 5px 10px;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  }
+  body.desktop #keyHint { display: block; }
+  #muteBtn, #gameNav { z-index: 3; }
+
   #overlay {
     position: fixed;
     inset: 0;
@@ -338,9 +365,10 @@
 
   <div id="lookPad"></div>
   <div id="joystick"><div id="joystickKnob"></div></div>
-  <div id="punchBtn" class="actBtn">PUNCH</div>
-  <div id="dashBtn" class="actBtn">DASH</div>
-  <div id="smashBtn" class="actBtn">GROUND<br>SMASH</div>
+  <div id="punchBtn" class="actBtn"><div>PUNCH<span class="key">J / Click</span></div></div>
+  <div id="dashBtn" class="actBtn"><div>DASH<span class="key">K</span></div></div>
+  <div id="smashBtn" class="actBtn"><div>GROUND<br>SMASH<span class="key">L</span></div></div>
+  <div id="keyHint">WASD move &middot; Click or J punch &middot; K dash &middot; L smash &middot; Drag mouse to look</div>
 </div>
 
 <div id="overlay">
@@ -349,8 +377,8 @@
   <p>Enemy mechs are dropping into the city. Punch them through buildings,
      rocket-dash through skyscrapers, and when your charge is full, leap up
      and <b>GROUND SMASH</b> the whole block flat.</p>
-  <p style="font-size:12px;opacity:0.7">Left pad: walk &middot; Drag right side: look &middot;
-     Keyboard: WASD, J punch, K dash, L smash</p>
+  <p style="font-size:12px;opacity:0.7">Phone: left pad to walk, drag the right side to look.<br>
+     Laptop: WASD to walk, drag the mouse to look, click or J to punch, K dash, L smash.</p>
   <div id="overlayScore"></div>
   <div id="overlayBest"></div>
   <button id="startBtn">DEPLOY</button>
@@ -464,7 +492,9 @@
 
   // ---------- Renderer / scene ----------
   var renderer = new T.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  var MAX_PIXEL_RATIO = Math.min(window.devicePixelRatio || 1, 1.5);
+  var pixelRatio = MAX_PIXEL_RATIO;
+  renderer.setPixelRatio(pixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = T.PCFSoftShadowMap;
@@ -773,10 +803,8 @@
         blockColors[id * 3], blockColors[id * 3 + 1], blockColors[id * 3 + 2],
         3.5 + Math.random() * 2
       );
-      if (Math.random() < 0.6) {
-        dust(x, y, z, 1);
-      }
     }
+    dust(x, Math.min(h, 2) * BLOCK * 0.5, z, 1);
     cityMesh.instanceMatrix.needsUpdate = true;
     colH[ci] = 0;
     blocksDestroyed += h;
@@ -822,11 +850,12 @@
     "attribute float psize;\n" +
     "attribute vec4 pcolor;\n" +
     "uniform float uScale;\n" +
+    "uniform float uMaxSize;\n" +
     "varying vec4 vColor;\n" +
     "void main() {\n" +
     "  vColor = pcolor;\n" +
     "  vec4 mv = modelViewMatrix * vec4(position, 1.0);\n" +
-    "  gl_PointSize = psize * uScale / max(0.1, -mv.z);\n" +
+    "  gl_PointSize = min(psize * uScale / max(0.1, -mv.z), uMaxSize);\n" +
     "  gl_Position = projectionMatrix * mv;\n" +
     "}";
   var particleFS =
@@ -864,7 +893,7 @@
     geo.setAttribute("pcolor", this.colAttr);
     geo.setAttribute("psize", this.sizeAttr);
     this.mat = new T.ShaderMaterial({
-      uniforms: { uScale: { value: 400 } },
+      uniforms: { uScale: { value: 400 }, uMaxSize: { value: 120 } },
       vertexShader: particleVS,
       fragmentShader: particleFS,
       transparent: true,
@@ -1432,7 +1461,7 @@
     if (n > 0 && m.isPlayer) addShake(0.25);
     if (hitSomething) {
       sfxPunchHit();
-      hitStop = Math.max(hitStop, heavy ? 0.1 : 0.055);
+      hitStop = Math.max(hitStop, heavy ? 0.08 : 0.03);
       addShake(heavy ? 0.7 : 0.35);
     }
     if (m.isPlayer && heavy) {
@@ -1972,20 +2001,33 @@
   joystickEl.addEventListener("pointerup", endJoy);
   joystickEl.addEventListener("pointercancel", endJoy);
 
+  // laptops/desktops (mouse, no touch): hide the touch joystick and show key hints
+  var isDesktop = window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches &&
+    !("ontouchstart" in window);
+  if (isDesktop) document.body.classList.add("desktop");
+
   lookPad.addEventListener("pointerdown", function (e) {
     e.preventDefault();
     look.id = e.pointerId;
     look.lx = e.clientX; look.ly = e.clientY;
+    look.moved = 0;
     lookPad.setPointerCapture(e.pointerId);
+    ensureAudio();
   });
   lookPad.addEventListener("pointermove", function (e) {
     if (e.pointerId !== look.id) return;
     var dx = e.clientX - look.lx, dy = e.clientY - look.ly;
     look.lx = e.clientX; look.ly = e.clientY;
+    look.moved += Math.abs(dx) + Math.abs(dy);
     camYaw -= dx * 0.0065;
     camPitch = Math.max(0.12, Math.min(1.1, camPitch + dy * 0.004));
   });
-  function endLook(e) { if (e.pointerId === look.id) look.id = null; }
+  function endLook(e) {
+    if (e.pointerId !== look.id) return;
+    look.id = null;
+    // a mouse click (not a drag) punches
+    if (e.pointerType === "mouse" && e.type === "pointerup" && look.moved < 6) playerPunch();
+  }
   lookPad.addEventListener("pointerup", endLook);
   lookPad.addEventListener("pointercancel", endLook);
 
@@ -2322,7 +2364,10 @@
     waveLine.textContent = "";
   }
 
-  startBtn.addEventListener("click", startGame);
+  startBtn.addEventListener("click", function () {
+    startBtn.blur();
+    startGame();
+  });
 
   function onResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -2330,7 +2375,10 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     var h = renderer.getDrawingBufferSize(new T.Vector2()).y;
     var scale = h / (2 * Math.tan(T.MathUtils.degToRad(camera.fov) / 2));
-    for (var i = 0; i < particleSystems.length; i++) particleSystems[i].mat.uniforms.uScale.value = scale;
+    for (var i = 0; i < particleSystems.length; i++) {
+      particleSystems[i].mat.uniforms.uScale.value = scale;
+      particleSystems[i].mat.uniforms.uMaxSize.value = h * 0.22;
+    }
   }
   window.addEventListener("resize", onResize);
   onResize();
@@ -2344,6 +2392,32 @@
 
   var last = performance.now();
   var clockTime = 0;
+  var frameStart = last;
+  var loggedError = false;
+
+  // If frames are slow (common on laptop integrated graphics), step the render
+  // resolution down, then turn off shadows as a last resort.
+  var slowTime = 0, fastTime = 0;
+  function adaptQuality(frameSec) {
+    if (frameSec <= 0 || frameSec > 0.5) return; // ignore tab switches
+    if (frameSec > 1 / 40) { slowTime += frameSec; fastTime = 0; }
+    else { fastTime += frameSec; slowTime = Math.max(0, slowTime - frameSec * 0.5); }
+    if (slowTime > 1.2) {
+      slowTime = 0;
+      if (pixelRatio > 0.75) {
+        pixelRatio = Math.max(0.75, pixelRatio - 0.25);
+        renderer.setPixelRatio(pixelRatio);
+        onResize();
+      } else if (sun.castShadow) {
+        sun.castShadow = false;
+      }
+    } else if (fastTime > 6 && pixelRatio < MAX_PIXEL_RATIO) {
+      fastTime = 0;
+      pixelRatio = Math.min(MAX_PIXEL_RATIO, pixelRatio + 0.25);
+      renderer.setPixelRatio(pixelRatio);
+      onResize();
+    }
+  }
   function frame(now) {
     requestAnimationFrame(frame);
     var rdt = Math.min(0.05, (now - last) / 1000);
@@ -2362,11 +2436,18 @@
     }
     if (state === "menu" || state === "over") camYaw += rdt * 0.12;
     if (player && player.dead && state === "playing") state = "dying";
-    update(dt, rdt, clockTime);
-    blockDebris.update(dt);
-    metalDebris.update(dt);
-    for (var i = 0; i < particleSystems.length; i++) particleSystems[i].update(dt);
-    updateRings(dt);
+    adaptQuality((now - frameStart) / 1000);
+    frameStart = now;
+    try {
+      update(dt, rdt, clockTime);
+      blockDebris.update(dt);
+      metalDebris.update(dt);
+      for (var i = 0; i < particleSystems.length; i++) particleSystems[i].update(dt);
+      updateRings(dt);
+    } catch (err) {
+      // keep rendering even if a gameplay bug throws, instead of freezing the screen
+      if (!loggedError) { console.error(err); loggedError = true; }
+    }
     boomLevel *= Math.exp(-6 * rdt);
     boomLight.intensity = boomLevel;
     damageFlashLevel *= Math.exp(-4 * rdt);
