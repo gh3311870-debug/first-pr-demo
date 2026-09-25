@@ -401,35 +401,45 @@ scrolling city skyline:
 Serve it the same way as the other demos and visit
 `http://localhost:8000/swinger.html`.
 
-## Starfall: Asteroid Run demo
+## Starfall demo
 
-`starfall.html` is a mobile-friendly 3D space shooter, also built with
-Three.js. Pilot a starfighter through an endless asteroid storm. Every
-texture, model and sound is generated in code when the page loads:
+`starfall.html` is a mobile-friendly open-world 3D space combat game, also
+built with Three.js. Fly freely through an endless asteroid field and fight
+waves of enemy jets, with a boss battle every third wave. Every texture,
+model and sound is generated in code when the page loads.
+
+Gameplay:
+
+- Left on-screen joystick: fly (turn and climb or dive). Hold the right
+  side of the screen to fire; shots auto-aim at enemies near your crosshair
+- **HYPER BOOST** button: a burst of speed with a shield that blocks damage
+  and smashes through asteroids (6 second cooldown)
+- Enemy fighters chase you, break away and strafe you in waves that grow
+  each round, with gold-trimmed aces from wave 4
+- Every third wave a **Dreadnought** warship arrives. Its core is shielded
+  until you destroy its four turrets, and it fires cannon barrages and
+  launches fighters
+- Power-ups drop from wrecks and asteroids: **Triple Shot**, **Rapid Fire**,
+  **Homing Missiles**, **Squadron** (three mini jets fly in formation and
+  attack enemies with you) and **Shield + Repair**
+- Your shield recharges when you avoid damage for a few seconds; your hull
+  does not. Chain kills to build a score multiplier up to &times;5
+- The HUD has a radar, arrows pointing to off-screen enemies, target
+  brackets, power-up timers and a boss health bar
+- Keyboard works too: WASD / arrows to fly, Space to fire, Shift to boost
+
+Graphics and audio:
 
 - HDR rendering with bloom, filmic tone mapping, lens flare, chromatic
   aberration and a warp-speed radial blur while boosting
-- GPU-baked nebula skybox with a sun and Milky Way band, a banded gas giant
-  with an atmosphere glow and rings, cratered asteroids with glowing cracks
-  that spread as they take damage, and a panel-plated metal ship with engine
-  plumes and blinking nav lights
+- GPU-baked nebula skybox, a banded gas giant with rings, cratered asteroids
+  with glowing cracks, and panel-plated metal ships with engine plumes
 - Layered explosions: fireballs, smoke, spark streaks, glowing debris,
   shockwaves and dynamic lights
-- Synthesized audio with reverb and stereo panning, an engine rumble that
-  follows your speed, and a soundtrack that builds as the run gets harder
-
-Controls and rules:
-
-- Left on-screen joystick: steer the ship up, down, left and right
-- Hold the right side of the screen to fire twin lasers
-- **HYPER BOOST** button: a few seconds of warp speed with a shield that
-  smashes straight through asteroids (5 second cooldown)
-- Big asteroids take several hits and shatter into smaller fragments
-- Chain kills to build a score multiplier up to &times;5
-- Green crystals are worth bonus points; blue rings repair one point of hull
-- Your hull takes three hits, and the field speeds up and gets denser the
-  longer you survive. Your best score is saved locally in the browser
-- Keyboard works too: WASD / arrows to steer, Space to fire, Shift to boost
+- Synthesized sound designed to feel physical: blaster chirps, metal and
+  rock impacts, electric shield crackle, explosions with a sub-bass boom and
+  rumbling tail, distance muffling, stereo panning and reverb, an engine
+  with turbine whine, and a soundtrack that builds with each wave
 - Rendering resolution adjusts automatically to keep the frame rate smooth
 
 Serve it the same way as the other demos and visit
@@ -457,7 +467,7 @@ To play without running a local server, enable GitHub Pages for this repo:
    `https://gh3311870-debug.github.io/first-pr-demo/swinger.html`
    (web-swinging runner), and
    `https://gh3311870-debug.github.io/first-pr-demo/starfall.html`
-   (space shooter) — open any of them on your phone.
+   (space combat) — open any of them on your phone.
 
 Each merge to `main` kicks off a fresh Pages deployment automatically. It
 usually finishes in under a minute, but if a page seems to be missing a

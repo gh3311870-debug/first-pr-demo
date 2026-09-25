@@ -34,7 +34,7 @@
     -webkit-user-select: none;
     user-select: none;
   }
-  canvas { display: block; position: fixed; inset: 0; }
+  body > canvas { display: block; position: fixed; inset: 0; }
 
   #hud {
     position: fixed;
@@ -105,9 +105,8 @@
 
   #velLine {
     position: absolute;
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-    left: 50%;
-    transform: translateX(-50%);
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    left: calc(50% + 58px);
     font-size: 12px;
     letter-spacing: 0.16em;
     color: var(--dim);
@@ -293,7 +292,7 @@
   #controls b { color: var(--ink); font-weight: 600; }
   #stats {
     display: grid;
-    grid-template-columns: repeat(4, minmax(64px, auto));
+    grid-template-columns: repeat(4, minmax(56px, auto));
     gap: 4px 22px;
   }
   .stat { display: flex; flex-direction: column; gap: 2px; }
@@ -338,6 +337,70 @@
   #loadFill { height: 100%; width: 0; background: var(--cyan); box-shadow: 0 0 10px var(--cyan); transition: width 0.25s; }
   #loadStep { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); }
 
+
+  #waveLine { font-size: 11px; letter-spacing: 0.2em; color: var(--amber); font-weight: 600; }
+  #bars { display: flex; flex-direction: column; gap: 5px; margin-top: 2px; }
+  .barRow { display: flex; align-items: center; gap: 8px; }
+  .barRow .label { width: 46px; }
+  .bar { width: 120px; height: 6px; background: rgba(255,255,255,0.1); transform: skewX(-20deg); overflow: hidden; }
+  .bar > div { height: 100%; width: 100%; transition: width 0.15s; }
+  #hullFill { background: var(--cyan); box-shadow: 0 0 8px rgba(127,227,255,0.7); }
+  #hullFill.critical { background: var(--danger); animation: blink 0.6s steps(2) infinite; }
+  #shieldFill { background: #6a8cff; box-shadow: 0 0 8px rgba(106,140,255,0.8); }
+  #powerChips { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
+  .chip { font-size: 10px; letter-spacing: 0.14em; font-weight: 700; display: flex; flex-direction: column; gap: 2px; width: 120px; }
+  .chip .t { height: 3px; background: currentColor; transform-origin: left center; box-shadow: 0 0 6px currentColor; }
+  #bossBar {
+    position: absolute;
+    top: calc(14px + env(safe-area-inset-top, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(44vw, 360px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+  }
+  #bossName { font-size: 11px; letter-spacing: 0.3em; color: #ff8a70; font-weight: 700; }
+  #bossBar .bar { width: 100%; height: 8px; }
+  #bossFill { background: linear-gradient(90deg, #ff4d5e, #ffb347); box-shadow: 0 0 10px rgba(255,77,94,0.8); }
+  #banner {
+    position: absolute;
+    top: 26%;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.35s;
+    text-shadow: 0 0 18px rgba(0,0,0,0.9);
+    width: min(90vw, 560px);
+  }
+  #banner.show { opacity: 1; }
+  #bannerTitle { font-size: clamp(24px, 5vw, 42px); font-weight: 700; letter-spacing: 0.26em; margin-left: 0.26em; }
+  #bannerSub { font-size: 12px; letter-spacing: 0.18em; color: var(--ink); text-transform: uppercase; opacity: 0.8; }
+  #radar {
+    position: absolute;
+    left: 50%;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    width: 96px;
+    height: 96px;
+  }
+  .marker { position: absolute; left: 0; top: 0; pointer-events: none; will-change: transform; }
+  .marker.box { width: 18px; height: 18px; margin: -10px 0 0 -10px; border: 1.5px solid rgba(255,90,90,0.9); }
+  .marker.box.ace { border-color: #ffcf4d; }
+  .marker.box.boss { width: 34px; height: 34px; margin: -18px 0 0 -18px; border-color: #ffb347; border-width: 2px; }
+  .marker.box.power { width: 12px; height: 12px; margin: -7px 0 0 -7px; }
+  .marker.arrow {
+    width: 0; height: 0; margin: -7px 0 0 -8px;
+    border-left: 8px solid transparent; border-right: 8px solid transparent;
+    border-bottom: 14px solid rgba(255,90,90,0.9);
+  }
+  .marker.arrow.ace { border-bottom-color: #ffcf4d; }
+  .marker.arrow.boss { border-left-width: 12px; border-right-width: 12px; border-bottom: 20px solid #ffb347; margin: -10px 0 0 -12px; }
+  #reticle.locked circle:first-child { stroke: #ffb347; }
+  #reticle.locked path { stroke: #ffb347; }
+
   @media (max-height: 420px) {
     #overlay { gap: 8px; }
     #overlay h1 { font-size: 40px; }
@@ -358,14 +421,23 @@
     <div class="label">Score</div>
     <div id="scoreRow"><div id="scoreLine">0</div><div id="comboChip">&times;2</div></div>
     <div id="bestLine">BEST 0</div>
-    <div id="hullWrap"><span class="label">Hull</span><div id="hullBar"></div></div>
+    <div id="waveLine">WAVE 1</div>
+    <div id="bars">
+      <div class="barRow"><span class="label">Hull</span><div class="bar"><div id="hullFill"></div></div></div>
+      <div class="barRow"><span class="label">Shield</span><div class="bar"><div id="shieldFill"></div></div></div>
+    </div>
+    <div id="powerChips"></div>
   </div>
-  <div id="hint">Left pad: steer &middot; Hold right side: fire &middot; Boost to smash through rocks</div>
+  <div id="hint">Left pad: fly &middot; Hold right side: fire &middot; Grab glowing power-ups</div>
+  <div id="bossBar" hidden><div id="bossName">DREADNOUGHT</div><div class="bar"><div id="bossFill"></div></div></div>
+  <div id="banner"><div id="bannerTitle"></div><div id="bannerSub"></div></div>
+  <div id="markers"></div>
   <svg id="reticle" viewBox="0 0 40 40" aria-hidden="true">
     <circle cx="20" cy="20" r="11" fill="none" stroke="rgba(127,227,255,0.75)" stroke-width="1.2" stroke-dasharray="4 3.3"/>
     <path d="M20 2v8M20 30v8M2 20h8M30 20h8" stroke="rgba(127,227,255,0.9)" stroke-width="1.4"/>
     <circle cx="20" cy="20" r="1.4" fill="#fff"/>
   </svg>
+  <canvas id="radar" width="192" height="192"></canvas>
   <div id="velLine">VEL <b id="velValue">0.0</b> km/s</div>
   <div id="muteBtn" role="button" aria-label="Toggle sound">&#128266;</div>
   <div id="gameNav">
@@ -386,18 +458,18 @@
 <div id="overlay" hidden>
   <div id="titleBlock">
     <h1 id="overlayTitle">STARFALL</h1>
-    <div id="subtitle">Asteroid Run</div>
+    <div id="subtitle">Open Space Combat</div>
   </div>
   <div id="stats" hidden>
     <div class="stat"><span class="label">Score</span><span class="v" id="statScore">0</span></div>
-    <div class="stat"><span class="label">Rocks</span><span class="v" id="statRocks">0</span></div>
-    <div class="stat"><span class="label">Crystals</span><span class="v" id="statCrystals">0</span></div>
+    <div class="stat"><span class="label">Kills</span><span class="v" id="statKills">0</span></div>
+    <div class="stat"><span class="label">Wave</span><span class="v" id="statWave">1</span></div>
     <div class="stat"><span class="label">Time</span><span class="v" id="statTime">0:00</span></div>
   </div>
   <div id="controls">
-    <span><b>Left pad</b> &middot; steer</span><span><b>WASD / arrows</b> &middot; steer</span>
+    <span><b>Left pad</b> &middot; fly</span><span><b>WASD / arrows</b> &middot; fly</span>
     <span><b>Hold right side</b> &middot; fire</span><span><b>Space</b> &middot; fire</span>
-    <span><b>Hyper Boost</b> &middot; ram rocks</span><span><b>Shift</b> &middot; boost</span>
+    <span><b>Hyper Boost</b> &middot; ram &amp; shield</span><span><b>Shift</b> &middot; boost</span>
   </div>
   <div id="overlayBest"></div>
   <button id="startBtn" type="button">Launch</button>
@@ -411,25 +483,27 @@
   // ======================================================================
   // Config
   // ======================================================================
-  var BOUND_X = 13;
-  var BOUND_Y = 7.5;
-  var SHIP_ACCEL = 60;
-  var SHIP_MAX_SPEED = 18;
-  var SHIP_DAMPING = 5;
-  var BASE_SPEED = 55;
-  var MAX_SPEED = 120;
-  var SPEED_RAMP = 0.9;
-  var SPAWN_Z = -420;
-  var DESPAWN_Z = 25;
-  var FIRE_INTERVAL = 0.12;
-  var BOLT_SPEED = 280;
-  var BOOST_DURATION = 1.4;
-  var BOOST_COOLDOWN = 5;
-  var BOOST_MULT = 2.3;
-  var MAX_HULL = 3;
-  var INVULN_TIME = 1.6;
-  var COMBO_WINDOW = 2.5;
-  var BEST_KEY = "starfall_best_score";
+  var V3 = THREE.Vector3;
+  var UP = new V3(0, 1, 0);
+  var Z_AXIS = new V3(0, 0, 1);
+  var CRUISE_SPEED = 62;
+  var BOOST_SPEED = 165;
+  var TURN_YAW = 1.55;
+  var TURN_PITCH = 1.2;
+  var FIRE_INTERVAL = 0.13;
+  var RAPID_INTERVAL = 0.065;
+  var BOLT_SPEED = 320;
+  var BOLT_DMG = 10;
+  var BOOST_DURATION = 1.8;
+  var BOOST_COOLDOWN = 6;
+  var MAX_HULL = 100;
+  var MAX_SHIELD = 60;
+  var SHIELD_REGEN = 9;
+  var SHIELD_DELAY = 3;
+  var ROCK_COUNT = 70;
+  var FIELD_R = 950;
+  var COMBO_WINDOW = 3;
+  var BEST_KEY = "starfall_combat_best";
   var SUN_DIR = new THREE.Vector3(-0.42, 0.26, -0.87).normalize();
 
   var reducedMotion = false;
@@ -504,6 +578,9 @@
     audio.noise = ctx.createBuffer(1, nlen, ctx.sampleRate);
     var nd = audio.noise.getChannelData(0);
     for (var n = 0; n < nlen; n++) nd[n] = Math.random() * 2 - 1;
+    audio.brown = ctx.createBuffer(1, nlen, ctx.sampleRate);
+    var bd = audio.brown.getChannelData(0), last = 0;
+    for (var bn = 0; bn < nlen; bn++) { last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02; bd[bn] = last * 3.5; }
 
     buildEngine();
     audio.nextStep = ctx.currentTime + 0.1;
@@ -524,6 +601,34 @@
     node.connect(g);
     g.connect(audio.reverb);
   }
+
+  // Soft-clip saturation curve (cached per drive amount) for gritty layers
+  var driveCurves = {};
+  function driveCurve(k) {
+    if (driveCurves[k]) return driveCurves[k];
+    var n = 1024, c = new Float32Array(n);
+    for (var i = 0; i < n; i++) { var x = i * 2 / n - 1; c[i] = (1 + k) * x / (1 + k * Math.abs(x)); }
+    return (driveCurves[k] = c);
+  }
+  // Optional saturation, then a lowpass that models air absorption over distance
+  function postChain(ctx, node, o) {
+    if (o.drive) {
+      var ws = ctx.createWaveShaper();
+      ws.curve = driveCurve(o.drive);
+      node.connect(ws);
+      node = ws;
+    }
+    if (o.lp && o.lp < 16000) {
+      var lp = ctx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = o.lp;
+      node.connect(lp);
+      node = lp;
+    }
+    return node;
+  }
+  function lpFor(dist) { return clamp(18000 * Math.exp(-dist / 260), 650, 18000); }
+  function verbFor(dist) { return clamp(0.08 + dist / 520, 0.08, 0.85); }
 
   // One oscillator voice with pitch sweep and an attack/decay envelope
   function tone(o) {
@@ -551,6 +656,7 @@
       g.connect(f);
       chain = f;
     }
+    chain = postChain(ctx, chain, o);
     chain.connect(panNode(ctx, o.pan || 0, out));
     sendReverb(ctx, chain, o.verb || 0);
     osc.connect(g);
@@ -563,7 +669,7 @@
     if (!ctx || audio.muted) return;
     var t0 = ctx.currentTime + (o.delay || 0);
     var src = ctx.createBufferSource();
-    src.buffer = audio.noise;
+    src.buffer = o.brown ? audio.brown : audio.noise;
     src.playbackRate.value = o.rate || 1;
     var f = ctx.createBiquadFilter();
     f.type = o.filter || "lowpass";
@@ -576,8 +682,9 @@
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + o.dur);
     src.connect(f);
     f.connect(g);
-    g.connect(panNode(ctx, o.pan || 0, o.bus || audio.sfx));
-    sendReverb(ctx, g, o.verb || 0);
+    var chain = postChain(ctx, g, o);
+    chain.connect(panNode(ctx, o.pan || 0, o.bus || audio.sfx));
+    sendReverb(ctx, chain, o.verb || 0);
     src.start(t0, Math.random() * 1.5);
     src.stop(t0 + o.dur + 0.05);
   }
@@ -611,7 +718,14 @@
     e.hiss.connect(e.hissFilter);
     e.hissFilter.connect(e.hissGain);
     e.hissGain.connect(e.gain);
-    e.o1.start(); e.o2.start(); e.o3.start(); e.hiss.start();
+    e.whine = ctx.createOscillator(); e.whine.type = "sine"; e.whine.frequency.value = 900;
+    e.whineGain = ctx.createGain(); e.whineGain.gain.value = 0.012;
+    e.whine.connect(e.whineGain); e.whineGain.connect(e.gain);
+    e.rumble = ctx.createBufferSource(); e.rumble.buffer = audio.brown; e.rumble.loop = true;
+    var rf = ctx.createBiquadFilter(); rf.type = "lowpass"; rf.frequency.value = 180;
+    e.rumbleGain = ctx.createGain(); e.rumbleGain.gain.value = 0.35;
+    e.rumble.connect(rf); rf.connect(e.rumbleGain); e.rumbleGain.connect(e.gain);
+    e.o1.start(); e.o2.start(); e.o3.start(); e.hiss.start(); e.whine.start(); e.rumble.start();
     audio.engine = e;
   }
   function updateEngineSound(active, speedFrac, boosting) {
@@ -623,6 +737,9 @@
     e.o1.frequency.setTargetAtTime(base, t, 0.2);
     e.o2.frequency.setTargetAtTime(base * 1.013, t, 0.2);
     e.o3.frequency.setTargetAtTime(base / 2, t, 0.2);
+    e.whine.frequency.setTargetAtTime(700 + speedFrac * 700 + (boosting ? 500 : 0), t, 0.3);
+    e.whineGain.gain.setTargetAtTime(boosting ? 0.03 : 0.012, t, 0.2);
+    e.rumbleGain.gain.setTargetAtTime(boosting ? 0.7 : 0.35, t, 0.2);
     e.filter.frequency.setTargetAtTime(220 + speedFrac * 300 + (boosting ? 900 : 0), t, 0.12);
     e.hissFilter.frequency.setTargetAtTime(600 + speedFrac * 600 + (boosting ? 2400 : 0), t, 0.12);
     e.hissGain.gain.setTargetAtTime(boosting ? 0.22 : 0.05 + speedFrac * 0.05, t, 0.1);
@@ -679,48 +796,108 @@
     }
   }
 
-  function sfxLaser(pan) {
-    var j = rand(0.94, 1.06);
-    tone({ f0: 1900 * j, f1: 260, dur: 0.11, type: "square", vol: 0.035, pan: pan, filter: "lowpass", ff0: 5000, ff1: 800 });
-    tone({ f0: 900 * j, f1: 110, dur: 0.14, type: "sine", vol: 0.09, pan: pan });
-    noise({ ff0: 6000, filter: "highpass", dur: 0.03, vol: 0.04, pan: pan });
+  // Blaster: dispersive descending chirps (the "slinky" effect) + muzzle crack
+  function sfxLaser(pan, vol) {
+    var j = rand(0.95, 1.05), v = vol == null ? 1 : vol;
+    tone({ f0: 3200 * j, f1: 380, sweep: 0.09, dur: 0.12, type: "sine", vol: 0.06 * v, pan: pan });
+    tone({ f0: 2600 * j, f1: 300, sweep: 0.11, dur: 0.14, type: "sine", vol: 0.045 * v, pan: pan, delay: 0.004 });
+    tone({ f0: 1700 * j, f1: 220, sweep: 0.13, dur: 0.16, type: "triangle", vol: 0.035 * v, pan: pan, delay: 0.009 });
+    noise({ ff0: 4500, filter: "bandpass", q: 1.2, dur: 0.035, vol: 0.05 * v, pan: pan });
+    tone({ f0: 160, f1: 60, dur: 0.08, type: "sine", vol: 0.08 * v, pan: pan });
   }
-  function sfxRockHit(pan, dist) {
-    var v = clamp(1 - dist / 400, 0.2, 1);
-    noise({ ff0: 3200, ff1: 900, filter: "bandpass", q: 2, dur: 0.12, vol: 0.14 * v, pan: pan, verb: 0.15 });
-    tone({ f0: rand(280, 360), f1: 140, dur: 0.12, type: "triangle", vol: 0.05 * v, pan: pan });
+  function sfxEnemyLaser(pan, dist) {
+    var v = clamp(1 - dist / 650, 0.12, 1), lp = lpFor(dist), vb = verbFor(dist);
+    tone({ f0: 1500, f1: 200, sweep: 0.14, dur: 0.18, type: "sawtooth", vol: 0.035 * v, pan: pan, filter: "lowpass",
+      ff0: 3500, ff1: 600, lp: lp, verb: vb });
+    tone({ f0: 1100, f1: 160, sweep: 0.16, dur: 0.2, type: "sine", vol: 0.05 * v, pan: pan, delay: 0.006, lp: lp, verb: vb });
+    noise({ ff0: 3000, filter: "bandpass", q: 1.5, dur: 0.05, vol: 0.05 * v, pan: pan, lp: lp });
   }
-  function sfxExplosion(size, pan, dist) {
-    var v = clamp(1.15 - dist / 380, 0.15, 1) * (0.55 + size * 0.2);
-    noise({ ff0: 2800, ff1: 140, dur: 0.6 + size * 0.35, vol: 0.32 * v, pan: pan, verb: 0.35, attack: 0.002 });
-    noise({ ff0: 500, ff1: 60, dur: 1.1 + size * 0.4, vol: 0.28 * v, pan: pan * 0.5, verb: 0.5, rate: 0.5 });
-    tone({ f0: 110, f1: 32, dur: 0.5 + size * 0.2, type: "sine", vol: 0.5 * v, pan: pan * 0.3 });
-    for (var i = 0; i < 4; i++) {
-      noise({ ff0: rand(1500, 4000), filter: "bandpass", q: 3, dur: 0.05, vol: 0.06 * v, pan: pan + rand(-0.3, 0.3),
-        delay: 0.08 + Math.random() * 0.4 });
+  function sfxBossCannon(pan, dist) {
+    var v = clamp(1.1 - dist / 800, 0.2, 1), lp = lpFor(dist * 0.6), vb = verbFor(dist);
+    tone({ f0: 140, f1: 38, dur: 0.6, type: "sine", vol: 0.3 * v, pan: pan, lp: lp, verb: vb, drive: 1.5 });
+    noise({ ff0: 2500, ff1: 250, dur: 0.45, vol: 0.2 * v, pan: pan, lp: lp, verb: vb, drive: 3 });
+    tone({ f0: 900, f1: 120, dur: 0.25, type: "sawtooth", vol: 0.05 * v, filter: "lowpass", ff0: 2500, pan: pan, lp: lp });
+  }
+  function sfxMissile(pan) {
+    noise({ ff0: 600, ff1: 3000, filter: "bandpass", q: 1.5, dur: 0.45, vol: 0.14, pan: pan, attack: 0.02 });
+    tone({ f0: 300, f1: 900, dur: 0.3, type: "triangle", vol: 0.04, pan: pan });
+  }
+  function sfxPowerup() {
+    [0, 4, 7, 12].forEach(function (n, i) {
+      tone({ f0: midi(72 + n), dur: 0.35, type: "square", vol: 0.035, delay: i * 0.06, verb: 0.4, filter: "lowpass", ff0: 4000 });
+    });
+    noise({ ff0: 1000, ff1: 8000, filter: "bandpass", dur: 0.4, vol: 0.05 });
+  }
+  function sfxWarpIn() {
+    noise({ ff0: 200, ff1: 6000, filter: "bandpass", q: 2, dur: 0.6, vol: 0.16, verb: 0.5 });
+    [62, 69, 74].forEach(function (n) {
+      tone({ f0: midi(n), dur: 0.9, type: "sawtooth", vol: 0.03, filter: "lowpass", ff0: 2000, verb: 0.6 });
+    });
+  }
+  function sfxWave() {
+    tone({ f0: midi(57), dur: 0.5, type: "sawtooth", vol: 0.06, filter: "lowpass", ff0: 1800, verb: 0.5 });
+    tone({ f0: midi(64), dur: 0.8, type: "sawtooth", vol: 0.06, filter: "lowpass", ff0: 1800, verb: 0.5, delay: 0.25 });
+  }
+  function sfxBossAlarm() {
+    for (var i = 0; i < 3; i++) {
+      tone({ f0: 300, f1: 620, sweep: 0.45, dur: 0.5, type: "sawtooth", vol: 0.07, filter: "lowpass", ff0: 2200, delay: i * 0.6, verb: 0.3 });
     }
   }
-  function sfxCrystal() {
-    [0, 0.07, 0.14].forEach(function (d, i) {
-      tone({ f0: midi(81 + i * 4 + (i === 2 ? 1 : 0)), dur: 0.5, type: "sine", vol: 0.12, delay: d, verb: 0.5 });
-      tone({ f0: midi(93 + i * 4), dur: 0.25, type: "triangle", vol: 0.03, delay: d });
-    });
+  // Shield: electrical crackle over a falling energy tone
+  function sfxShieldHit() {
+    for (var i = 0; i < 5; i++) {
+      noise({ ff0: rand(3000, 7000), filter: "bandpass", q: 4, dur: rand(0.02, 0.04), vol: 0.08, delay: i * rand(0.012, 0.03),
+        pan: rand(-0.3, 0.3) });
+    }
+    tone({ f0: 1800, f1: 600, dur: 0.3, type: "sine", vol: 0.05, verb: 0.5 });
+    tone({ f0: 120, dur: 0.25, type: "square", vol: 0.02, filter: "lowpass", ff0: 800 });
   }
-  function sfxRepair() {
-    [0, 0.09, 0.18, 0.27].forEach(function (d, i) {
-      tone({ f0: midi(62 + i * 5), dur: 0.35, type: "triangle", vol: 0.1, delay: d, verb: 0.4 });
+  // Rock impact: stone crack, low thud and a little gravel
+  function sfxRockHit(pan, dist) {
+    var v = clamp(1 - dist / 450, 0.15, 1), lp = lpFor(dist);
+    noise({ ff0: 1800, filter: "bandpass", q: 1, dur: 0.06, vol: 0.2 * v, pan: pan, lp: lp, attack: 0.001 });
+    tone({ f0: rand(160, 200), f1: 80, dur: 0.12, type: "sine", vol: 0.12 * v, pan: pan, lp: lp });
+    for (var i = 0; i < 3; i++) {
+      noise({ ff0: rand(2500, 5000), filter: "bandpass", q: 4, dur: 0.02, vol: 0.05 * v, pan: pan + rand(-0.2, 0.2),
+        delay: 0.03 + Math.random() * 0.15, lp: lp });
+    }
+  }
+  // Ship / armor impact: inharmonic metal partials ring out briefly
+  function sfxMetalHit(pan, dist) {
+    var v = clamp(1 - dist / 500, 0.12, 1), lp = lpFor(dist), j = rand(0.9, 1.1);
+    [587, 1371, 2213, 3120].forEach(function (fr, i) {
+      tone({ f0: fr * j, dur: 0.28 - i * 0.05, type: "sine", vol: 0.05 * v / (i * 0.6 + 1), pan: pan, lp: lp, verb: 0.2 });
     });
-    noise({ ff0: 400, ff1: 5000, filter: "bandpass", q: 1.5, dur: 0.5, vol: 0.06 });
+    noise({ ff0: 5000, filter: "highpass", dur: 0.025, vol: 0.08 * v, pan: pan, lp: lp, attack: 0.001 });
+  }
+  // Explosion: crack transient, saturated fireball roar, sub boom,
+  // brown-noise rumble tail and scattered debris crackle. Distance muffles it.
+  function sfxExplosion(size, pan, dist) {
+    var v = clamp(1.15 - dist / 450, 0.12, 1) * (0.6 + size * 0.2);
+    var lp = lpFor(dist * 0.8), vb = verbFor(dist), L = 0.8 + size * 0.5;
+    noise({ ff0: 6000, filter: "highpass", dur: 0.04, vol: 0.3 * v, pan: pan, lp: lp, attack: 0.001 });
+    noise({ ff0: 5000, ff1: 250, dur: L, vol: 0.34 * v, pan: pan, lp: lp, verb: vb, attack: 0.003, drive: 2.5 });
+    tone({ f0: 75, f1: 26, dur: L * 1.1, type: "sine", vol: 0.6 * v, pan: pan * 0.3, attack: 0.004, drive: 1.5 });
+    noise({ brown: true, ff0: 420, ff1: 60, dur: L * 2.2, vol: 0.5 * v, pan: pan * 0.5, verb: vb + 0.15, attack: 0.02 });
+    var crackles = Math.round(6 + size * 3);
+    for (var i = 0; i < crackles; i++) {
+      noise({ ff0: rand(1500, 6000), filter: "bandpass", q: 5, dur: rand(0.015, 0.04), vol: rand(0.03, 0.08) * v,
+        pan: clamp(pan + rand(-0.4, 0.4), -1, 1), delay: 0.06 + Math.pow(Math.random(), 1.5) * L * 1.3, lp: lp });
+    }
   }
   function sfxBoost() {
     noise({ ff0: 250, ff1: 4200, filter: "bandpass", q: 1.2, dur: 0.7, vol: 0.3, attack: 0.05, verb: 0.3 });
     tone({ f0: 70, f1: 420, dur: 0.6, type: "sawtooth", vol: 0.08, filter: "lowpass", ff0: 600, ff1: 3000 });
     tone({ f0: 40, f1: 90, dur: 0.9, type: "sine", vol: 0.35 });
   }
+  // Hull hit: heavy metal clang, saturated thump and a stressed-metal creak
   function sfxHullHit() {
-    tone({ f0: 160, f1: 40, dur: 0.45, type: "sawtooth", vol: 0.22, filter: "lowpass", ff0: 1200, ff1: 150 });
-    noise({ ff0: 1200, ff1: 200, dur: 0.5, vol: 0.35, verb: 0.3 });
-    tone({ f0: 1240, f1: 1180, dur: 0.6, type: "sine", vol: 0.05, verb: 0.4 });
+    [180, 437, 713, 1172].forEach(function (fr, i) {
+      tone({ f0: fr, dur: 0.9 - i * 0.15, type: "sine", vol: 0.1 / (i + 1), verb: 0.4 });
+    });
+    noise({ ff0: 1500, ff1: 150, dur: 0.4, vol: 0.35, drive: 3 });
+    tone({ f0: 90, f1: 40, dur: 0.4, type: "sine", vol: 0.45 });
+    tone({ f0: 300, f1: 210, dur: 0.5, type: "sawtooth", vol: 0.03, filter: "bandpass", ff0: 900, q: 6, delay: 0.1 });
   }
   function sfxAlarm() {
     tone({ f0: 880, dur: 0.14, type: "square", vol: 0.025, filter: "lowpass", ff0: 2500 });
@@ -1004,7 +1181,7 @@
     "}"
   ].join("\n");
 
-  function bake(frag, w, h, uniforms, float) {
+  function bake(frag, w, h, uniforms, float, repeatT) {
     var rt = new THREE.WebGLRenderTarget(w, h, {
       type: float && hdr ? THREE.HalfFloatType : THREE.UnsignedByteType,
       depthBuffer: false,
@@ -1012,7 +1189,7 @@
       minFilter: THREE.LinearMipmapLinearFilter,
       magFilter: THREE.LinearFilter,
       wrapS: THREE.RepeatWrapping,
-      wrapT: THREE.ClampToEdgeWrapping
+      wrapT: repeatT ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping
     });
     var mat = passMaterial(NOISE_GLSL + "\nvarying vec2 vUv;\n" + frag, uniforms || {});
     runPass(mat, rt);
@@ -1184,10 +1361,9 @@
       "}"
     ].join("\n");
     var u = { mode: { value: 0 } };
-    tex.hull = bake(hullFrag, 1024, 1024, u);
+    tex.hull = bake(hullFrag, 1024, 1024, u, false, true);
     u.mode.value = 1;
-    tex.hullRough = bake(hullFrag, 1024, 1024, u);
-    tex.hull.wrapT = tex.hullRough.wrapT = THREE.RepeatWrapping;
+    tex.hullRough = bake(hullFrag, 1024, 1024, u, false, true);
   }
 
   function bakeSprites() {
@@ -1388,6 +1564,7 @@
     group.rotation.z = -0.3;
     planet.rotation.y = 1.2;
     scene.add(group);
+    return group;
   }
 
   function buildFlare() {
@@ -1428,78 +1605,93 @@
     }
   }
 
-  // Warp streaks: line segments stretched by the current speed
-  var STREAKS = 220;
-  var streakPos = new Float32Array(STREAKS * 6);
-  var streakCol = new Float32Array(STREAKS * 6);
-  var streakData = new Float32Array(STREAKS * 3);
-  for (var si = 0; si < STREAKS; si++) {
-    var sa = Math.random() * Math.PI * 2, sr = 8 + Math.pow(Math.random(), 0.6) * 70;
-    streakData[si * 3] = Math.cos(sa) * sr;
-    streakData[si * 3 + 1] = Math.sin(sa) * sr * 0.7;
-    streakData[si * 3 + 2] = SPAWN_Z + Math.random() * (DESPAWN_Z - SPAWN_Z);
-  }
-  var streakGeo = new THREE.BufferGeometry();
-  streakGeo.setAttribute("position", new THREE.BufferAttribute(streakPos, 3));
-  streakGeo.setAttribute("color", new THREE.BufferAttribute(streakCol, 3));
-  var streaks = new THREE.LineSegments(streakGeo, new THREE.LineBasicMaterial({
+  // Space dust: short streaks around the camera that stretch with speed
+  var DUST = 260, DUST_R = 110;
+  var dustData = new Float32Array(DUST * 3);
+  for (var di = 0; di < DUST * 3; di++) dustData[di] = (Math.random() * 2 - 1) * DUST_R;
+  var dustPos = new Float32Array(DUST * 6);
+  var dustCol = new Float32Array(DUST * 6);
+  var dustGeo = new THREE.BufferGeometry();
+  dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
+  dustGeo.setAttribute("color", new THREE.BufferAttribute(dustCol, 3));
+  var dust = new THREE.LineSegments(dustGeo, new THREE.LineBasicMaterial({
     vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false
   }));
-  streaks.frustumCulled = false;
-  scene.add(streaks);
-  function updateStreaks(dt, worldSpeed, boostAmt) {
-    var len = 0.6 + worldSpeed * 0.035 + boostAmt * 14;
-    var bright = 0.07 + boostAmt * 1.2;
-    for (var i = 0; i < STREAKS; i++) {
-      var z = streakData[i * 3 + 2] + worldSpeed * dt;
-      if (z > DESPAWN_Z) z = SPAWN_Z * 0.6 + Math.random() * 40;
-      streakData[i * 3 + 2] = z;
-      var x = streakData[i * 3], y = streakData[i * 3 + 1];
-      var fade = clamp((z - SPAWN_Z * 0.6) / 120, 0, 1) * bright;
+  dust.frustumCulled = false;
+  scene.add(dust);
+  function updateDust(boostAmt) {
+    var len = 0.035 + boostAmt * 0.07;
+    var vx = player.fwd.x * player.speed, vy = player.fwd.y * player.speed, vz = player.fwd.z * player.speed;
+    var cx = player.pos.x, cy = player.pos.y, cz = player.pos.z;
+    var bright = 0.3 + boostAmt * 1.3;
+    for (var i = 0; i < DUST; i++) {
+      var k = i * 3;
+      var x = dustData[k], y = dustData[k + 1], z = dustData[k + 2];
+      if (x - cx > DUST_R) x -= DUST_R * 2; else if (x - cx < -DUST_R) x += DUST_R * 2;
+      if (y - cy > DUST_R) y -= DUST_R * 2; else if (y - cy < -DUST_R) y += DUST_R * 2;
+      if (z - cz > DUST_R) z -= DUST_R * 2; else if (z - cz < -DUST_R) z += DUST_R * 2;
+      dustData[k] = x; dustData[k + 1] = y; dustData[k + 2] = z;
+      var dx = x - cx, dy = y - cy, dz = z - cz;
+      var f = clamp(1 - Math.sqrt(dx * dx + dy * dy + dz * dz) / DUST_R, 0, 1) * bright;
       var o = i * 6;
-      streakPos[o] = x; streakPos[o + 1] = y; streakPos[o + 2] = z;
-      streakPos[o + 3] = x; streakPos[o + 4] = y; streakPos[o + 5] = z - len;
-      streakCol[o] = 0.7 * fade; streakCol[o + 1] = 0.85 * fade; streakCol[o + 2] = 1.2 * fade;
-      streakCol[o + 3] = 0; streakCol[o + 4] = 0; streakCol[o + 5] = 0;
+      dustPos[o] = x; dustPos[o + 1] = y; dustPos[o + 2] = z;
+      dustPos[o + 3] = x - vx * len; dustPos[o + 4] = y - vy * len; dustPos[o + 5] = z - vz * len;
+      dustCol[o] = 0.6 * f; dustCol[o + 1] = 0.75 * f; dustCol[o + 2] = 1.0 * f;
+      dustCol[o + 3] = 0; dustCol[o + 4] = 0; dustCol[o + 5] = 0;
     }
-    streakGeo.attributes.position.needsUpdate = true;
-    streakGeo.attributes.color.needsUpdate = true;
+    dustGeo.attributes.position.needsUpdate = true;
+    dustGeo.attributes.color.needsUpdate = true;
   }
 
   // ======================================================================
-  // Player ship
+  // Jets: shared materials + a builder used for the player, enemies and
+  // the Squadron wingmen
   // ======================================================================
-  var ship = new THREE.Group();
-  var shipParts = {};
-  function buildShip() {
-    var hullMat = new THREE.MeshStandardMaterial({ map: tex.hull, roughnessMap: tex.hullRough, roughness: 1,
-      metalness: 0.65, envMapIntensity: 1.6 });
-    var paintMat = new THREE.MeshPhysicalMaterial({ color: 0x241a6e, metalness: 0.5, roughness: 0.35, clearcoat: 1,
+  var timeU = { value: 0 };
+  var mats = {};
+  function makePlumeMat(cold, hot) {
+    return new THREE.ShaderMaterial({
+      uniforms: { time: timeU, power: { value: 1 }, cold: { value: new THREE.Color(cold[0], cold[1], cold[2]) },
+        hot: { value: new THREE.Color(hot[0], hot[1], hot[2]) } },
+      vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+      fragmentShader: [
+        "uniform float time; uniform float power; uniform vec3 cold; uniform vec3 hot; varying vec2 vUv;",
+        "void main(){",
+        "  float along = vUv.y;",
+        "  float flick = 0.8 + 0.2 * sin(time * 60.0 + vUv.x * 40.0) * sin(time * 37.0);",
+        "  float a = pow(along, 1.6) * flick;",
+        "  float ring = 0.6 + 0.4 * sin(along * 30.0 - time * 80.0);",
+        "  vec3 c = mix(cold, hot, pow(along, 3.0));",
+        "  gl_FragColor = vec4(c * a * ring * power, 1.0);",
+        "}"
+      ].join("\n"),
+      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+    });
+  }
+  function paint(color) {
+    return new THREE.MeshPhysicalMaterial({ color: color, metalness: 0.5, roughness: 0.35, clearcoat: 1,
       clearcoatRoughness: 0.12, envMapIntensity: 1.8 });
-    var darkMat = new THREE.MeshStandardMaterial({ color: 0x1b1f2a, metalness: 0.85, roughness: 0.4, envMapIntensity: 1.2 });
-    var glassMat = new THREE.MeshPhysicalMaterial({ color: 0x0a2230, metalness: 0.2, roughness: 0.04, clearcoat: 1,
+  }
+  function buildMaterials() {
+    mats.hull = new THREE.MeshStandardMaterial({ map: tex.hull, roughnessMap: tex.hullRough, roughness: 1,
+      metalness: 0.65, envMapIntensity: 1.6 });
+    mats.dark = new THREE.MeshStandardMaterial({ color: 0x1b1f2a, metalness: 0.85, roughness: 0.4, envMapIntensity: 1.2 });
+    mats.glass = new THREE.MeshPhysicalMaterial({ color: 0x0a2230, metalness: 0.2, roughness: 0.04, clearcoat: 1,
       envMapIntensity: 3, emissive: 0x03161f });
-    var glowMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.2, 3.5, 6.0) });
-
-    // Fuselage: a lathe profile, nose forward (-z)
+    mats.styles = {
+      player: { paint: paint(0x241a6e), glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(1.2, 3.5, 6.0) }),
+        plume: makePlumeMat([0.3, 0.6, 2.2], [2.5, 3.5, 6.0]) },
+      enemy: { paint: paint(0x6e1a1a), glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 1.2, 0.4) }),
+        plume: makePlumeMat([2.2, 0.5, 0.2], [6, 3.2, 1.2]) },
+      ace: { paint: paint(0x8a6414), glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 3.5, 0.6) }),
+        plume: makePlumeMat([2.2, 1.2, 0.2], [6, 4.5, 1.5]) },
+      wing: { paint: paint(0x0f5a52), glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(0.6, 5, 4) }),
+        plume: makePlumeMat([0.2, 1.8, 1.4], [2, 6, 5]) }
+    };
     var prof = [
       [0.0, 3.6], [0.12, 3.35], [0.32, 2.7], [0.52, 1.8], [0.68, 0.8], [0.74, 0.0],
       [0.72, -1.0], [0.62, -1.9], [0.5, -2.3], [0.0, -2.3]
     ].map(function (p) { return new THREE.Vector2(p[0], p[1]); }).reverse();
-    var fus = new THREE.Mesh(new THREE.LatheGeometry(prof, 28), hullMat);
-    fus.rotation.x = -Math.PI / 2;
-    fus.scale.set(1.15, 1, 0.72);
-    ship.add(fus);
-
-    var spine = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.3, 3.4), paintMat);
-    spine.position.set(0, 0.42, 0.2);
-    ship.add(spine);
-
-    var canopy = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), glassMat);
-    canopy.scale.set(0.9, 0.75, 2.2);
-    canopy.position.set(0, 0.34, -1.1);
-    ship.add(canopy);
-
     var wingShape = new THREE.Shape();
     wingShape.moveTo(0, 0.9);
     wingShape.lineTo(3.3, -0.9);
@@ -1510,89 +1702,112 @@
     var wingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: 0.14, bevelEnabled: true, bevelThickness: 0.04,
       bevelSize: 0.05, bevelSegments: 2 });
     wingGeo.rotateX(Math.PI / 2);
-    shipParts.navLights = [];
+    mats.geo = {
+      fus: new THREE.LatheGeometry(prof, 28),
+      spine: new THREE.BoxGeometry(0.24, 0.3, 3.4),
+      canopy: new THREE.SphereGeometry(0.5, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+      wing: wingGeo,
+      stripe: new THREE.BoxGeometry(2.2, 0.05, 0.28),
+      nacelle: new THREE.CylinderGeometry(0.34, 0.4, 2.4, 20),
+      intake: new THREE.TorusGeometry(0.34, 0.07, 10, 24),
+      nozzle: new THREE.TorusGeometry(0.33, 0.05, 10, 24),
+      core: new THREE.CircleGeometry(0.3, 24),
+      cannon: new THREE.CylinderGeometry(0.06, 0.08, 1.9, 8),
+      tip: new THREE.CylinderGeometry(0.1, 0.1, 0.2, 8),
+      fin: new THREE.BoxGeometry(0.07, 0.9, 1.0),
+      nav: new THREE.SphereGeometry(0.09, 8, 6),
+      plume: new THREE.ConeGeometry(0.3, 3.2, 20, 1, true)
+    };
+  }
+
+  function buildJet(styleName, lite) {
+    var st = mats.styles[styleName], G = mats.geo;
+    var g = new THREE.Group();
+    var jet = { group: g, plumes: [], navLights: [] };
+    function add(geo, mat, x, y, z) { var m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); g.add(m); return m; }
+    var fus = add(G.fus, mats.hull, 0, 0, 0);
+    fus.rotation.x = -Math.PI / 2;
+    fus.scale.set(1.15, 1, 0.72);
+    var canopy = add(G.canopy, mats.glass, 0, 0.34, -1.1);
+    canopy.scale.set(0.9, 0.75, 2.2);
+    if (!lite) add(G.spine, st.paint, 0, 0.42, 0.2);
     [-1, 1].forEach(function (side) {
-      var wing = new THREE.Mesh(wingGeo, hullMat);
+      var wing = add(G.wing, lite ? st.paint : mats.hull, side * 0.35, 0.02, 0.9);
       wing.scale.x = side;
-      wing.position.set(side * 0.35, 0.02, 0.9);
       wing.rotation.z = side * -0.06;
-      ship.add(wing);
-
-      var stripe = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.05, 0.28), paintMat);
-      stripe.position.set(side * 1.7, 0.12, 0.95);
-      stripe.rotation.y = side * 0.5;
-      ship.add(stripe);
-
-      var nacelle = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.4, 2.4, 20), darkMat);
+      var nacelle = add(G.nacelle, mats.dark, side * 1.15, -0.05, 1.2);
       nacelle.rotation.x = Math.PI / 2;
-      nacelle.position.set(side * 1.15, -0.05, 1.2);
-      ship.add(nacelle);
-      var intake = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.07, 10, 24), hullMat);
-      intake.position.set(side * 1.15, -0.05, 0.0);
-      ship.add(intake);
-      var nozzle = new THREE.Mesh(new THREE.TorusGeometry(0.33, 0.05, 10, 24), glowMat);
-      nozzle.position.set(side * 1.15, -0.05, 2.42);
-      ship.add(nozzle);
-      var core = new THREE.Mesh(new THREE.CircleGeometry(0.3, 24), glowMat);
-      core.position.set(side * 1.15, -0.05, 2.4);
-      ship.add(core);
-
-      var cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.9, 8), darkMat);
-      cannon.rotation.x = Math.PI / 2;
-      cannon.position.set(side * 3.3, 0.02, -0.4);
-      ship.add(cannon);
-      var tip = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2, 8), glowMat);
-      tip.rotation.x = Math.PI / 2;
-      tip.position.set(side * 3.3, 0.02, 0.35);
-      ship.add(tip);
-
-      var fin = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.9, 1.0), paintMat);
-      fin.position.set(side * 0.55, 0.55, 1.7);
+      add(G.core, st.glow, side * 1.15, -0.05, 2.41);
+      var fin = add(G.fin, st.paint, side * 0.55, 0.55, 1.7);
       fin.rotation.z = side * -0.35;
       fin.rotation.x = -0.25;
-      ship.add(fin);
+      var plume = add(G.plume, st.plume, side * 1.15, -0.05, 4.0);
+      plume.rotation.x = Math.PI / 2;
+      jet.plumes.push(plume);
+      if (!lite) {
+        var stripe = add(G.stripe, st.paint, side * 1.7, 0.12, 0.95);
+        stripe.rotation.y = side * 0.5;
+        add(G.intake, mats.hull, side * 1.15, -0.05, 0.0);
+        add(G.nozzle, st.glow, side * 1.15, -0.05, 2.42);
+        var cannon = add(G.cannon, mats.dark, side * 3.3, 0.02, -0.4);
+        cannon.rotation.x = Math.PI / 2;
+        var tip = add(G.tip, st.glow, side * 3.3, 0.02, 0.35);
+        tip.rotation.x = Math.PI / 2;
+        var nav = new THREE.Mesh(G.nav, new THREE.MeshBasicMaterial({
+          color: side < 0 ? new THREE.Color(6, 0.3, 0.3) : new THREE.Color(0.3, 6, 0.6) }));
+        nav.position.set(side * 3.42, 0.05, -1.55);
+        g.add(nav);
+        jet.navLights.push(nav);
+      }
+    });
+    return jet;
+  }
 
-      var nav = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), new THREE.MeshBasicMaterial({
-        color: side < 0 ? new THREE.Color(6, 0.3, 0.3) : new THREE.Color(0.3, 6, 0.6) }));
-      nav.position.set(side * 3.42, 0.05, -1.55);
-      ship.add(nav);
-      shipParts.navLights.push(nav);
-    });
+  // Orient a jet so its nose (-z) points along dir, with a bank roll
+  var lookTmp = new THREE.Vector3();
+  function orientJet(group, pos, dir, bank) {
+    group.position.copy(pos);
+    lookTmp.copy(pos).sub(dir);
+    group.up.copy(UP);
+    group.lookAt(lookTmp);
+    group.rotateZ(bank);
+  }
 
-    // Exhaust plumes: animated additive cones
-    shipParts.plumeMat = new THREE.ShaderMaterial({
-      uniforms: { time: { value: 0 }, power: { value: 1 } },
-      vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-      fragmentShader: [
-        "uniform float time; uniform float power; varying vec2 vUv;",
-        "void main(){",
-        "  float along = vUv.y;",
-        "  float flick = 0.8 + 0.2 * sin(time * 60.0 + vUv.x * 40.0) * sin(time * 37.0);",
-        "  float a = pow(along, 1.6) * flick;",
-        "  float ring = 0.6 + 0.4 * sin(along * 30.0 - time * 80.0);",
-        "  vec3 hot = mix(vec3(0.3, 0.6, 2.2), vec3(2.5, 3.5, 6.0), pow(along, 3.0));",
-        "  gl_FragColor = vec4(hot * a * ring * power, 1.0);",
-        "}"
-      ].join("\n"),
-      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
-    });
-    shipParts.plumes = [];
-    [-1, 1].forEach(function (side) {
-      var cone = new THREE.Mesh(new THREE.ConeGeometry(0.3, 3.2, 20, 1, true), shipParts.plumeMat);
-      cone.rotation.x = Math.PI / 2;
-      cone.position.set(side * 1.15, -0.05, 4.0);
-      ship.add(cone);
-      shipParts.plumes.push(cone);
-    });
+  // ======================================================================
+  // Player ship
+  // ======================================================================
+  var ship = null;
+  var shipParts = {};
+  var player = {
+    pos: new V3(), yaw: 0, pitch: 0, roll: 0, yawRate: 0, pitchRate: 0, speed: CRUISE_SPEED,
+    fwd: new V3(0, 0, -1), up: new V3(0, 1, 0), right: new V3(1, 0, 0), vel: new V3(),
+    hull: MAX_HULL, shield: MAX_SHIELD, lastHit: -99, invuln: 0
+  };
+  var eul = new THREE.Euler(0, 0, 0, "YXZ");
+  var qBase = new THREE.Quaternion();
+  function updatePlayerFrame() {
+    eul.set(player.pitch, player.yaw, 0);
+    qBase.setFromEuler(eul);
+    player.fwd.set(0, 0, -1).applyQuaternion(qBase);
+    player.up.set(0, 1, 0).applyQuaternion(qBase);
+    player.right.set(1, 0, 0).applyQuaternion(qBase);
+    player.vel.copy(player.fwd).multiplyScalar(player.speed);
+  }
+
+  function buildShip() {
+    var jet = buildJet("player", false);
+    ship = jet.group;
+    shipParts.plumes = jet.plumes;
+    shipParts.navLights = jet.navLights;
+    shipParts.plumeMat = mats.styles.player.plume;
 
     var engineLight = new THREE.PointLight(0x66aaff, 6, 12, 2);
     engineLight.position.set(0, 0, 3.2);
     ship.add(engineLight);
     shipParts.engineLight = engineLight;
 
-    // Boost shield: fresnel hex bubble
     shipParts.shieldMat = new THREE.ShaderMaterial({
-      uniforms: { time: { value: 0 }, amount: { value: 0 }, tint: { value: new THREE.Color(0.7, 0.4, 2.2) } },
+      uniforms: { time: timeU, amount: { value: 0 }, tint: { value: new THREE.Color(0.7, 0.4, 2.2) } },
       vertexShader: [
         "varying vec3 vN; varying vec3 vV; varying vec2 vUv;",
         "void main(){ vUv = uv; vec4 mv = modelViewMatrix * vec4(position, 1.0);",
@@ -1623,8 +1838,6 @@
     scene.add(shipParts.muzzleLight);
   }
 
-  var player = { x: 0, y: 0, vx: 0, vy: 0 };
-
   // ======================================================================
   // Effects: pooled sprites, spark lines, embers, debris, shockwaves, lights
   // ======================================================================
@@ -1644,12 +1857,12 @@
   };
   SpritePool.prototype.spawn = function (o) {
     var p = this.free.pop();
-    if (!p) { if (this.active.length > 220) return null; p = this.make(); }
+    if (!p) { if (this.active.length > 260) return null; p = this.make(); }
     p.sprite.visible = true;
     p.sprite.position.set(o.x, o.y, o.z);
     p.sprite.material.rotation = Math.random() * Math.PI * 2;
     p.vx = o.vx || 0; p.vy = o.vy || 0; p.vz = o.vz || 0;
-    p.age = 0; p.life = o.life; p.s0 = o.s0; p.s1 = o.s1; p.kind = o.kind; p.flow = o.flow == null ? 1 : o.flow;
+    p.age = 0; p.life = o.life; p.s0 = o.s0; p.s1 = o.s1; p.kind = o.kind;
     p.spin = (Math.random() - 0.5) * (o.spin || 1);
     p.opacity = o.opacity == null ? 1 : o.opacity;
     p.color = o.color;
@@ -1677,7 +1890,7 @@
       m.opacity = p.opacity * (1 - t);
     }
   };
-  SpritePool.prototype.update = function (dt, worldSpeed) {
+  SpritePool.prototype.update = function (dt) {
     for (var i = this.active.length - 1; i >= 0; i--) {
       var p = this.active[i];
       if (p.delay > 0) {
@@ -1698,7 +1911,7 @@
       p.vx *= drag; p.vy *= drag; p.vz *= drag;
       p.sprite.position.x += p.vx * dt;
       p.sprite.position.y += p.vy * dt;
-      p.sprite.position.z += (p.vz + worldSpeed * p.flow) * dt;
+      p.sprite.position.z += p.vz * dt;
       p.sprite.material.rotation += p.spin * dt;
       this.apply(p, t);
     }
@@ -1731,7 +1944,7 @@
     d[o] = x; d[o + 1] = y; d[o + 2] = z; d[o + 3] = vx; d[o + 4] = vy; d[o + 5] = vz;
     d[o + 6] = 0; d[o + 7] = life; d[o + 8] = r; d[o + 9] = g; d[o + 10] = b;
   };
-  ParticleSystem.prototype.update = function (dt, worldSpeed) {
+  ParticleSystem.prototype.update = function (dt) {
     var d = this.d, drag = Math.exp(-dt * (this.lines ? 3 : 2));
     for (var i = this.n - 1; i >= 0; i--) {
       var o = i * 11;
@@ -1743,7 +1956,7 @@
         continue;
       }
       d[o + 3] *= drag; d[o + 4] *= drag; d[o + 5] *= drag;
-      d[o] += d[o + 3] * dt; d[o + 1] += d[o + 4] * dt; d[o + 2] += (d[o + 5] + worldSpeed * 0.8) * dt;
+      d[o] += d[o + 3] * dt; d[o + 1] += d[o + 4] * dt; d[o + 2] += d[o + 5] * dt;
     }
     for (var j = 0; j < this.n; j++) {
       var q = j * 11;
@@ -1767,24 +1980,24 @@
   };
 
   var fx = {};
-  var tmpV = new THREE.Vector3();
+  var tmpV = new V3(), tmpA = new V3(), tmpB = new V3(), tmpC = new V3();
 
   function buildEffects() {
-    fx.fire = new SpritePool(tex.fire, THREE.AdditiveBlending, 90);
-    fx.smoke = new SpritePool(tex.smoke, THREE.NormalBlending, 70);
-    fx.glow = new SpritePool(tex.glow, THREE.AdditiveBlending, 40);
-    fx.sparks = new ParticleSystem(700, true);
-    fx.embers = new ParticleSystem(900, false, 0.35);
+    fx.fire = new SpritePool(tex.fire, THREE.AdditiveBlending, 110);
+    fx.smoke = new SpritePool(tex.smoke, THREE.NormalBlending, 110);
+    fx.glow = new SpritePool(tex.glow, THREE.AdditiveBlending, 60);
+    fx.sparks = new ParticleSystem(900, true);
+    fx.embers = new ParticleSystem(1800, false, 0.35);
 
     fx.lights = [];
     for (var i = 0; i < 3; i++) {
-      var l = new THREE.PointLight(0xff8a3a, 0, 90, 2);
+      var l = new THREE.PointLight(0xff8a3a, 0, 120, 2);
       scene.add(l);
       fx.lights.push({ light: l, t: 1, life: 1, peak: 0 });
     }
 
     fx.rings = [];
-    for (var r = 0; r < 8; r++) {
+    for (var r = 0; r < 10; r++) {
       var ring = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 64), new THREE.MeshBasicMaterial({
         color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
       ring.visible = false;
@@ -1798,34 +2011,35 @@
     fx.debrisFree = [];
   }
 
-  function flashLight(x, y, z, peak, life, color) {
+  function flashLight(p, peak, life, color) {
     var best = fx.lights[0];
     for (var i = 1; i < fx.lights.length; i++) if (fx.lights[i].t / fx.lights[i].life > best.t / best.life) best = fx.lights[i];
-    best.light.position.set(x, y, z);
+    best.light.position.copy(p);
     best.light.color.setHex(color || 0xff8a3a);
     best.t = 0; best.life = life; best.peak = peak;
   }
-  function shockwave(x, y, z, size, life, r, g, b) {
+  function shockwave(p, size, life, r, g, b) {
     var best = fx.rings[0];
     for (var i = 1; i < fx.rings.length; i++) if (fx.rings[i].t / fx.rings[i].life > best.t / best.life) best = fx.rings[i];
-    best.mesh.position.set(x, y, z);
+    best.mesh.position.copy(p);
     best.mesh.visible = true;
     best.t = 0; best.life = life; best.size = size;
     best.color.setRGB(r, g, b);
   }
-  function spawnDebris(x, y, z, count, speed, scale, mat) {
+  function spawnDebris(p, count, speed, scale, mat) {
     for (var i = 0; i < count; i++) {
       var d = fx.debrisFree.pop();
       if (!d) {
-        if (fx.debris.length > 80) return;
+        if (fx.debris.length > 90) return;
         d = { mesh: new THREE.Mesh(fx.debrisGeos[i % fx.debrisGeos.length], mat.clone()) };
         scene.add(d.mesh);
       } else {
-        d.mesh.material.map = mat.map;
-        d.mesh.material.bumpMap = mat.bumpMap;
+        d.mesh.material.map = mat.map || null;
+        d.mesh.material.bumpMap = mat.bumpMap || null;
+        d.mesh.material.color.copy(mat.color);
       }
       d.mesh.visible = true;
-      d.mesh.position.set(x + rand(-1, 1) * scale, y + rand(-1, 1) * scale, z + rand(-1, 1) * scale);
+      d.mesh.position.set(p.x + rand(-1, 1) * scale, p.y + rand(-1, 1) * scale, p.z + rand(-1, 1) * scale);
       var s = scale * rand(0.12, 0.35);
       d.mesh.scale.set(s, s * rand(0.6, 1.2), s);
       tmpV.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize().multiplyScalar(speed * rand(0.4, 1.2));
@@ -1838,26 +2052,26 @@
   }
 
   var WHITE_HOT = new THREE.Color(10, 8, 6);
-  function explosion(x, y, z, size, withDebris, debrisMat) {
-    var i;
-    fx.glow.spawn({ x: x, y: y, z: z, s0: size * 5, s1: size * 9, life: 0.22, kind: "tint", color: WHITE_HOT, flow: 0.6 });
-    var fires = Math.round(8 + size * 5);
+  function explosion(p, size, debrisMat) {
+    var i, x = p.x, y = p.y, z = p.z;
+    fx.glow.spawn({ x: x, y: y, z: z, s0: size * 5, s1: size * 9, life: 0.22, kind: "tint", color: WHITE_HOT });
+    var fires = Math.round(8 + size * 4);
     for (i = 0; i < fires; i++) {
       tmpV.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize();
       var sp = size * rand(2.5, 7);
       fx.fire.spawn({ x: x + tmpV.x * size * 0.4, y: y + tmpV.y * size * 0.4, z: z + tmpV.z * size * 0.4,
         vx: tmpV.x * sp, vy: tmpV.y * sp, vz: tmpV.z * sp, s0: size * rand(0.9, 1.6), s1: size * rand(2.6, 4.2),
-        life: rand(0.55, 1.1), kind: "fire", spin: 2, flow: 0.55, delay: Math.random() * 0.08 });
+        life: rand(0.55, 1.1), kind: "fire", spin: 2, delay: Math.random() * 0.08 });
     }
-    var smokes = Math.round(4 + size * 3);
+    var smokes = Math.round(4 + size * 2.5);
     for (i = 0; i < smokes; i++) {
       tmpV.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize();
       var ss = size * rand(1, 3);
       fx.smoke.spawn({ x: x, y: y, z: z, vx: tmpV.x * ss, vy: tmpV.y * ss, vz: tmpV.z * ss,
         s0: size * 1.2, s1: size * rand(4, 6.5), life: rand(1.6, 2.8), kind: "smoke", opacity: 0.8, spin: 0.6,
-        flow: 0.55, delay: 0.1 + Math.random() * 0.2 });
+        delay: 0.1 + Math.random() * 0.2 });
     }
-    var sparks = Math.round(24 + size * 14);
+    var sparks = Math.round(24 + size * 12);
     for (i = 0; i < sparks; i++) {
       tmpV.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize();
       var v = rand(20, 70) * (0.6 + size * 0.2);
@@ -1869,23 +2083,22 @@
       var ev = rand(4, 16);
       fx.embers.spawn(x, y, z, tmpV.x * ev, tmpV.y * ev, tmpV.z * ev, rand(0.8, 1.8), 4, 1.6, 0.3);
     }
-    shockwave(x, y, z, size * 7, 0.55, 2.5, 1.6, 1.0);
-    flashLight(x, y, z, 2500 * size, 0.5, 0xff8a3a);
-    if (withDebris) spawnDebris(x, y, z, Math.round(3 + size * 2), 8 + size * 3, size, debrisMat);
+    shockwave(p, size * 7, 0.55, 2.5, 1.6, 1.0);
+    flashLight(p, 2500 * size, 0.5, 0xff8a3a);
+    if (debrisMat) spawnDebris(p, Math.round(3 + size * 2), 8 + size * 3, size, debrisMat);
   }
 
-  function updateEffects(dt, worldSpeed) {
-    fx.fire.update(dt, worldSpeed);
-    fx.smoke.update(dt, worldSpeed);
-    fx.glow.update(dt, worldSpeed);
-    fx.sparks.update(dt, worldSpeed);
-    fx.embers.update(dt, worldSpeed);
+  function updateEffects(dt) {
+    fx.fire.update(dt);
+    fx.smoke.update(dt);
+    fx.glow.update(dt);
+    fx.sparks.update(dt);
+    fx.embers.update(dt);
     for (var i = 0; i < fx.lights.length; i++) {
       var L = fx.lights[i];
       L.t += dt;
       var k = clamp(1 - L.t / L.life, 0, 1);
       L.light.intensity = L.peak * k * k;
-      L.light.position.z += worldSpeed * dt * 0.6;
     }
     for (var r = 0; r < fx.rings.length; r++) {
       var R = fx.rings[r];
@@ -1895,14 +2108,13 @@
       if (t >= 1) { R.mesh.visible = false; continue; }
       var s = R.size * (0.2 + (1 - Math.pow(1 - t, 3)));
       R.mesh.scale.set(s, s, s);
-      R.mesh.position.z += worldSpeed * dt * 0.6;
       R.mesh.lookAt(camera.position);
       R.mesh.material.color.copy(R.color).multiplyScalar((1 - t) * (1 - t));
     }
     for (var d = fx.debris.length - 1; d >= 0; d--) {
       var D = fx.debris[d];
       D.age += dt;
-      if (D.age >= D.life || D.mesh.position.z > DESPAWN_Z) {
+      if (D.age >= D.life) {
         D.mesh.visible = false;
         fx.debris.splice(d, 1);
         fx.debrisFree.push(D);
@@ -1910,7 +2122,7 @@
       }
       D.mesh.position.x += D.vx * dt;
       D.mesh.position.y += D.vy * dt;
-      D.mesh.position.z += (D.vz + worldSpeed * 0.7) * dt;
+      D.mesh.position.z += D.vz * dt;
       D.mesh.rotation.x += D.sx * dt;
       D.mesh.rotation.y += D.sy * dt;
       var heat = clamp(1 - D.age / (D.life * 0.6), 0, 1);
@@ -1919,8 +2131,37 @@
     }
   }
 
+  function engineTrail(pos, dir, right, scale, r, g, b, count) {
+    for (var s = -1; s <= 1; s += 2) {
+      for (var c = 0; c < count; c++) {
+        var ex = pos.x - dir.x * 2.3 * scale + right.x * s * 1.06 * scale;
+        var ey = pos.y - dir.y * 2.3 * scale + right.y * s * 1.06 * scale;
+        var ez = pos.z - dir.z * 2.3 * scale + right.z * s * 1.06 * scale;
+        fx.embers.spawn(ex + rand(-0.12, 0.12), ey + rand(-0.12, 0.12), ez + rand(-0.12, 0.12),
+          -dir.x * 20 + rand(-1, 1), -dir.y * 20 + rand(-1, 1), -dir.z * 20 + rand(-1, 1), rand(0.15, 0.32), r, g, b);
+      }
+    }
+  }
+
+  // Segment-vs-sphere test so fast projectiles never tunnel through targets
+  function segSphere(a, b, c, r) {
+    var dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+    var fx0 = a.x - c.x, fy = a.y - c.y, fz = a.z - c.z;
+    var len2 = dx * dx + dy * dy + dz * dz;
+    var t = len2 > 0 ? clamp(-(fx0 * dx + fy * dy + fz * dz) / len2, 0, 1) : 0;
+    var qx = fx0 + dx * t, qy = fy + dy * t, qz = fz + dz * t;
+    return qx * qx + qy * qy + qz * qz < r * r;
+  }
+
+  // Stereo pan and distance for a world position, used by positional sounds
+  var camSpace = new V3();
+  function soundPos(p) {
+    camSpace.copy(p).applyMatrix4(camera.matrixWorldInverse);
+    return { pan: clamp(camSpace.x / 60, -1, 1), dist: camSpace.length() };
+  }
+
   // ======================================================================
-  // Asteroids, bolts, pickups
+  // Asteroid field (open world, recycled around the player)
   // ======================================================================
   var rockGeosBig = [], rockGeosSmall = [], rockMats = [];
   var rocks = [];
@@ -1938,104 +2179,845 @@
     }
   }
 
-  function spawnRock(x, y, z, radius, tier, vx, vy, vz, born) {
-    var geos = tier === 0 ? rockGeosSmall : rockGeosBig;
-    var baseMat = rockMats[Math.floor(Math.random() * rockMats.length)];
-    var mesh = new THREE.Mesh(geos[Math.floor(Math.random() * geos.length)], baseMat.clone());
-    mesh.scale.setScalar(born ? radius : 0.001);
-    mesh.position.set(x, y, z);
+  function spawnRock(pos, radius, vel, grow) {
+    var geos = radius < 4 ? rockGeosSmall : rockGeosBig;
+    var mesh = new THREE.Mesh(geos[Math.floor(Math.random() * geos.length)],
+      rockMats[Math.floor(Math.random() * rockMats.length)].clone());
+    mesh.scale.setScalar(grow ? 0.001 : radius);
+    mesh.position.copy(pos);
     mesh.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
     scene.add(mesh);
-    var hp = tier === 2 ? 4 : tier === 1 ? 2 : 1;
-    rocks.push({
-      mesh: mesh, radius: radius, tier: tier, hp: hp, maxHp: hp,
-      vx: vx || 0, vy: vy || 0, vz: vz || 0,
-      sx: (Math.random() - 0.5) * 1.4, sy: (Math.random() - 0.5) * 1.4,
-      flash: 0, grow: born ? 1 : 0
-    });
+    var hp = Math.ceil(radius * 3.2);
+    var r = {
+      mesh: mesh, pos: mesh.position, radius: radius, hp: hp, maxHp: hp,
+      vel: vel ? vel.clone() : new V3(rand(-2, 2), rand(-2, 2), rand(-2, 2)),
+      sx: rand(-0.5, 0.5) * 4 / (2 + radius), sy: rand(-0.5, 0.5) * 4 / (2 + radius),
+      flash: 0, grow: grow ? 0 : 1
+    };
+    rocks.push(r);
+    return r;
   }
-  function spawnFieldRock() {
-    var roll = Math.random();
-    var tier = roll < 0.3 ? 2 : roll < 0.75 ? 1 : 0;
-    var radius = tier === 2 ? 3.2 + Math.random() * 1.4 : tier === 1 ? 1.8 + Math.random() * 0.6 : 0.9 + Math.random() * 0.4;
-    var x, y;
-    if (Math.random() < 0.45 && state === "playing") {
-      x = player.x + (Math.random() - 0.5) * 4;
-      y = player.y + (Math.random() - 0.5) * 3;
-    } else {
-      x = (Math.random() * 2 - 1) * (BOUND_X + 10);
-      y = (Math.random() * 2 - 1) * (BOUND_Y + 7);
-    }
-    spawnRock(x, y, SPAWN_Z, radius, tier, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 2, Math.random() * 12, false);
+  function randomRockRadius() {
+    var r = Math.random();
+    return r < 0.07 ? rand(22, 36) : r < 0.3 ? rand(8, 14) : rand(2.5, 6);
   }
-  function removeRock(i) {
+  function spawnFieldRock(initial) {
+    tmpC.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize();
+    if (!initial) tmpC.addScaledVector(player.fwd, 1.3).normalize();
+    var d = initial ? rand(90, FIELD_R) : rand(FIELD_R * 0.7, FIELD_R);
+    tmpA.copy(player.pos).addScaledVector(tmpC, d);
+    spawnRock(tmpA, randomRockRadius(), null, !initial);
+  }
+  function removeRockAt(i) {
     var r = rocks[i];
     scene.remove(r.mesh);
     r.mesh.material.dispose();
     rocks.splice(i, 1);
   }
+  function hitRock(rock, dmg, point) {
+    rock.hp -= dmg;
+    rock.flash = 0.08;
+    for (var sp = 0; sp < 8; sp++) {
+      tmpV.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize();
+      var sv = rand(12, 30);
+      fx.sparks.spawn(point.x, point.y, point.z, tmpV.x * sv, tmpV.y * sv, tmpV.z * sv, rand(0.2, 0.45), 3, 5, 7);
+    }
+    if (rock.hp <= 0) {
+      breakRock(rocks.indexOf(rock));
+    } else {
+      var s = soundPos(point);
+      sfxRockHit(s.pan, s.dist);
+    }
+  }
+  function breakRock(index) {
+    if (index < 0) return;
+    var rock = rocks[index];
+    var p = tmpB.copy(rock.pos);
+    var size = Math.min(rock.radius * 0.5, 5);
+    explosion(p, size, rock.mesh.material);
+    var s = soundPos(p);
+    sfxExplosion(Math.min(2, rock.radius / 8), s.pan, s.dist);
+    if (state === "playing") registerKill(Math.round(10 + rock.radius * 3), false);
+    var radius = rock.radius;
+    removeRockAt(index);
+    if (radius >= 7) {
+      for (var i = 0; i < 3; i++) {
+        tmpC.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize();
+        tmpA.copy(p).addScaledVector(tmpC, radius * 0.45);
+        spawnRock(tmpA, radius * rand(0.36, 0.46), tmpC.multiplyScalar(rand(5, 10)), false);
+      }
+    }
+    if (Math.random() < 0.08) spawnPowerup(randomPowerType(), p);
+  }
 
-  var pickups = [];
-  var pickupAssets = null;
-  function buildPickupAssets() {
-    pickupAssets = {
-      crystalGeo: new THREE.OctahedronGeometry(0.9, 0),
-      crystalMat: new THREE.MeshStandardMaterial({ color: 0x2aff9a, emissive: new THREE.Color(0.15, 2.4, 0.9),
-        metalness: 0.3, roughness: 0.08, envMapIntensity: 2, flatShading: true }),
-      repairGeo: new THREE.TorusGeometry(0.95, 0.2, 14, 40),
-      repairMat: new THREE.MeshStandardMaterial({ color: 0x7fe3ff, emissive: new THREE.Color(0.4, 2.2, 4.0),
-        metalness: 0.6, roughness: 0.2 }),
-      crossGeo: new THREE.BoxGeometry(0.22, 1.1, 0.22)
+  function updateRocks(dt, boosting) {
+    for (var i = rocks.length - 1; i >= 0; i--) {
+      var rk = rocks[i];
+      var m = rk.mesh;
+      rk.pos.addScaledVector(rk.vel, dt);
+      m.rotation.x += rk.sx * dt;
+      m.rotation.y += rk.sy * dt;
+      if (rk.grow < 1) {
+        rk.grow = Math.min(1, rk.grow + dt * 1.5);
+        m.scale.setScalar(rk.radius * (1 - Math.pow(1 - rk.grow, 3)));
+      }
+      if (rk.flash > 0) rk.flash -= dt;
+      m.material.emissiveIntensity = (1 - rk.hp / rk.maxHp) * 3.5 + (rk.flash > 0 ? 9 : 0);
+      var dx = rk.pos.x - player.pos.x, dy = rk.pos.y - player.pos.y, dz = rk.pos.z - player.pos.z;
+      var d2 = dx * dx + dy * dy + dz * dz;
+      if (d2 > (FIELD_R + 200) * (FIELD_R + 200)) { removeRockAt(i); continue; }
+      if (state === "playing") {
+        var hitR = rk.radius * 0.85 + 2;
+        if (d2 < hitR * hitR) {
+          if (boosting && rk.radius < 15) {
+            breakRock(i);
+            shake = Math.max(shake, 0.5);
+          } else {
+            var d = Math.sqrt(d2) || 1;
+            player.pos.x -= dx / d * (hitR - d + 0.5);
+            player.pos.y -= dy / d * (hitR - d + 0.5);
+            player.pos.z -= dz / d * (hitR - d + 0.5);
+            if (clockTime > player.invuln) {
+              damagePlayer(boosting ? 0 : 12 + rk.radius * 0.6, rk.pos);
+              player.invuln = clockTime + 0.6;
+              player.speed *= 0.4;
+              shake = Math.max(shake, 0.8);
+              var s = soundPos(player.pos);
+              sfxRockHit(s.pan, 0);
+            }
+          }
+        }
+      }
+    }
+    if (rocks.length < ROCK_COUNT) spawnFieldRock(false);
+  }
+
+  // ======================================================================
+  // Projectiles
+  // ======================================================================
+  var bolts = [];
+  var boltGeo = null, boltGeoBig = null, boltMats = null;
+  function initBolts() {
+    boltGeo = new THREE.CylinderGeometry(0.07, 0.07, 4.2, 6, 1);
+    boltGeo.rotateX(Math.PI / 2);
+    boltGeoBig = new THREE.CylinderGeometry(0.22, 0.22, 5, 6, 1);
+    boltGeoBig.rotateX(Math.PI / 2);
+    boltMats = {
+      player: new THREE.MeshBasicMaterial({ color: new THREE.Color(1.8, 6.5, 9.0) }),
+      wing: new THREE.MeshBasicMaterial({ color: new THREE.Color(1.0, 7.0, 4.0) }),
+      enemy: new THREE.MeshBasicMaterial({ color: new THREE.Color(9.0, 1.2, 0.6) }),
+      boss: new THREE.MeshBasicMaterial({ color: new THREE.Color(9.0, 4.0, 0.8) })
     };
   }
-  function spawnPickup(kind, x, y, z) {
-    var a = pickupAssets;
-    var g = new THREE.Group();
-    var body;
-    if (kind === "crystal") {
-      body = new THREE.Mesh(a.crystalGeo, a.crystalMat);
-      body.scale.set(0.8, 1.5, 0.8);
-    } else {
-      body = new THREE.Group();
-      body.add(new THREE.Mesh(a.repairGeo, a.repairMat));
-      body.add(new THREE.Mesh(a.crossGeo, a.repairMat));
-      var c2 = new THREE.Mesh(a.crossGeo, a.repairMat);
-      c2.rotation.z = Math.PI / 2;
-      body.add(c2);
-    }
-    g.add(body);
-    var halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.glow, transparent: true, depthWrite: false,
-      blending: THREE.AdditiveBlending, opacity: 0.8 }));
-    if (kind === "crystal") halo.material.color.setRGB(0.3, 2.2, 1.0);
-    else halo.material.color.setRGB(0.5, 1.8, 3.0);
-    halo.scale.set(4.5, 4.5, 1);
-    g.add(halo);
-    g.position.set(x, y, z);
-    scene.add(g);
-    pickups.push({ group: g, body: body, kind: kind, t: Math.random() * 6 });
+  function spawnBolt(from, dir, speed, team, dmg, big) {
+    var m = new THREE.Mesh(big ? boltGeoBig : boltGeo, boltMats[team]);
+    m.position.copy(from);
+    m.quaternion.setFromUnitVectors(Z_AXIS, dir);
+    scene.add(m);
+    bolts.push({ mesh: m, pos: m.position, prev: from.clone(), vel: dir.clone().multiplyScalar(speed),
+      life: 2.4, team: team, dmg: dmg, r: big ? 1.2 : 0.5 });
   }
 
-  var bolts = [];
-  var boltGeo = null, boltMat = null;
-  var fireSide = 1;
-  var MUZZLE = new THREE.Color(2.5, 6, 9);
-  var IMPACT = new THREE.Color(3, 6, 8);
-  function fireBolt() {
-    if (!boltGeo) {
-      boltGeo = new THREE.CylinderGeometry(0.07, 0.07, 4.2, 6, 1);
-      boltGeo.rotateX(Math.PI / 2);
-      boltMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.8, 6.5, 9.0) });
+  function updateBolts(dt) {
+    for (var b = bolts.length - 1; b >= 0; b--) {
+      var bo = bolts[b];
+      bo.prev.copy(bo.pos);
+      bo.pos.addScaledVector(bo.vel, dt);
+      bo.life -= dt;
+      var hit = false;
+      var friendly = bo.team === "player" || bo.team === "wing";
+      if (friendly) {
+        for (var e = 0; e < enemies.length && !hit; e++) {
+          var en = enemies[e];
+          if (!en.dead && segSphere(bo.prev, bo.pos, en.pos, 3.3 + bo.r)) { hitEnemy(en, bo.dmg, bo.pos); hit = true; }
+        }
+        if (!hit && boss && boss.dying <= 0) {
+          for (var t = 0; t < boss.turrets.length && !hit; t++) {
+            var tu = boss.turrets[t];
+            if (!tu.dead && segSphere(bo.prev, bo.pos, tu.pos, 4 + bo.r)) { hitTurret(tu, bo.dmg, bo.pos); hit = true; }
+          }
+          for (var c = 0; c < boss.coreWorld.length && !hit; c++) {
+            if (segSphere(bo.prev, bo.pos, boss.coreWorld[c], 11 + bo.r)) { hitCore(bo.dmg, bo.pos); hit = true; }
+          }
+        }
+      } else if (state === "playing" && segSphere(bo.prev, bo.pos, player.pos, 2.6 + bo.r)) {
+        damagePlayer(bo.dmg, bo.pos);
+        hit = true;
+      }
+      if (!hit) {
+        for (var r = 0; r < rocks.length; r++) {
+          var rk = rocks[r];
+          var rr = rk.radius * 0.9 + bo.r;
+          var ddx = rk.pos.x - bo.pos.x, ddy = rk.pos.y - bo.pos.y, ddz = rk.pos.z - bo.pos.z;
+          var reach = rr + 20;
+          if (ddx * ddx + ddy * ddy + ddz * ddz > reach * reach) continue;
+          if (segSphere(bo.prev, bo.pos, rk.pos, rr)) {
+            if (friendly) hitRock(rk, bo.dmg, bo.pos);
+            else fx.sparks.spawn(bo.pos.x, bo.pos.y, bo.pos.z, rand(-10, 10), rand(-10, 10), rand(-10, 10), 0.3, 6, 2, 1);
+            hit = true;
+            break;
+          }
+        }
+      }
+      if (hit || bo.life <= 0) { scene.remove(bo.mesh); bolts.splice(b, 1); }
     }
-    var m = new THREE.Mesh(boltGeo, boltMat);
-    var bx = player.x + fireSide * 3.05, by = player.y + 0.02;
-    m.position.set(bx, by, -1.8);
-    scene.add(m);
-    bolts.push({ mesh: m });
-    fx.glow.spawn({ x: bx, y: by, z: -1.4, s0: 1.8, s1: 0.6, life: 0.07, kind: "tint", color: MUZZLE, flow: 0 });
-    shipParts.muzzleLight.position.set(bx, by + 0.5, -1.5);
-    shipParts.muzzleLight.intensity = 90;
-    sfxLaser(clamp(bx / BOUND_X, -1, 1) * 0.7);
-    fireSide = -fireSide;
+  }
+
+  // Homing missiles from the Missiles power-up
+  var missiles = [];
+  var missileGeo = null, missileMat = null, missileSide = 1;
+  var MISSILE_GLOW = new THREE.Color(6, 3, 1.2);
+  function launchMissile(target) {
+    if (!missileGeo) {
+      missileGeo = new THREE.CylinderGeometry(0.12, 0.18, 1.5, 8);
+      missileGeo.rotateX(Math.PI / 2);
+      missileMat = new THREE.MeshStandardMaterial({ color: 0xd8dde6, metalness: 0.6, roughness: 0.3 });
+    }
+    missileSide = -missileSide;
+    var g = new THREE.Group();
+    g.add(new THREE.Mesh(missileGeo, missileMat));
+    var glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.glow, color: MISSILE_GLOW, transparent: true,
+      depthWrite: false, blending: THREE.AdditiveBlending }));
+    glow.position.z = 0.9;
+    glow.scale.set(1.8, 1.8, 1);
+    g.add(glow);
+    g.position.copy(player.pos).addScaledVector(player.right, missileSide * 1.6).addScaledVector(player.up, -0.7);
+    scene.add(g);
+    var vel = player.fwd.clone().multiplyScalar(player.speed).addScaledVector(player.right, missileSide * 18).addScaledVector(player.up, -6);
+    missiles.push({ group: g, pos: g.position, vel: vel, target: target, life: 5, smokeT: 0, speed: Math.max(60, player.speed) });
+    sfxMissile(missileSide * 0.4);
+  }
+  var mDir = new V3();
+  function updateMissiles(dt) {
+    for (var i = missiles.length - 1; i >= 0; i--) {
+      var m = missiles[i];
+      m.life -= dt;
+      if (!m.target || m.target.dead) m.target = nearestTarget(m.pos, 900);
+      m.speed = Math.min(240, m.speed + 200 * dt);
+      mDir.copy(m.vel).normalize();
+      if (m.target) {
+        tmpA.subVectors(m.target.pos, m.pos).normalize();
+        mDir.lerp(tmpA, Math.min(1, dt * 5)).normalize();
+      }
+      m.vel.copy(mDir).multiplyScalar(m.speed);
+      m.pos.addScaledVector(m.vel, dt);
+      m.group.quaternion.setFromUnitVectors(Z_AXIS, mDir);
+      m.group.rotateY(Math.PI);
+      m.smokeT -= dt;
+      if (m.smokeT <= 0) {
+        fx.smoke.spawn({ x: m.pos.x - mDir.x, y: m.pos.y - mDir.y, z: m.pos.z - mDir.z, s0: 0.5, s1: 2.2, life: 0.8,
+          kind: "smoke", opacity: 0.45 });
+        m.smokeT = 0.025;
+      }
+      fx.embers.spawn(m.pos.x - mDir.x, m.pos.y - mDir.y, m.pos.z - mDir.z, -mDir.x * 15, -mDir.y * 15, -mDir.z * 15, 0.2, 5, 2.4, 0.6);
+      var boom = m.life <= 0;
+      if (m.target && m.pos.distanceTo(m.target.pos) < m.target.hitR + 1.5) {
+        damageTarget(m.target, 45, m.pos);
+        boom = true;
+      }
+      if (!boom) {
+        for (var r = 0; r < rocks.length; r++) {
+          var rk = rocks[r];
+          if (m.pos.distanceToSquared(rk.pos) < rk.radius * rk.radius * 0.8) { hitRock(rk, 45, m.pos); boom = true; break; }
+        }
+      }
+      if (boom) {
+        explosion(m.pos, 1.3, null);
+        var s = soundPos(m.pos);
+        sfxExplosion(0.5, s.pan, s.dist);
+        scene.remove(m.group);
+        m.group.children[1].material.dispose();
+        missiles.splice(i, 1);
+      }
+    }
+  }
+
+  // ======================================================================
+  // Targets shared by aim assist, wingmen and missiles
+  // ======================================================================
+  var targetList = [];
+  function gatherTargets() {
+    targetList.length = 0;
+    for (var i = 0; i < enemies.length; i++) if (!enemies[i].dead) targetList.push(enemies[i]);
+    if (boss && boss.dying <= 0) {
+      for (var t = 0; t < boss.turrets.length; t++) if (!boss.turrets[t].dead) targetList.push(boss.turrets[t]);
+      targetList.push(boss.core);
+    }
+    return targetList;
+  }
+  function nearestTarget(from, range) {
+    var best = null, bd = range * range;
+    for (var i = 0; i < targetList.length; i++) {
+      var d = targetList[i].pos.distanceToSquared(from);
+      if (d < bd) { bd = d; best = targetList[i]; }
+    }
+    return best;
+  }
+  function damageTarget(t, dmg, p) {
+    if (t.kind === "enemy") hitEnemy(t, dmg, p);
+    else if (t.kind === "turret") hitTurret(t, dmg, p);
+    else if (t.kind === "core") hitCore(dmg, p);
+  }
+
+  // ======================================================================
+  // Enemy fighters
+  // ======================================================================
+  var enemies = [];
+  function spawnEnemy(pos, ace) {
+    var jet = buildJet(ace ? "ace" : "enemy", true);
+    jet.group.scale.setScalar(0.92);
+    scene.add(jet.group);
+    var hp = (ace ? 70 : 30) + wave * 4;
+    var e = {
+      kind: "enemy", jet: jet, pos: pos.clone(), dir: new V3().subVectors(player.pos, pos).normalize(),
+      vel: new V3(), speed: rand(64, 76) * (ace ? 1.15 : 1), hp: hp, maxHp: hp, fireCd: rand(1.2, 2.6),
+      mode: "attack", modeT: 0, evade: new V3(), bank: 0, ace: ace, dead: false, hitR: 3.5
+    };
+    orientJet(jet.group, e.pos, e.dir, 0);
+    enemies.push(e);
+    return e;
+  }
+  function hitEnemy(e, dmg, p) {
+    if (e.dead) return;
+    e.hp -= dmg;
+    for (var i = 0; i < 6; i++) {
+      tmpV.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize();
+      var v = rand(10, 30);
+      fx.sparks.spawn(p.x, p.y, p.z, tmpV.x * v, tmpV.y * v, tmpV.z * v, rand(0.2, 0.4), 6, 4, 2);
+    }
+    fx.glow.spawn({ x: p.x, y: p.y, z: p.z, s0: 2.6, s1: 1, life: 0.1, kind: "tint", color: WHITE_HOT });
+    if (e.hp <= 0) killEnemy(e);
+    else { var s = soundPos(p); sfxMetalHit(s.pan, s.dist); }
+  }
+  function killEnemy(e) {
+    if (e.dead) return;
+    e.dead = true;
+    explosion(e.pos, 2.4, mats.dark);
+    var s = soundPos(e.pos);
+    sfxExplosion(1.6, s.pan, s.dist);
+    if (state === "playing") {
+      registerKill(e.ace ? 400 : 150, true);
+      if (Math.random() < (e.ace ? 0.85 : 0.3)) spawnPowerup(randomPowerType(), e.pos);
+    }
+    shake = Math.max(shake, clamp(0.6 - s.dist / 300, 0, 0.6));
+  }
+  var enemyRight = new V3(), prevDir = new V3();
+  function updateEnemies(dt) {
+    var fireScale = Math.max(0.45, 1 - wave * 0.05);
+    for (var i = enemies.length - 1; i >= 0; i--) {
+      var e = enemies[i];
+      if (e.dead) { scene.remove(e.jet.group); enemies.splice(i, 1); continue; }
+      e.modeT -= dt;
+      e.fireCd -= dt;
+      tmpA.subVectors(player.pos, e.pos);
+      var dist = tmpA.length();
+      tmpA.divideScalar(dist || 1);
+      var desired = tmpB;
+      if (state !== "playing") {
+        desired.copy(e.dir);
+      } else if (e.mode === "attack") {
+        tmpC.copy(player.pos).addScaledVector(player.vel, dist / 300);
+        desired.subVectors(tmpC, e.pos).normalize();
+        if (dist < 55) {
+          e.mode = "evade";
+          e.modeT = rand(1.3, 2.4);
+          e.evade.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize().multiplyScalar(1.3).sub(tmpA).normalize();
+        }
+      } else {
+        desired.copy(e.evade);
+        if (e.modeT <= 0) e.mode = "attack";
+      }
+      // Steer around nearby asteroids
+      for (var r = 0; r < rocks.length; r++) {
+        var rk = rocks[r];
+        tmpC.subVectors(rk.pos, e.pos);
+        var along = tmpC.dot(e.dir);
+        if (along < 0 || along > 90) continue;
+        var clear = rk.radius + 10;
+        tmpC.addScaledVector(e.dir, -along);
+        var perp = tmpC.length();
+        if (perp < clear) {
+          desired.addScaledVector(tmpC, -1.8 / (perp || 1));
+        }
+      }
+      desired.normalize();
+      prevDir.copy(e.dir);
+      var turn = e.mode === "evade" ? 2.4 : (e.ace ? 2.0 : 1.6);
+      e.dir.lerp(desired, Math.min(1, turn * dt)).normalize();
+      var spd = e.mode === "evade" ? e.speed * 1.3 : e.speed + (dist > 300 ? 30 : 0);
+      e.vel.copy(e.dir).multiplyScalar(spd);
+      e.pos.addScaledVector(e.vel, dt);
+      var yawRate = (prevDir.x * e.dir.z - prevDir.z * e.dir.x) / Math.max(dt, 1e-3);
+      e.bank += (clamp(-yawRate * 0.9, -1.1, 1.1) - e.bank) * Math.min(1, dt * 4);
+      orientJet(e.jet.group, e.pos, e.dir, e.bank);
+      enemyRight.crossVectors(e.dir, UP).normalize();
+      engineTrail(e.pos, e.dir, enemyRight, 0.92, e.ace ? 4 : 5, e.ace ? 2.6 : 1.2, e.ace ? 0.5 : 0.4, 1);
+
+      if (state !== "playing") continue;
+      if (e.mode === "attack" && dist < 460 && e.fireCd <= 0 && tmpA.dot(e.dir) > 0.975) {
+        var t = dist / 230;
+        tmpC.copy(player.pos).addScaledVector(player.vel, t);
+        tmpC.sub(e.pos).normalize();
+        tmpC.x += rand(-0.03, 0.03); tmpC.y += rand(-0.03, 0.03); tmpC.z += rand(-0.03, 0.03);
+        tmpC.normalize();
+        for (var side = -1; side <= 1; side += 2) {
+          tmpV.copy(e.pos).addScaledVector(enemyRight, side * 1.8).addScaledVector(e.dir, 2);
+          spawnBolt(tmpV, tmpC, 230, "enemy", e.ace ? 9 : 7, false);
+          fx.glow.spawn({ x: tmpV.x, y: tmpV.y, z: tmpV.z, s0: 1.8, s1: 0.5, life: 0.08, kind: "tint", color: ENEMY_MUZZLE });
+        }
+        var s = soundPos(e.pos);
+        sfxEnemyLaser(s.pan, s.dist);
+        e.fireCd = rand(0.9, 1.5) * fireScale;
+      }
+      if (dist < 4.5) {
+        killEnemy(e);
+        if (clockTime >= boostUntil) damagePlayer(28, e.pos);
+        continue;
+      }
+      for (var k = 0; k < rocks.length; k++) {
+        var rr = rocks[k].radius * 0.85 + 2.5;
+        if (e.pos.distanceToSquared(rocks[k].pos) < rr * rr) { killEnemy(e); break; }
+      }
+    }
+  }
+  var ENEMY_MUZZLE = new THREE.Color(9, 2, 1);
+
+  // ======================================================================
+  // Squadron wingmen
+  // ======================================================================
+  var wingmen = [];
+  var WING_SLOTS = [new V3(-8, 1.5, 7), new V3(8, 1.5, 7), new V3(0, 4, 14)];
+  var WING_FLASH = new THREE.Color(1, 7, 5);
+  function slotWorld(slot, out) {
+    return out.copy(player.pos).addScaledVector(player.right, slot.x).addScaledVector(player.up, slot.y)
+      .addScaledVector(player.fwd, -slot.z);
+  }
+  function spawnWingmen() {
+    for (var i = 0; i < WING_SLOTS.length; i++) {
+      var jet = buildJet("wing", true);
+      jet.group.scale.setScalar(0.55);
+      scene.add(jet.group);
+      var pos = slotWorld(WING_SLOTS[i], new V3()).addScaledVector(player.fwd, -25);
+      var w = { jet: jet, pos: pos, dir: player.fwd.clone(), slot: WING_SLOTS[i], cd: rand(0, 0.3), bank: 0 };
+      orientJet(jet.group, pos, w.dir, 0);
+      wingmen.push(w);
+      fx.glow.spawn({ x: pos.x, y: pos.y, z: pos.z, s0: 8, s1: 2, life: 0.35, kind: "tint", color: WING_FLASH });
+      shockwave(pos, 6, 0.4, 0.4, 3, 2);
+    }
+    sfxWarpIn();
+  }
+  function removeWingmen(withFlash) {
+    for (var i = 0; i < wingmen.length; i++) {
+      var p = wingmen[i].pos;
+      if (withFlash) fx.glow.spawn({ x: p.x, y: p.y, z: p.z, s0: 6, s1: 1, life: 0.3, kind: "tint", color: WING_FLASH });
+      scene.remove(wingmen[i].jet.group);
+    }
+    wingmen.length = 0;
+  }
+  function updateWingmen(dt) {
+    for (var i = 0; i < wingmen.length; i++) {
+      var w = wingmen[i];
+      w.cd -= dt;
+      var sw = slotWorld(w.slot, tmpC);
+      var target = null;
+      if (w.pos.distanceToSquared(player.pos) < 320 * 320) target = nearestTarget(w.pos, 450);
+      var speed;
+      prevDir.copy(w.dir);
+      if (target) {
+        var td = target.pos.distanceTo(w.pos);
+        tmpA.copy(target.pos);
+        if (target.vel) tmpA.addScaledVector(target.vel, td / 330);
+        tmpB.subVectors(tmpA, w.pos).normalize();
+        speed = Math.max(player.speed, 95);
+      } else {
+        tmpB.subVectors(sw, w.pos);
+        var d = tmpB.length();
+        if (d < 4) tmpB.copy(player.fwd); else tmpB.divideScalar(d);
+        speed = player.speed + clamp(d * 2.5, -20, 140);
+      }
+      w.dir.lerp(tmpB, Math.min(1, dt * 4)).normalize();
+      w.pos.addScaledVector(w.dir, speed * dt);
+      if (!target) w.pos.lerp(sw, Math.min(1, dt * 1.5));
+      var yawRate = (prevDir.x * w.dir.z - prevDir.z * w.dir.x) / Math.max(dt, 1e-3);
+      w.bank += (clamp(-yawRate * 0.9, -1.1, 1.1) - w.bank) * Math.min(1, dt * 4);
+      orientJet(w.jet.group, w.pos, w.dir, w.bank);
+      enemyRight.crossVectors(w.dir, UP).normalize();
+      engineTrail(w.pos, w.dir, enemyRight, 0.55, 0.6, 4, 3, 1);
+      if (target && w.cd <= 0) {
+        tmpA.subVectors(target.pos, w.pos);
+        var tdist = tmpA.length();
+        tmpA.divideScalar(tdist);
+        if (tdist < 430 && tmpA.dot(w.dir) > 0.95) {
+          tmpV.copy(w.pos).addScaledVector(w.dir, 1.5);
+          spawnBolt(tmpV, tmpA, 330, "wing", 6, false);
+          var s = soundPos(w.pos);
+          sfxLaser(s.pan, 0.45);
+          w.cd = 0.26;
+        }
+      }
+    }
+  }
+
+  // ======================================================================
+  // Power-ups
+  // ======================================================================
+  var POWER = {
+    triple: { name: "TRIPLE SHOT", c: [1.0, 0.62, 0.2], css: "#ffb347", glyph: "3x", dur: 12, weight: 3 },
+    rapid: { name: "RAPID FIRE", c: [1.0, 0.9, 0.25], css: "#ffe14d", glyph: "R", dur: 12, weight: 3 },
+    missile: { name: "HOMING MISSILES", c: [1.0, 0.3, 0.45], css: "#ff5c7a", glyph: "M", dur: 12, weight: 2.5 },
+    wing: { name: "SQUADRON", c: [0.2, 1.0, 0.8], css: "#3dffd0", glyph: "W", dur: 25, weight: 2 },
+    shield: { name: "SHIELD + REPAIR", c: [0.4, 0.75, 1.0], css: "#7fc8ff", glyph: "+", dur: 0, weight: 2.5 }
+  };
+  var POWER_KEYS = ["triple", "rapid", "missile", "wing", "shield"];
+  var powerState = { triple: 0, rapid: 0, missile: 0, wing: 0 };
+  var powerups = [];
+  var powerAssets = null;
+  function randomPowerType() {
+    var total = 0, k;
+    for (k = 0; k < POWER_KEYS.length; k++) total += POWER[POWER_KEYS[k]].weight;
+    var r = Math.random() * total;
+    for (k = 0; k < POWER_KEYS.length; k++) { r -= POWER[POWER_KEYS[k]].weight; if (r <= 0) return POWER_KEYS[k]; }
+    return "triple";
+  }
+  function buildPowerAssets() {
+    powerAssets = {
+      core: new THREE.IcosahedronGeometry(1.1, 0),
+      ring: new THREE.TorusGeometry(1.9, 0.12, 8, 48)
+    };
+    POWER_KEYS.forEach(function (k) {
+      var P = POWER[k];
+      var cv = document.createElement("canvas");
+      cv.width = cv.height = 128;
+      var g = cv.getContext("2d");
+      g.strokeStyle = P.css;
+      g.lineWidth = 7;
+      g.beginPath(); g.arc(64, 64, 52, 0, Math.PI * 2); g.stroke();
+      g.fillStyle = "rgba(4,5,12,0.55)";
+      g.beginPath(); g.arc(64, 64, 48, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#ffffff";
+      g.font = "bold 54px sans-serif";
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillText(P.glyph, 64, 68);
+      var t = new THREE.CanvasTexture(cv);
+      t.colorSpace = THREE.SRGBColorSpace;
+      P.icon = t;
+      P.coreMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(P.c[0], P.c[1], P.c[2]),
+        emissive: new THREE.Color(P.c[0] * 2.2, P.c[1] * 2.2, P.c[2] * 2.2), metalness: 0.3, roughness: 0.15, flatShading: true });
+      P.ringMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(P.c[0] * 3, P.c[1] * 3, P.c[2] * 3) });
+      P.glowColor = new THREE.Color(P.c[0] * 3, P.c[1] * 3, P.c[2] * 3);
+    });
+  }
+  function spawnPowerup(type, pos) {
+    var P = POWER[type];
+    var g = new THREE.Group();
+    var core = new THREE.Mesh(powerAssets.core, P.coreMat);
+    g.add(core);
+    var ring = new THREE.Mesh(powerAssets.ring, P.ringMat);
+    g.add(ring);
+    var halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.glow, transparent: true, depthWrite: false,
+      blending: THREE.AdditiveBlending, opacity: 0.7 }));
+    halo.material.color.setRGB(P.c[0] * 1.5, P.c[1] * 1.5, P.c[2] * 1.5);
+    halo.scale.set(8, 8, 1);
+    g.add(halo);
+    var icon = new THREE.Sprite(new THREE.SpriteMaterial({ map: P.icon, transparent: true, depthWrite: false }));
+    icon.position.y = 3.4;
+    icon.scale.set(2.8, 2.8, 1);
+    g.add(icon);
+    g.position.copy(pos);
+    scene.add(g);
+    powerups.push({ group: g, core: core, ring: ring, type: type, t: Math.random() * 6, life: 35, pos: g.position });
+  }
+  function removePowerupAt(i) {
+    var p = powerups[i];
+    scene.remove(p.group);
+    p.group.children[2].material.dispose();
+    p.group.children[3].material.dispose();
+    powerups.splice(i, 1);
+  }
+  function applyPower(type) {
+    var P = POWER[type];
+    if (type === "shield") {
+      player.shield = MAX_SHIELD;
+      player.hull = Math.min(MAX_HULL, player.hull + 35);
+    } else if (type === "wing") {
+      if (!wingmen.length) spawnWingmen();
+      powerState.wing = P.dur;
+    } else {
+      powerState[type] = P.dur;
+    }
+    sfxPowerup();
+    showBanner(P.name, "Power-up", P.css, 1.4);
+    for (var e = 0; e < 40; e++) {
+      tmpV.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize();
+      var ev = rand(6, 16);
+      fx.embers.spawn(player.pos.x, player.pos.y, player.pos.z, tmpV.x * ev, tmpV.y * ev, tmpV.z * ev, rand(0.4, 0.8),
+        P.c[0] * 3, P.c[1] * 3, P.c[2] * 3);
+    }
+    shockwave(player.pos, 7, 0.4, P.c[0] * 2, P.c[1] * 2, P.c[2] * 2);
+    flashLight(player.pos, 300, 0.3, new THREE.Color(P.c[0], P.c[1], P.c[2]).getHex());
+  }
+  function updatePowerups(dt) {
+    for (var i = powerups.length - 1; i >= 0; i--) {
+      var p = powerups[i];
+      p.t += dt;
+      p.life -= dt;
+      p.core.rotation.y += dt * 1.8;
+      p.core.rotation.x += dt * 0.9;
+      p.ring.rotation.x = Math.sin(p.t * 1.3) * 0.8;
+      p.ring.rotation.y += dt * 2.2;
+      p.group.visible = p.life > 5 || Math.floor(p.t * 8) % 2 === 0;
+      if (p.life <= 0 || p.pos.distanceToSquared(player.pos) > 1400 * 1400) { removePowerupAt(i); continue; }
+      if (state !== "playing") continue;
+      tmpA.subVectors(player.pos, p.pos);
+      var d = tmpA.length();
+      if (d < 45) p.pos.addScaledVector(tmpA, Math.min(1, dt * (3 + (45 - d) * 0.12)));
+      if (d < 5.5) {
+        applyPower(p.type);
+        removePowerupAt(i);
+      }
+    }
+  }
+
+  // ======================================================================
+  // Boss: Dreadnought with destructible turrets
+  // ======================================================================
+  var boss = null;
+  var CORE_LOCAL = [new V3(0, 0, -44), new V3(0, 2, -20), new V3(0, 4, 4), new V3(0, 4, 26)];
+  function scaleUV(geo, s) {
+    var uv = geo.attributes.uv;
+    for (var i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * s, uv.getY(i) * s);
+    return geo;
+  }
+  function buildBossModel() {
+    var g = new THREE.Group();
+    var hm = new THREE.MeshStandardMaterial({ map: tex.hull, roughnessMap: tex.hullRough, roughness: 1, metalness: 0.7,
+      color: 0x9aa0ab, envMapIntensity: 1.3 });
+    var pm = paint(0x4a0c12);
+    var red = new THREE.MeshBasicMaterial({ color: new THREE.Color(7, 0.9, 0.4) });
+    var eng = new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 2.6, 1.0) });
+    var win = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.5, 4, 6) });
+    function add(geo, mat, x, y, z, parent) {
+      var m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z);
+      (parent || g).add(m);
+      return m;
+    }
+    add(scaleUV(new THREE.BoxGeometry(18, 8, 70), 4), hm, 0, 0, 0);
+    var noseGeo = new THREE.ConeGeometry(12.73, 28, 4);
+    noseGeo.rotateY(Math.PI / 4);
+    noseGeo.rotateX(-Math.PI / 2);
+    scaleUV(noseGeo, 3);
+    add(noseGeo, hm, 0, 0, -49).scale.y = 0.44;
+    add(new THREE.BoxGeometry(12, 5, 44), pm, 0, 6.5, 6);
+    add(scaleUV(new THREE.BoxGeometry(7, 9, 9), 2), hm, 0, 13, 24);
+    add(new THREE.BoxGeometry(7.2, 0.7, 0.3), win, 0, 15, 19.4);
+    add(new THREE.CylinderGeometry(0.25, 0.25, 14, 6), mats.dark, 2, 22, 25);
+    [-1, 1].forEach(function (s) {
+      add(new THREE.BoxGeometry(0.4, 0.8, 52), red, s * 9.25, 0, -2);
+      var pod = add(new THREE.CylinderGeometry(4.2, 4.8, 34, 20), mats.dark, s * 13, -1, 16);
+      pod.rotation.x = Math.PI / 2;
+      add(new THREE.TorusGeometry(4.3, 0.35, 8, 28), eng, s * 13, -1, 33.2);
+      add(new THREE.CircleGeometry(3.9, 24), eng, s * 13, -1, 33.3);
+      var plume = add(mats.geo.plume, mats.styles.ace.plume, s * 13, -1, 33.3 + 6.4);
+      plume.rotation.x = Math.PI / 2;
+      plume.scale.set(13, 4, 13);
+      add(new THREE.SphereGeometry(0.5, 8, 6), red, s * 8.8, 3.8, -34);
+    });
+    add(new THREE.BoxGeometry(12, 5, 0.3), eng, 0, 0, 35.2);
+    var turrets = [];
+    [[-5, -12], [5, -12], [-5, 8], [5, 8]].forEach(function (tp) {
+      add(new THREE.CylinderGeometry(2.6, 3, 1.4, 16), mats.dark, tp[0], 9.6, tp[1]);
+      var head = new THREE.Group();
+      head.position.set(tp[0], 11, tp[1]);
+      g.add(head);
+      add(new THREE.SphereGeometry(2.2, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), hm, 0, 0, 0, head);
+      var b1 = add(new THREE.BoxGeometry(0.35, 0.35, 5.5), mats.dark, -0.6, 0.6, 2.6, head);
+      var b2 = add(new THREE.BoxGeometry(0.35, 0.35, 5.5), mats.dark, 0.6, 0.6, 2.6, head);
+      b1.userData.barrel = b2.userData.barrel = true;
+      add(new THREE.SphereGeometry(0.75, 12, 8), red, 0, 0.9, 1.3, head);
+      turrets.push(head);
+    });
+    return { group: g, turrets: turrets };
+  }
+  function spawnBoss() {
+    var model = buildBossModel();
+    var pos = new V3().copy(player.pos).addScaledVector(player.fwd, 560).addScaledVector(player.up, 50);
+    model.group.position.copy(pos);
+    scene.add(model.group);
+    var coreHp = 1000 + wave * 70;
+    boss = {
+      group: model.group, pos: model.group.position, dir: new V3().subVectors(player.pos, pos).normalize(),
+      vel: new V3(), coreHp: coreHp, coreMax: coreHp, dying: 0, boomT: 0, t: 0,
+      barrageCd: 7, launchCd: 11, smokeT: 0,
+      coreWorld: CORE_LOCAL.map(function () { return new V3(); })
+    };
+    boss.core = { kind: "core", pos: boss.pos, vel: boss.vel, dead: false, hitR: 14 };
+    boss.turrets = model.turrets.map(function (head) {
+      return { kind: "turret", obj: head, pos: new V3(), vel: boss.vel, hp: 130, maxHp: 130, dead: false, cd: rand(1, 3), hitR: 4.5 };
+    });
+    boss.maxTotal = coreHp + boss.turrets.length * 130;
+    document.getElementById("bossBar").hidden = false;
+    boss.group.lookAt(tmpA.copy(boss.pos).sub(boss.dir));
+    boss.group.updateMatrixWorld(true);
+  }
+  function bossTotalHp() {
+    var s = Math.max(0, boss.coreHp);
+    for (var i = 0; i < boss.turrets.length; i++) s += Math.max(0, boss.turrets[i].hp);
+    return s;
+  }
+  function hitTurret(t, dmg, p) {
+    if (t.dead) return;
+    t.hp -= dmg;
+    for (var i = 0; i < 6; i++) {
+      tmpV.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize();
+      fx.sparks.spawn(p.x, p.y, p.z, tmpV.x * 25, tmpV.y * 25, tmpV.z * 25, 0.35, 6, 4, 1.5);
+    }
+    if (t.hp <= 0) {
+      t.dead = true;
+      t.obj.visible = false;
+      explosion(t.pos, 3.2, mats.dark);
+      var s = soundPos(t.pos);
+      sfxExplosion(2, s.pan, s.dist);
+      shake = Math.max(shake, 0.6);
+      if (state === "playing") registerKill(500, false);
+    } else {
+      var s2 = soundPos(p);
+      sfxMetalHit(s2.pan, s2.dist);
+    }
+  }
+  function turretsAlive() {
+    for (var i = 0; i < boss.turrets.length; i++) if (!boss.turrets[i].dead) return true;
+    return false;
+  }
+  function hitCore(dmg, p) {
+    if (!boss || boss.dying > 0) return;
+    var shielded = turretsAlive();
+    boss.coreHp -= dmg * (shielded ? 0.3 : 1);
+    for (var i = 0; i < (shielded ? 3 : 6); i++) {
+      tmpV.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize();
+      fx.sparks.spawn(p.x, p.y, p.z, tmpV.x * 20, tmpV.y * 20, tmpV.z * 20, 0.3, shielded ? 2 : 6, shielded ? 4 : 3, shielded ? 8 : 1);
+    }
+    if (boss.coreHp <= 0) {
+      boss.dying = 2.8;
+      boss.boomT = 0;
+      boss.core.dead = true;
+      for (var t = 0; t < boss.turrets.length; t++) boss.turrets[t].dead = true;
+      showBanner("DREADNOUGHT DOWN", "+5,000", "#ffb347", 3);
+    }
+  }
+  var BOSS_MUZZLE = new THREE.Color(9, 4, 1);
+  function updateBoss(dt) {
+    if (!boss) return;
+    boss.t += dt;
+    for (var c = 0; c < CORE_LOCAL.length; c++) boss.coreWorld[c].copy(CORE_LOCAL[c]).applyMatrix4(boss.group.matrixWorld);
+    for (var tt = 0; tt < boss.turrets.length; tt++) boss.turrets[tt].obj.getWorldPosition(boss.turrets[tt].pos);
+
+    if (boss.dying > 0) {
+      boss.dying -= dt;
+      boss.boomT -= dt;
+      boss.group.rotation.z += dt * 0.15;
+      if (boss.boomT <= 0) {
+        var k = Math.floor(Math.random() * CORE_LOCAL.length);
+        tmpA.copy(boss.coreWorld[k]).add(tmpV.set(rand(-9, 9), rand(-6, 6), rand(-12, 12)));
+        explosion(tmpA, rand(2.5, 4.5), mats.dark);
+        var s = soundPos(tmpA);
+        sfxExplosion(2, s.pan, s.dist);
+        shake = Math.max(shake, 0.5);
+        boss.boomT = 0.16;
+      }
+      if (boss.dying <= 0) {
+        explosion(boss.pos, 9, mats.dark);
+        explosion(boss.coreWorld[0], 6, mats.dark);
+        explosion(boss.coreWorld[3], 6, mats.dark);
+        shockwave(boss.pos, 140, 1.4, 3, 2, 1.2);
+        flashLight(boss.pos, 60000, 1.2, 0xffa050);
+        var s2 = soundPos(boss.pos);
+        sfxExplosion(3, s2.pan, Math.min(s2.dist, 120));
+        shake = 1.6;
+        if (state === "playing") {
+          registerKill(5000, false);
+          for (var d = 0; d < 3; d++) {
+            tmpA.copy(boss.pos).add(tmpV.set(rand(-15, 15), rand(-10, 10), rand(-15, 15)));
+            spawnPowerup(d === 0 ? "shield" : randomPowerType(), tmpA);
+          }
+        }
+        scene.remove(boss.group);
+        boss = null;
+        document.getElementById("bossBar").hidden = true;
+      }
+      return;
+    }
+
+    tmpA.subVectors(player.pos, boss.pos);
+    var dist = tmpA.length();
+    tmpA.divideScalar(dist || 1);
+    boss.dir.lerp(tmpA, Math.min(1, dt * 0.35)).normalize();
+    var move = dist > 330 ? 34 : dist < 210 ? -24 : 0;
+    tmpB.crossVectors(tmpA, UP).normalize();
+    boss.vel.copy(tmpA).multiplyScalar(move).addScaledVector(tmpB, Math.sin(boss.t * 0.4) * 14);
+    boss.pos.addScaledVector(boss.vel, dt);
+    boss.group.up.copy(UP);
+    boss.group.lookAt(tmpC.copy(boss.pos).sub(boss.dir));
+    boss.group.updateMatrixWorld(true);
+
+    if (state !== "playing") return;
+    for (var i = 0; i < boss.turrets.length; i++) {
+      var t = boss.turrets[i];
+      if (t.dead) {
+        boss.smokeT -= dt;
+        if (Math.random() < dt * 12) {
+          fx.smoke.spawn({ x: t.pos.x, y: t.pos.y + 1, z: t.pos.z, vx: rand(-2, 2), vy: rand(3, 6), vz: rand(-2, 2),
+            s0: 2, s1: 7, life: 2, kind: "smoke", opacity: 0.6 });
+          fx.fire.spawn({ x: t.pos.x, y: t.pos.y + 0.5, z: t.pos.z, vy: 3, s0: 1.2, s1: 2.5, life: 0.4, kind: "fire" });
+        }
+        continue;
+      }
+      t.obj.lookAt(player.pos);
+      t.cd -= dt;
+      if (t.cd <= 0 && dist < 800) {
+        tmpB.copy(player.pos).addScaledVector(player.vel, t.pos.distanceTo(player.pos) / 200).sub(t.pos).normalize();
+        tmpC.copy(t.pos).addScaledVector(tmpB, 4);
+        spawnBolt(tmpC, tmpB, 200, "boss", 9, true);
+        fx.glow.spawn({ x: tmpC.x, y: tmpC.y, z: tmpC.z, s0: 4, s1: 1, life: 0.12, kind: "tint", color: BOSS_MUZZLE });
+        var s3 = soundPos(t.pos);
+        sfxBossCannon(s3.pan, s3.dist);
+        t.cd = rand(1.3, 2.0);
+      }
+    }
+    boss.barrageCd -= dt;
+    if (boss.barrageCd <= 0 && dist < 700) {
+      var nose = tmpC.set(0, 0, -60).applyMatrix4(boss.group.matrixWorld);
+      for (var b = 0; b < 18; b++) {
+        tmpB.copy(tmpA).add(tmpV.set(rand(-0.3, 0.3), rand(-0.3, 0.3), rand(-0.3, 0.3))).normalize();
+        spawnBolt(nose, tmpB, 150, "boss", 6, true);
+      }
+      fx.glow.spawn({ x: nose.x, y: nose.y, z: nose.z, s0: 14, s1: 3, life: 0.25, kind: "tint", color: BOSS_MUZZLE });
+      var s4 = soundPos(nose);
+      sfxBossCannon(s4.pan, s4.dist * 0.5);
+      boss.barrageCd = 7.5;
+    }
+    boss.launchCd -= dt;
+    if (boss.launchCd <= 0) {
+      if (enemies.length < 5) {
+        for (var l = -1; l <= 1; l += 2) {
+          tmpC.set(l * 13, -8, 20).applyMatrix4(boss.group.matrixWorld);
+          spawnEnemy(tmpC, false);
+        }
+      }
+      boss.launchCd = 13;
+    }
+    for (var cw = 0; cw < boss.coreWorld.length; cw++) {
+      if (boss.coreWorld[cw].distanceToSquared(player.pos) < 13 * 13) {
+        tmpB.subVectors(player.pos, boss.coreWorld[cw]).normalize();
+        player.pos.addScaledVector(tmpB, 3);
+        if (clockTime > player.invuln) {
+          damagePlayer(30, boss.coreWorld[cw]);
+          player.invuln = clockTime + 0.8;
+          player.speed *= 0.4;
+        }
+      }
+    }
   }
 
   // ======================================================================
@@ -2043,7 +3025,9 @@
   // ======================================================================
   var scoreEl = document.getElementById("scoreLine");
   var bestEl = document.getElementById("bestLine");
-  var hullBar = document.getElementById("hullBar");
+  var waveEl = document.getElementById("waveLine");
+  var hullFill = document.getElementById("hullFill");
+  var shieldFill = document.getElementById("shieldFill");
   var hintEl = document.getElementById("hint");
   var boostBtn = document.getElementById("boostBtn");
   var comboEl = document.getElementById("comboChip");
@@ -2051,13 +3035,34 @@
   var reticle = document.getElementById("reticle");
   var hudEl = document.getElementById("hud");
   var overlay = document.getElementById("overlay");
+  var bossFill = document.getElementById("bossFill");
+  var bannerEl = document.getElementById("banner");
+  var bannerTitle = document.getElementById("bannerTitle");
+  var bannerSub = document.getElementById("bannerSub");
+  var markersEl = document.getElementById("markers");
+  var radarCv = document.getElementById("radar");
+  var radar = radarCv.getContext("2d");
+  var chipsEl = document.getElementById("powerChips");
 
-  var hullSegs = [];
-  for (var hs = 0; hs < MAX_HULL; hs++) {
-    var seg = document.createElement("div");
-    seg.className = "hullSeg";
-    hullBar.appendChild(seg);
-    hullSegs.push(seg);
+  var chips = {};
+  ["triple", "rapid", "missile", "wing"].forEach(function (k) {
+    var el = document.createElement("div");
+    el.className = "chip";
+    el.style.color = POWER[k].css;
+    el.innerHTML = "<span>" + POWER[k].name + "</span><div class=\"t\"></div>";
+    el.hidden = true;
+    chipsEl.appendChild(el);
+    chips[k] = { el: el, bar: el.querySelector(".t") };
+  });
+
+  var MARKERS = 24;
+  var markerEls = [];
+  for (var mi = 0; mi < MARKERS; mi++) {
+    var mk = document.createElement("div");
+    mk.className = "marker";
+    mk.hidden = true;
+    markersEl.appendChild(mk);
+    markerEls.push(mk);
   }
 
   var bestScore = 0;
@@ -2065,47 +3070,157 @@
   function fmt(n) { return Math.floor(n).toLocaleString("en-US"); }
   bestEl.textContent = "BEST " + fmt(bestScore);
 
+  var bannerTimer = 0;
+  function showBanner(title, sub, color, dur) {
+    bannerTitle.textContent = title;
+    bannerTitle.style.color = color || "";
+    bannerSub.textContent = sub || "";
+    bannerEl.classList.add("show");
+    bannerTimer = dur || 2.5;
+  }
+
+  var projV = new V3();
+  function placeMarker(el, p, cls, color) {
+    projV.copy(p).project(camera);
+    var w = window.innerWidth, h = window.innerHeight;
+    var behind = projV.z > 1;
+    var onScreen = !behind && Math.abs(projV.x) < 0.94 && Math.abs(projV.y) < 0.9;
+    el.hidden = false;
+    if (onScreen) {
+      el.className = "marker box " + cls;
+      el.style.borderColor = color || "";
+      el.style.borderBottomColor = "";
+      el.style.transform = "translate(" + ((projV.x * 0.5 + 0.5) * w).toFixed(1) + "px," +
+        ((-projV.y * 0.5 + 0.5) * h).toFixed(1) + "px) rotate(45deg)";
+    } else {
+      var x = projV.x, y = projV.y;
+      if (behind) { x = -x; y = -y; }
+      var len = Math.sqrt(x * x + y * y) || 1;
+      x /= len; y /= len;
+      var sx = w * 0.5 + x * w * 0.44, sy = h * 0.5 - y * h * 0.4;
+      el.className = "marker arrow " + cls;
+      el.style.borderColor = "";
+      el.style.borderBottomColor = color || "";
+      el.style.transform = "translate(" + sx.toFixed(1) + "px," + sy.toFixed(1) + "px) rotate(" +
+        (Math.atan2(x, y) * 180 / Math.PI).toFixed(1) + "deg)";
+    }
+  }
+  function updateMarkers() {
+    var used = 0;
+    if (state === "playing") {
+      for (var i = 0; i < enemies.length && used < MARKERS; i++) {
+        if (enemies[i].dead) continue;
+        placeMarker(markerEls[used++], enemies[i].pos, enemies[i].ace ? "ace" : "", "");
+      }
+      if (boss && used < MARKERS) placeMarker(markerEls[used++], boss.pos, "boss", "");
+      for (var p = 0; p < powerups.length && used < MARKERS; p++) {
+        if (powerups[p].pos.distanceToSquared(player.pos) > 500 * 500) continue;
+        placeMarker(markerEls[used++], powerups[p].pos, "power", POWER[powerups[p].type].css);
+      }
+    }
+    for (var j = used; j < MARKERS; j++) markerEls[j].hidden = true;
+  }
+
+  var RADAR_RANGE = 800;
+  var flatF = new V3(), flatR = new V3();
+  function radarDot(p, color, size) {
+    tmpA.subVectors(p, player.pos);
+    var x = tmpA.dot(flatR), y = tmpA.dot(flatF);
+    var sc = 84 / RADAR_RANGE;
+    x *= sc; y *= sc;
+    var l = Math.sqrt(x * x + y * y);
+    if (l > 88) { x *= 88 / l; y *= 88 / l; }
+    radar.fillStyle = color;
+    radar.fillRect(96 + x - size / 2, 96 - y - size / 2, size, size);
+  }
+  function drawRadar() {
+    flatF.set(player.fwd.x, 0, player.fwd.z);
+    if (flatF.lengthSq() < 1e-4) flatF.set(0, 0, -1);
+    flatF.normalize();
+    flatR.set(-flatF.z, 0, flatF.x);
+    radar.clearRect(0, 0, 192, 192);
+    radar.fillStyle = "rgba(8,12,28,0.6)";
+    radar.beginPath(); radar.arc(96, 96, 92, 0, Math.PI * 2); radar.fill();
+    radar.strokeStyle = "rgba(127,227,255,0.35)";
+    radar.lineWidth = 2;
+    radar.beginPath(); radar.arc(96, 96, 92, 0, Math.PI * 2); radar.stroke();
+    radar.strokeStyle = "rgba(127,227,255,0.15)";
+    radar.beginPath(); radar.arc(96, 96, 46, 0, Math.PI * 2); radar.stroke();
+    radar.beginPath(); radar.moveTo(96, 8); radar.lineTo(96, 184); radar.moveTo(8, 96); radar.lineTo(184, 96); radar.stroke();
+    for (var r = 0; r < rocks.length; r++) if (rocks[r].radius > 18) radarDot(rocks[r].pos, "rgba(160,150,140,0.5)", 6);
+    for (var p = 0; p < powerups.length; p++) radarDot(powerups[p].pos, POWER[powerups[p].type].css, 6);
+    for (var w = 0; w < wingmen.length; w++) radarDot(wingmen[w].pos, "#3dffd0", 5);
+    for (var e = 0; e < enemies.length; e++) if (!enemies[e].dead) radarDot(enemies[e].pos, enemies[e].ace ? "#ffcf4d" : "#ff5a5a", 7);
+    if (boss) radarDot(boss.pos, "#ffb347", 14);
+    radar.fillStyle = "#e8ecf8";
+    radar.beginPath(); radar.moveTo(96, 88); radar.lineTo(90, 102); radar.lineTo(102, 102); radar.closePath(); radar.fill();
+  }
+
+  function updateHud(boosting) {
+    scoreEl.textContent = fmt(score);
+    waveEl.textContent = "WAVE " + Math.max(1, wave);
+    hullFill.style.width = (player.hull / MAX_HULL * 100).toFixed(1) + "%";
+    hullFill.classList.toggle("critical", player.hull < 30);
+    shieldFill.style.width = (player.shield / MAX_SHIELD * 100).toFixed(1) + "%";
+    velEl.textContent = (player.speed * 0.1).toFixed(1);
+    var charge = boosting ? 0 : clamp(1 - (boostReadyAt - clockTime) / BOOST_COOLDOWN, 0, 1);
+    boostBtn.style.setProperty("--p", charge.toFixed(3));
+    boostBtn.classList.toggle("onCooldown", charge < 1);
+    ["triple", "rapid", "missile", "wing"].forEach(function (k) {
+      var on = powerState[k] > 0;
+      chips[k].el.hidden = !on;
+      if (on) chips[k].bar.style.transform = "scaleX(" + (powerState[k] / POWER[k].dur).toFixed(3) + ")";
+    });
+    if (boss) bossFill.style.width = (bossTotalHp() / boss.maxTotal * 100).toFixed(1) + "%";
+    tmpA.copy(player.pos).addScaledVector(player.fwd, 120).project(camera);
+    reticle.style.transform = "translate(" + ((tmpA.x * 0.5 + 0.5) * window.innerWidth).toFixed(1) + "px," +
+      ((-tmpA.y * 0.5 + 0.5) * window.innerHeight).toFixed(1) + "px)";
+    reticle.classList.toggle("locked", !!aimTarget);
+  }
+
   // ======================================================================
   // Game state
   // ======================================================================
   var state = "loading";
-  var score = 0, distanceScore = 0, speed = BASE_SPEED, hull = MAX_HULL;
-  var invulnUntil = 0, boostUntil = 0, boostReadyAt = 0;
-  var fireCooldown = 0, spawnTimer = 0, pickupTimer = 0, elapsed = 0, clockTime = 0;
-  var shake = 0, deathTimer = 0, damagePulse = 0, alarmTimer = 0, smokeTimer = 0;
+  var score = 0, wave = 0, waveState = "intermission", waveTimer = 0;
+  var boostUntil = 0, boostReadyAt = 0, fireCooldown = 0, missileTimer = 0, fireSide = 1;
+  var clockTime = 0, shake = 0, deathTimer = 0, damagePulse = 0, shieldFlash = 0, alarmTimer = 0, smokeTimer = 0;
   var chainKills = 0, comboTimer = 0, multiplier = 1;
-  var stats = { rocks: 0, crystals: 0, time: 0 };
+  var stats = { kills: 0, time: 0 };
   var boostAmt = 0;
+  var aimTarget = null;
 
-  function renderHull() {
-    for (var i = 0; i < MAX_HULL; i++) hullSegs[i].classList.toggle("off", i >= hull);
-    hullBar.classList.toggle("critical", hull === 1);
+  function clearWorld() {
+    while (enemies.length) scene.remove(enemies.pop().jet.group);
+    removeWingmen(false);
+    while (bolts.length) scene.remove(bolts.pop().mesh);
+    while (missiles.length) scene.remove(missiles.pop().group);
+    while (powerups.length) removePowerupAt(powerups.length - 1);
+    if (boss) { scene.remove(boss.group); boss = null; }
+    document.getElementById("bossBar").hidden = true;
+    while (rocks.length) removeRockAt(rocks.length - 1);
   }
 
   function resetGame() {
-    while (rocks.length) removeRock(rocks.length - 1);
-    while (pickups.length) scene.remove(pickups.pop().group);
-    while (bolts.length) scene.remove(bolts.pop().mesh);
-    player.x = 0; player.y = 0; player.vx = 0; player.vy = 0;
-    score = 0; distanceScore = 0; speed = BASE_SPEED; hull = MAX_HULL;
-    invulnUntil = 0; boostUntil = 0; boostReadyAt = 0;
-    fireCooldown = 0; spawnTimer = 0; pickupTimer = 4; elapsed = 0; shake = 0;
+    clearWorld();
+    player.pos.set(0, 0, 0);
+    player.yaw = 0; player.pitch = 0; player.roll = 0; player.yawRate = 0; player.pitchRate = 0;
+    player.speed = CRUISE_SPEED;
+    player.hull = MAX_HULL; player.shield = MAX_SHIELD; player.lastHit = -99; player.invuln = 0;
+    updatePlayerFrame();
+    for (var i = 0; i < ROCK_COUNT; i++) spawnFieldRock(true);
+    score = 0; wave = 0; waveState = "intermission"; waveTimer = 2.5;
+    boostUntil = 0; boostReadyAt = 0; fireCooldown = 0; missileTimer = 0; shake = 0; damagePulse = 0;
     chainKills = 0; comboTimer = 0; multiplier = 1;
-    stats.rocks = 0; stats.crystals = 0; stats.time = 0;
+    powerState.triple = powerState.rapid = powerState.missile = powerState.wing = 0;
+    stats.kills = 0; stats.time = 0;
     comboEl.classList.remove("on");
     ship.visible = true;
-    renderHull();
     hintEl.style.opacity = 1;
-    for (var i = 0; i < 12; i++) {
-      spawnFieldRock();
-      var r = rocks[rocks.length - 1];
-      r.mesh.position.z = SPAWN_Z * (0.3 + i * 0.055);
-      r.grow = 1;
-      r.mesh.scale.setScalar(r.radius);
-    }
+    camera.position.copy(player.pos).addScaledVector(player.fwd, -15).addScaledVector(player.up, 4.5);
   }
 
-  function registerKill(points) {
+  function registerKill(points, isShip) {
     chainKills++;
     comboTimer = COMBO_WINDOW;
     var m = Math.min(5, 1 + Math.floor(chainKills / 3));
@@ -2118,26 +3233,35 @@
       comboEl.classList.add("pop");
     }
     score += points * multiplier;
-    stats.rocks++;
+    if (isShip) stats.kills++;
   }
 
-  function damageShip() {
-    if (clockTime < invulnUntil || clockTime < boostUntil) return;
-    hull--;
-    renderHull();
-    shake = Math.max(shake, 0.9);
-    damagePulse = 1;
-    for (var i = 0; i < 30; i++) {
-      tmpV.set(rand(-1, 1), rand(-1, 1), rand(-0.2, 1)).normalize();
-      var v = rand(15, 40);
-      fx.sparks.spawn(player.x, player.y, 0, tmpV.x * v, tmpV.y * v, tmpV.z * v, rand(0.3, 0.7), 6, 3, 1);
+  function damagePlayer(amount, from) {
+    if (state !== "playing") return;
+    if (clockTime < boostUntil) { shieldFlash = 0.6; return; }
+    player.lastHit = clockTime;
+    if (player.shield > 0) {
+      var absorb = Math.min(player.shield, amount);
+      player.shield -= absorb;
+      amount -= absorb;
+      shieldFlash = 1;
+      sfxShieldHit();
     }
-    flashLight(player.x, player.y + 1, 1, 400, 0.4, 0xff5030);
-    if (hull <= 0) {
-      endGame();
-    } else {
-      invulnUntil = clockTime + INVULN_TIME;
+    if (amount > 0) {
+      player.hull -= amount;
+      damagePulse = Math.min(1, 0.4 + amount / 30);
+      shake = Math.max(shake, 0.5 + amount / 40);
+      for (var i = 0; i < 20; i++) {
+        tmpV.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize();
+        var v = rand(15, 40);
+        fx.sparks.spawn(player.pos.x, player.pos.y, player.pos.z, tmpV.x * v, tmpV.y * v, tmpV.z * v, rand(0.3, 0.7), 6, 3, 1);
+      }
+      flashLight(player.pos, 400, 0.4, 0xff5030);
       sfxHullHit();
+    }
+    if (player.hull <= 0) {
+      player.hull = 0;
+      endGame();
     }
   }
 
@@ -2145,15 +3269,17 @@
     state = "dying";
     deathTimer = 2.2;
     ship.visible = false;
-    explosion(player.x, player.y, 0, 3.2, false);
-    explosion(player.x + 1.5, player.y + 0.5, -1, 1.8, false);
+    explosion(player.pos, 3.2, mats.dark);
+    tmpA.copy(player.pos).addScaledVector(player.right, 1.5);
+    explosion(tmpA, 1.8, null);
     for (var i = 0; i < 60; i++) {
       tmpV.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize();
       var v = rand(20, 60);
-      fx.sparks.spawn(player.x, player.y, 0, tmpV.x * v, tmpV.y * v, tmpV.z * v, rand(0.6, 1.4), 3, 5, 9);
+      fx.sparks.spawn(player.pos.x, player.pos.y, player.pos.z, tmpV.x * v, tmpV.y * v, tmpV.z * v, rand(0.6, 1.4), 3, 5, 9);
     }
-    shockwave(player.x, player.y, 0, 30, 1.0, 2, 3, 6);
+    shockwave(player.pos, 30, 1.0, 2, 3, 6);
     shake = 1.6;
+    removeWingmen(true);
     sfxExplosion(3, 0, 0);
     tone({ f0: 300, f1: 30, dur: 1.8, type: "sawtooth", vol: 0.12, filter: "lowpass", ff0: 1200, ff1: 80, verb: 0.5 });
     if (audio.ctx) audio.musicFilter.frequency.setTargetAtTime(500, audio.ctx.currentTime, 0.3);
@@ -2161,7 +3287,7 @@
 
   function showGameOver() {
     state = "dead";
-    var total = Math.floor(score + distanceScore);
+    var total = Math.floor(score);
     var isBest = total > bestScore;
     if (isBest) {
       bestScore = total;
@@ -2169,10 +3295,10 @@
       bestEl.textContent = "BEST " + fmt(bestScore);
     }
     document.getElementById("overlayTitle").textContent = "DESTROYED";
-    document.getElementById("subtitle").textContent = "Run complete";
+    document.getElementById("subtitle").textContent = "Mission over";
     document.getElementById("statScore").textContent = fmt(total);
-    document.getElementById("statRocks").textContent = stats.rocks;
-    document.getElementById("statCrystals").textContent = stats.crystals;
+    document.getElementById("statKills").textContent = stats.kills;
+    document.getElementById("statWave").textContent = Math.max(1, wave);
     var secs = Math.floor(stats.time);
     document.getElementById("statTime").textContent = Math.floor(secs / 60) + ":" + ("0" + (secs % 60)).slice(-2);
     document.getElementById("stats").hidden = false;
@@ -2196,6 +3322,28 @@
     hudEl.classList.add("live");
   }
   document.getElementById("startBtn").addEventListener("click", startGame);
+
+  function spawnWave() {
+    wave++;
+    var bossWave = wave % 3 === 0;
+    var count = bossWave ? 2 : Math.min(2 + wave, 9);
+    var aces = wave >= 4 ? Math.floor((wave - 2) / 2) : 0;
+    for (var i = 0; i < count; i++) {
+      tmpC.set(rand(-1, 1), rand(-0.4, 0.4), rand(-1, 1)).normalize().addScaledVector(player.fwd, 0.8).normalize();
+      tmpA.copy(player.pos).addScaledVector(tmpC, rand(380, 560));
+      spawnEnemy(tmpA, i < aces);
+    }
+    if (bossWave) {
+      spawnBoss();
+      hintEl.style.opacity = 0;
+      showBanner("WAVE " + wave, "Dreadnought inbound. Destroy its turrets to break the shield", "#ff8a70", 3.5);
+      sfxBossAlarm();
+    } else {
+      showBanner("WAVE " + wave, count + " hostiles" + (aces ? ", " + Math.min(aces, count) + " aces" : ""), "", 2.5);
+      sfxWave();
+    }
+    waveState = "active";
+  }
 
   // ======================================================================
   // Input
@@ -2296,52 +3444,99 @@
   // ======================================================================
   // Update
   // ======================================================================
-  function updatePlayer(dt) {
-    var ix = moveVec.x, iy = moveVec.y;
-    if (keys.ArrowLeft || keys.KeyA) ix -= 1;
-    if (keys.ArrowRight || keys.KeyD) ix += 1;
-    if (keys.ArrowUp || keys.KeyW) iy += 1;
-    if (keys.ArrowDown || keys.KeyS) iy -= 1;
-    ix = clamp(ix, -1, 1);
-    iy = clamp(iy, -1, 1);
-
-    player.vx += ix * SHIP_ACCEL * dt;
-    player.vy += iy * SHIP_ACCEL * dt;
-    var damp = Math.exp(-SHIP_DAMPING * dt);
-    if (!ix) player.vx *= damp;
-    if (!iy) player.vy *= damp;
-    player.vx = clamp(player.vx, -SHIP_MAX_SPEED, SHIP_MAX_SPEED);
-    player.vy = clamp(player.vy, -SHIP_MAX_SPEED, SHIP_MAX_SPEED);
-    player.x += player.vx * dt;
-    player.y += player.vy * dt;
-    if (player.x > BOUND_X) { player.x = BOUND_X; player.vx = 0; }
-    if (player.x < -BOUND_X) { player.x = -BOUND_X; player.vx = 0; }
-    if (player.y > BOUND_Y) { player.y = BOUND_Y; player.vy = 0; }
-    if (player.y < -BOUND_Y) { player.y = -BOUND_Y; player.vy = 0; }
-
-    fireCooldown -= dt;
-    if (fireHeld && fireCooldown <= 0) {
-      fireBolt();
-      fireCooldown = FIRE_INTERVAL;
+  function findAimTarget() {
+    var best = null, bestDot = 0.982;
+    for (var i = 0; i < targetList.length; i++) {
+      var t = targetList[i];
+      tmpA.subVectors(t.pos, player.pos);
+      var d = tmpA.length();
+      if (d > 750 || d < 1) continue;
+      var dot = tmpA.dot(player.fwd) / d;
+      if (dot > bestDot) { bestDot = dot; best = t; }
     }
+    return best;
+  }
+
+  var MUZZLE = new THREE.Color(2.5, 6, 9);
+  var shotDir = new V3(), muzzle = new V3();
+  function playerFire() {
+    muzzle.copy(player.pos).addScaledVector(player.right, fireSide * 2.8).addScaledVector(player.fwd, 1.2);
+    if (aimTarget) {
+      var d = aimTarget.pos.distanceTo(muzzle);
+      shotDir.copy(aimTarget.pos);
+      if (aimTarget.vel) shotDir.addScaledVector(aimTarget.vel, d / (BOLT_SPEED + player.speed));
+      shotDir.sub(muzzle).normalize();
+    } else {
+      shotDir.copy(player.pos).addScaledVector(player.fwd, 220).sub(muzzle).normalize();
+    }
+    var speed = BOLT_SPEED + player.speed;
+    spawnBolt(muzzle, shotDir, speed, "player", BOLT_DMG, false);
+    if (powerState.triple > 0) {
+      tmpB.copy(shotDir).applyAxisAngle(player.up, 0.07);
+      spawnBolt(muzzle, tmpB, speed, "player", BOLT_DMG, false);
+      tmpB.copy(shotDir).applyAxisAngle(player.up, -0.07);
+      spawnBolt(muzzle, tmpB, speed, "player", BOLT_DMG, false);
+    }
+    fx.glow.spawn({ x: muzzle.x, y: muzzle.y, z: muzzle.z, s0: 1.8, s1: 0.6, life: 0.07, kind: "tint", color: MUZZLE });
+    shipParts.muzzleLight.position.copy(muzzle).addScaledVector(player.up, 0.5);
+    shipParts.muzzleLight.intensity = 90;
+    sfxLaser(fireSide * 0.5, powerState.rapid > 0 ? 0.7 : 1);
+    fireSide = -fireSide;
+  }
+
+  var camGoal = new V3(), lookGoal = new V3();
+  function updateFlight(dt, boosting) {
+    var ix = 0, iy = 0;
+    if (state === "playing") {
+      ix = moveVec.x; iy = moveVec.y;
+      if (keys.ArrowLeft || keys.KeyA) ix -= 1;
+      if (keys.ArrowRight || keys.KeyD) ix += 1;
+      if (keys.ArrowUp || keys.KeyW) iy += 1;
+      if (keys.ArrowDown || keys.KeyS) iy -= 1;
+      ix = clamp(ix, -1, 1);
+      iy = clamp(iy, -1, 1);
+    } else if (state === "menu") {
+      ix = -0.12;
+      iy = -player.pitch * 0.5;
+    }
+    player.yawRate += (-ix * TURN_YAW - player.yawRate) * Math.min(1, dt * 5);
+    player.pitchRate += (iy * TURN_PITCH - player.pitchRate) * Math.min(1, dt * 5);
+    player.yaw += player.yawRate * dt;
+    player.pitch = clamp(player.pitch + player.pitchRate * dt, -1.2, 1.2);
+    if (!iy) player.pitch *= 1 - Math.min(1, dt * 0.35);
+    player.roll += (player.yawRate * 0.55 - player.roll) * Math.min(1, dt * 6);
+    var target = state === "menu" ? 40 : boosting ? BOOST_SPEED : CRUISE_SPEED;
+    if (state === "dying" || state === "dead") target = 0;
+    player.speed += (target - player.speed) * Math.min(1, dt * (boosting ? 4 : 1.5));
+    updatePlayerFrame();
+    player.pos.addScaledVector(player.fwd, player.speed * dt);
+
+    ship.position.copy(player.pos);
+    eul.set(player.pitch, player.yaw, player.roll);
+    ship.quaternion.setFromEuler(eul);
+
+    // Chase camera
+    camGoal.copy(player.pos).addScaledVector(player.fwd, -15 - boostAmt * 3).addScaledVector(player.up, 4.5);
+    camera.position.lerp(camGoal, Math.min(1, dt * 6));
+    if (shake > 0) {
+      var sk = shake * shake * MOTION;
+      camera.position.x += (Math.random() - 0.5) * sk * 1.2;
+      camera.position.y += (Math.random() - 0.5) * sk * 1.2;
+      camera.position.z += (Math.random() - 0.5) * sk * 1.2;
+    }
+    camera.up.copy(player.up);
+    lookGoal.copy(player.pos).addScaledVector(player.fwd, 40).addScaledVector(player.up, 1.5);
+    camera.lookAt(lookGoal);
+    var targetFov = baseFov + boostAmt * 16;
+    camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 5);
+    camera.updateProjectionMatrix();
+    camera.updateMatrixWorld();
   }
 
   function updateShipVisuals(dt, boosting) {
-    ship.position.set(player.x, player.y, 0);
-    ship.rotation.z += ((-player.vx / SHIP_MAX_SPEED) * 0.75 - ship.rotation.z) * Math.min(1, dt * 7);
-    ship.rotation.x += ((player.vy / SHIP_MAX_SPEED) * 0.3 - ship.rotation.x) * Math.min(1, dt * 7);
-    ship.rotation.y += ((-player.vx / SHIP_MAX_SPEED) * 0.12 - ship.rotation.y) * Math.min(1, dt * 7);
-    if (state === "menu") {
-      ship.position.y += Math.sin(clockTime * 1.3) * 0.35;
-      ship.rotation.z = Math.sin(clockTime * 0.9) * 0.12;
-    }
-    if (state === "playing") {
-      ship.visible = clockTime >= invulnUntil || Math.floor(clockTime * 14) % 2 === 0;
-    }
-    var power = boosting ? 2.2 : 1;
+    if (state === "playing") ship.visible = clockTime >= player.invuln || Math.floor(clockTime * 14) % 2 === 0;
     var pu = shipParts.plumeMat.uniforms;
-    pu.time.value = clockTime;
-    pu.power.value += (power - pu.power.value) * Math.min(1, dt * 8);
+    pu.power.value += ((boosting ? 2.2 : 1) - pu.power.value) * Math.min(1, dt * 8);
     for (var i = 0; i < shipParts.plumes.length; i++) {
       var p = shipParts.plumes[i];
       var len = (boosting ? 2.2 : 1) * (0.9 + Math.random() * 0.2);
@@ -2349,258 +3544,123 @@
       p.position.z = 2.4 + 1.6 * len;
     }
     shipParts.engineLight.intensity = (boosting ? 14 : 6) * (0.85 + Math.random() * 0.3);
+    shieldFlash = Math.max(0, shieldFlash - dt * 2.5);
     var su = shipParts.shieldMat.uniforms;
-    su.time.value = clockTime;
-    su.amount.value += ((boosting ? 1 : 0) - su.amount.value) * Math.min(1, dt * 8);
+    var sAmt = Math.max(boostAmt, shieldFlash);
+    su.amount.value += (sAmt - su.amount.value) * Math.min(1, dt * 12);
+    if (boostAmt > shieldFlash) su.tint.value.setRGB(0.7, 0.4, 2.2); else su.tint.value.setRGB(0.4, 1.2, 3.0);
     var phase = clockTime % 1.2;
     for (var n = 0; n < shipParts.navLights.length; n++) shipParts.navLights[n].visible = phase < 0.08 || phase > 0.6;
     shipParts.muzzleLight.intensity *= Math.exp(-dt * 30);
-
-    if (ship.visible && state !== "dying" && state !== "dead") {
-      var s = ship.scale.x;
-      for (var e = -1; e <= 1; e += 2) {
-        var ex = ship.position.x + e * 1.15 * s, ey = ship.position.y - 0.05;
-        fx.embers.spawn(ex + rand(-0.15, 0.15), ey + rand(-0.15, 0.15), 2.6, rand(-1, 1), rand(-1, 1), rand(10, 20),
-          rand(0.12, 0.28), 0.6, 1.2, boosting ? 4 : 2.6);
-      }
+    if (ship.visible && (state === "playing" || state === "menu")) {
+      engineTrail(player.pos, player.fwd, player.right, 0.92, 0.6, 1.2, boosting ? 4 : 2.6, 1);
     }
   }
 
-  var reticleVec = new THREE.Vector3();
+  var planetGroup = null;
+  var PLANET_OFFSET = new V3(520, 170, -1500);
+  var radarTick = 0;
   function update(dt) {
-    var boosting = clockTime < boostUntil;
+    timeU.value = clockTime;
+    var boosting = state === "playing" && clockTime < boostUntil;
     boostAmt += ((boosting ? 1 : 0) - boostAmt) * Math.min(1, dt * 6);
-    if (state === "playing") speed = Math.min(MAX_SPEED, BASE_SPEED + elapsed * SPEED_RAMP);
-    var worldSpeed = speed * (boosting ? BOOST_MULT : 1);
-    if (state !== "playing") worldSpeed = speed * 0.35;
+    if (shake > 0) shake = Math.max(0, shake - dt * 1.6);
+
+    updateFlight(dt, boosting);
+    gatherTargets();
 
     if (state === "playing") {
-      elapsed += dt;
       stats.time += dt;
-      updatePlayer(dt);
-      distanceScore += worldSpeed * dt * 0.1;
-      if (elapsed > 5) hintEl.style.opacity = 0;
-
-      pickupTimer -= dt;
-      if (pickupTimer <= 0) {
-        var kind = hull < MAX_HULL && Math.random() < 0.35 ? "repair" : "crystal";
-        spawnPickup(kind, (Math.random() * 2 - 1) * BOUND_X, (Math.random() * 2 - 1) * BOUND_Y, SPAWN_Z);
-        pickupTimer = 3 + Math.random() * 3;
+      if (stats.time > 6) hintEl.style.opacity = 0;
+      aimTarget = findAimTarget();
+      fireCooldown -= dt;
+      if (fireHeld && fireCooldown <= 0) {
+        playerFire();
+        fireCooldown = powerState.rapid > 0 ? RAPID_INTERVAL : FIRE_INTERVAL;
       }
+      if (powerState.missile > 0) {
+        missileTimer -= dt;
+        if (missileTimer <= 0) {
+          var mt = aimTarget || nearestTarget(player.pos, 700);
+          if (mt) { launchMissile(mt); missileTimer = 0.45; }
+        }
+      }
+      for (var k in powerState) {
+        if (powerState[k] > 0) {
+          powerState[k] = Math.max(0, powerState[k] - dt);
+          if (k === "wing" && powerState[k] === 0) { removeWingmen(true); sfxWarpIn(); }
+        }
+      }
+      if (clockTime - player.lastHit > SHIELD_DELAY) player.shield = Math.min(MAX_SHIELD, player.shield + SHIELD_REGEN * dt);
       if (comboTimer > 0) {
         comboTimer -= dt;
         if (comboTimer <= 0) { chainKills = 0; multiplier = 1; comboEl.classList.remove("on"); }
       }
-      if (hull === 1) {
+      if (player.hull < 30) {
         alarmTimer -= dt;
         if (alarmTimer <= 0) { sfxAlarm(); alarmTimer = 1.3; }
         smokeTimer -= dt;
         if (smokeTimer <= 0) {
-          fx.smoke.spawn({ x: player.x + rand(-0.5, 0.5), y: player.y + 0.4, z: 1.5, vx: rand(-1, 1), vy: rand(0, 2), vz: 6,
-            s0: 0.6, s1: 3.2, life: 1.2, kind: "smoke", opacity: 0.6, flow: 0.6 });
-          if (Math.random() < 0.3) fx.sparks.spawn(player.x, player.y + 0.3, 1, rand(-8, 8), rand(2, 10), rand(4, 12), 0.4, 6, 3, 1);
-          smokeTimer = 0.05;
+          fx.smoke.spawn({ x: player.pos.x, y: player.pos.y + 0.4, z: player.pos.z, vx: rand(-1, 1), vy: rand(0, 2), vz: rand(-1, 1),
+            s0: 0.6, s1: 3.2, life: 1.0, kind: "smoke", opacity: 0.6 });
+          smokeTimer = 0.04;
         }
       }
-      audio.intensity = clamp(0.35 + elapsed / 70, 0, 1);
+      if (waveState === "intermission") {
+        waveTimer -= dt;
+        if (waveTimer <= 0) spawnWave();
+      } else if (enemies.length === 0 && !boss) {
+        waveState = "intermission";
+        waveTimer = 4;
+        var bonus = wave * 250;
+        score += bonus;
+        showBanner("WAVE " + wave + " CLEARED", "+" + fmt(bonus) + " bonus", "#7fe3ff", 2.8);
+      }
+      audio.intensity = boss ? 1 : clamp(0.35 + wave * 0.12, 0, 0.95);
     } else {
+      aimTarget = null;
       audio.intensity = 0.15;
     }
 
-    if (state !== "dying") {
-      spawnTimer -= dt;
-      if (spawnTimer <= 0) {
-        spawnFieldRock();
-        var interval = state === "playing" ? Math.max(0.16, 0.55 - elapsed * 0.006) : 0.9;
-        spawnTimer = interval * (0.6 + Math.random() * 0.8) * (BASE_SPEED / speed);
-      }
-    }
-
     updateShipVisuals(dt, boosting);
-    updateStreaks(dt, worldSpeed, boostAmt);
+    updateEnemies(dt);
+    updateWingmen(dt);
+    updateBoss(dt);
+    updateBolts(dt);
+    updateMissiles(dt);
+    updateRocks(dt, boosting);
+    updatePowerups(dt);
+    updateEffects(dt);
+    updateDust(boostAmt);
+    if (planetGroup) planetGroup.position.copy(camera.position).add(PLANET_OFFSET);
 
-    // Bolts
-    for (var b = bolts.length - 1; b >= 0; b--) {
-      var bm = bolts[b].mesh;
-      bm.position.z -= BOLT_SPEED * dt;
-      var dead = bm.position.z < SPAWN_Z;
-      if (!dead) {
-        for (var r = rocks.length - 1; r >= 0; r--) {
-          var rock = rocks[r];
-          var rp = rock.mesh.position;
-          var dx = rp.x - bm.position.x, dy = rp.y - bm.position.y, dz = rp.z - bm.position.z;
-          if (dx * dx + dy * dy < (rock.radius + 0.3) * (rock.radius + 0.3) && Math.abs(dz) < rock.radius + 4) {
-            dead = true;
-            rock.hp--;
-            rock.flash = 0.08;
-            var hz = rp.z + rock.radius * 0.8;
-            if (rock.hp <= 0) {
-              breakRock(r);
-            } else {
-              sfxRockHit(clamp(bm.position.x / 20, -1, 1), -hz);
-              for (var sp = 0; sp < 12; sp++) {
-                tmpV.set(rand(-1, 1), rand(-1, 1), rand(0.2, 1.2)).normalize();
-                var sv = rand(12, 35);
-                fx.sparks.spawn(bm.position.x, bm.position.y, hz, tmpV.x * sv, tmpV.y * sv, tmpV.z * sv, rand(0.2, 0.45), 3, 5, 7);
-              }
-              fx.glow.spawn({ x: bm.position.x, y: bm.position.y, z: hz, s0: 2.5, s1: 1, life: 0.12, kind: "tint", color: IMPACT, flow: 0.8 });
-              fx.fire.spawn({ x: bm.position.x, y: bm.position.y, z: hz, s0: 0.8, s1: 2, life: 0.35, kind: "fire", flow: 0.8 });
-            }
-            break;
-          }
-        }
-      }
-      if (dead) { scene.remove(bm); bolts.splice(b, 1); }
-    }
-
-    // Rocks
-    for (var i = rocks.length - 1; i >= 0; i--) {
-      var rk = rocks[i];
-      var m = rk.mesh;
-      m.position.x += rk.vx * dt;
-      m.position.y += rk.vy * dt;
-      m.position.z += (worldSpeed + rk.vz) * dt;
-      m.rotation.x += rk.sx * dt;
-      m.rotation.y += rk.sy * dt;
-      if (rk.grow < 1) {
-        rk.grow = Math.min(1, rk.grow + dt * 2.5);
-        m.scale.setScalar(rk.radius * (1 - Math.pow(1 - rk.grow, 3)));
-      }
-      var dmg = 1 - rk.hp / rk.maxHp;
-      if (rk.flash > 0) rk.flash -= dt;
-      m.material.emissiveIntensity = dmg * 3.5 + (rk.flash > 0 ? 9 : 0);
-      if (m.position.z > DESPAWN_Z) { removeRock(i); continue; }
-
-      if (state === "playing") {
-        var ddx = m.position.x - player.x, ddy = (m.position.y - player.y) * 1.6, ddz = m.position.z;
-        var hitR = rk.radius * 0.85 + (boosting ? 2.6 : 1.1);
-        if (ddx * ddx + ddy * ddy + ddz * ddz < hitR * hitR) {
-          if (boosting) {
-            registerKill(20 + rk.tier * 20);
-            shake = Math.max(shake, 0.5);
-            explosion(m.position.x, m.position.y, m.position.z, rk.radius * 0.7, true, m.material);
-            sfxExplosion(rk.tier, clamp(m.position.x / 20, -1, 1), 0);
-            removeRock(i);
-          } else if (clockTime >= invulnUntil) {
-            explosion(m.position.x, m.position.y, m.position.z, rk.radius * 0.6, true, m.material);
-            sfxExplosion(rk.tier, clamp(m.position.x / 20, -1, 1), 0);
-            removeRock(i);
-            damageShip();
-          }
-        }
-      }
-    }
-
-    // Pickups
-    for (var p = pickups.length - 1; p >= 0; p--) {
-      var pk = pickups[p];
-      var g = pk.group;
-      pk.t += dt;
-      g.position.z += worldSpeed * dt;
-      pk.body.rotation.y += dt * 2.2;
-      pk.body.rotation.x = Math.sin(pk.t * 1.7) * 0.4;
-      var isCrystal = pk.kind === "crystal";
-      if (Math.random() < dt * 6) {
-        fx.embers.spawn(g.position.x + rand(-1, 1), g.position.y + rand(-1, 1), g.position.z, 0, rand(0.5, 2), 0, 0.6,
-          isCrystal ? 0.4 : 0.6, isCrystal ? 3 : 2, isCrystal ? 1.2 : 4);
-      }
-      if (g.position.z > DESPAWN_Z) { scene.remove(g); pickups.splice(p, 1); continue; }
-      if (state === "playing") {
-        var px = g.position.x - player.x, py = g.position.y - player.y, pz = g.position.z;
-        if (px * px + py * py + pz * pz < 2.8 * 2.8) {
-          var pr = isCrystal ? [0.4, 3, 1.2] : [0.6, 2.2, 4];
-          if (isCrystal) {
-            score += 150 * multiplier;
-            stats.crystals++;
-            sfxCrystal();
-          } else {
-            hull = Math.min(MAX_HULL, hull + 1);
-            renderHull();
-            sfxRepair();
-          }
-          for (var ei = 0; ei < 40; ei++) {
-            tmpV.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize();
-            var ev = rand(6, 16);
-            fx.embers.spawn(g.position.x, g.position.y, g.position.z, tmpV.x * ev, tmpV.y * ev, tmpV.z * ev, rand(0.4, 0.8), pr[0], pr[1], pr[2]);
-          }
-          shockwave(g.position.x, g.position.y, g.position.z, 6, 0.4, pr[0], pr[1], pr[2]);
-          flashLight(g.position.x, g.position.y, g.position.z, 300, 0.3, isCrystal ? 0x40ff9a : 0x7fe3ff);
-          scene.remove(g);
-          pickups.splice(p, 1);
-        }
-      }
-    }
-
-    updateEffects(dt, worldSpeed);
-
-    // Camera: lagging chase cam with speed-driven FOV and shake
-    var targetFov = baseFov + boostAmt * 18 + (speed - BASE_SPEED) * 0.07;
-    camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 5);
-    camera.updateProjectionMatrix();
-    var cx = player.x * 0.68, cy = player.y * 0.68 + 3.0;
-    camera.position.x += (cx - camera.position.x) * Math.min(1, dt * 6);
-    camera.position.y += (cy - camera.position.y) * Math.min(1, dt * 6);
-    camera.position.z = 11 - boostAmt * 1.5;
-    if (shake > 0) {
-      shake = Math.max(0, shake - dt * 1.6);
-      var sk = shake * shake * MOTION;
-      camera.position.x += (Math.random() - 0.5) * sk * 1.2;
-      camera.position.y += (Math.random() - 0.5) * sk * 1.2;
-    }
-    camera.lookAt(player.x * 0.85, player.y * 0.85 + 0.8, -30);
-    camera.rotation.z += -player.vx / SHIP_MAX_SPEED * 0.04;
-
-    // Post-processing
     damagePulse = Math.max(0, damagePulse - dt * 1.8);
     var cu = compositeMat.uniforms;
     cu.time.value = clockTime;
     cu.aberration.value = (0.003 + boostAmt * 0.012 + damagePulse * 0.02 + shake * 0.006) * MOTION;
     cu.radial.value = reducedMotion ? 0 : boostAmt * 0.07;
-    cu.damage.value = damagePulse + (hull === 1 && state === "playing" ? 0.18 + Math.sin(clockTime * 5) * 0.08 : 0);
+    cu.damage.value = damagePulse + (player.hull < 30 && state === "playing" ? 0.18 + Math.sin(clockTime * 5) * 0.08 : 0);
     updateFlare();
 
-    // HUD
+    if (bannerTimer > 0) {
+      bannerTimer -= dt;
+      if (bannerTimer <= 0) bannerEl.classList.remove("show");
+    }
     if (state === "playing" || state === "dying") {
-      scoreEl.textContent = fmt(score + distanceScore);
-      velEl.textContent = (worldSpeed * 0.1).toFixed(1);
-      var charge = boosting ? 0 : clamp(1 - (boostReadyAt - clockTime) / BOOST_COOLDOWN, 0, 1);
-      boostBtn.style.setProperty("--p", charge.toFixed(3));
-      boostBtn.classList.toggle("onCooldown", charge < 1);
-      reticleVec.set(player.x, player.y, -70).project(camera);
-      var rx = (reticleVec.x * 0.5 + 0.5) * window.innerWidth;
-      var ry = (-reticleVec.y * 0.5 + 0.5) * window.innerHeight;
-      reticle.style.transform = "translate(" + rx.toFixed(1) + "px," + ry.toFixed(1) + "px)";
+      updateHud(boosting);
+      updateMarkers();
+      if ((radarTick++ & 1) === 0) drawRadar();
+    } else {
+      updateMarkers();
     }
     if (audio.ctx) {
-      updateEngineSound(state === "playing", (speed - BASE_SPEED) / (MAX_SPEED - BASE_SPEED), boosting);
+      updateEngineSound(state === "playing", clamp((player.speed - 40) / (BOOST_SPEED - 40), 0, 1), boosting);
       scheduleMusic();
     }
-
     if (state === "dying") {
       deathTimer -= dt;
       if (deathTimer <= 0) showGameOver();
     }
-  }
-
-  function breakRock(index) {
-    var rock = rocks[index];
-    var p = rock.mesh.position;
-    registerKill(rock.tier === 2 ? 60 : rock.tier === 1 ? 35 : 20);
-    explosion(p.x, p.y, p.z, rock.radius * 0.7, true, rock.mesh.material);
-    sfxExplosion(rock.tier, clamp(p.x / 20, -1, 1), -p.z);
-    shake = Math.max(shake, clamp(0.35 - (-p.z) / 600, 0, 0.35) * (rock.tier + 1) * 0.5);
-    var x = p.x, y = p.y, z = p.z, tier = rock.tier;
-    removeRock(index);
-    if (tier > 0) {
-      var pieces = tier === 2 ? 3 : 2;
-      for (var i = 0; i < pieces; i++) {
-        var a = (i / pieces) * Math.PI * 2 + Math.random();
-        var childR = tier === 2 ? 1.8 + Math.random() * 0.4 : 0.9 + Math.random() * 0.3;
-        spawnRock(x + Math.cos(a) * childR, y + Math.sin(a) * childR, z, childR, tier - 1,
-          Math.cos(a) * 7, Math.sin(a) * 7, 4, true);
-      }
-    }
-    if (Math.random() < 0.12) spawnPickup("crystal", x, y, z);
   }
 
   // ======================================================================
@@ -2639,30 +3699,38 @@
     ["Mapping the gas giant", bakePlanet],
     ["Plating the hull", bakeHull],
     ["Mixing propellant", bakeSprites],
-    ["Assembling the ship", function () {
-      buildPlanet();
+    ["Assembling the fleet", function () {
+      planetGroup = buildPlanet();
       buildFlare();
+      buildMaterials();
       buildShip();
       buildEffects();
       buildRocks();
-      buildPickupAssets();
+      buildPowerAssets();
+      initBolts();
       onResize();
     }],
     ["Warming up engines", function () {
       state = "menu";
-      for (var s = 0; s < 16; s++) {
-        spawnFieldRock();
-        var r = rocks[rocks.length - 1];
-        r.mesh.position.z = SPAWN_Z * Math.random();
-        r.grow = 1;
-        r.mesh.scale.setScalar(r.radius);
-      }
-      spawnPickup("crystal", 6, 2, -200);
-      spawnPickup("repair", -8, -3, -260);
-      explosion(0, 0, -300, 2, true, rockMats[0]);
-      fx.fire.update(0.5, 0);
+      updatePlayerFrame();
+      for (var s = 0; s < ROCK_COUNT; s++) spawnFieldRock(true);
+      camera.position.copy(player.pos).addScaledVector(player.fwd, -15).addScaledVector(player.up, 4.5);
+      camera.lookAt(0, 0, -40);
+      camera.updateMatrixWorld();
+      // Compile every material up front so the first fight never stutters
+      var warm = [buildJet("enemy", true).group, buildJet("ace", true).group, buildJet("wing", true).group, buildBossModel().group];
+      warm.forEach(function (g, i) { g.position.set(i * 30 - 45, 0, -120); scene.add(g); });
+      POWER_KEYS.forEach(function (k, i) { spawnPowerup(k, new V3(i * 8 - 16, 10, -90)); });
+      tmpA.set(0, -10, -100);
+      explosion(tmpA, 2, rockMats[0]);
+      spawnBolt(tmpA, player.fwd, 10, "enemy", 0, true);
+      launchMissile(null);
       renderer.compile(scene, camera);
       renderFrame();
+      warm.forEach(function (g) { scene.remove(g); });
+      while (powerups.length) removePowerupAt(powerups.length - 1);
+      while (missiles.length) scene.remove(missiles.pop().group);
+      while (bolts.length) scene.remove(bolts.pop().mesh);
     }]
   ];
   var stepIndex = 0;
@@ -2672,7 +3740,6 @@
       loading.style.opacity = 0;
       setTimeout(function () { loading.hidden = true; }, 650);
       overlay.hidden = false;
-      renderHull();
       lastTime = performance.now();
       requestAnimationFrame(animate);
       return;
