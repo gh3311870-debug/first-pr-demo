@@ -1,0 +1,2386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Titan Clash: Mech Brawler</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100%;
+    background: #1b1440;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  canvas { display: block; }
+
+  #hud {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  #topBar {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    width: 170px;
+  }
+  .barLabel {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    opacity: 0.9;
+    margin: 0 0 2px;
+  }
+  .bar {
+    height: 10px;
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .barFill {
+    height: 100%;
+    width: 100%;
+    transition: width 0.12s;
+  }
+  #hpFill { background: linear-gradient(90deg, #36d97a, #9dff6b); }
+  #hpFill.low { background: linear-gradient(90deg, #ff3b3b, #ff8a3b); }
+  #enFill { background: linear-gradient(90deg, #2fb8ff, #7ef3ff); width: 0%; }
+  #enFill.full { background: linear-gradient(90deg, #ffc233, #fff27a); }
+  #scoreLine { font-size: 20px; font-weight: 800; margin-top: 2px; }
+  #destroyLine { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+
+  #waveLine {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    white-space: nowrap;
+  }
+
+  #comboLine {
+    position: absolute;
+    top: 38%;
+    right: 18px;
+    color: #ffd23f;
+    font-size: 26px;
+    font-weight: 900;
+    font-style: italic;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.8), 0 0 12px rgba(255,160,40,0.7);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  #banner {
+    position: absolute;
+    top: 30%;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #fff;
+    font-size: 40px;
+    font-weight: 900;
+    letter-spacing: 6px;
+    text-shadow: 0 0 18px rgba(255,120,60,0.9), 0 3px 8px rgba(0,0,0,0.8);
+    opacity: 0;
+    transform: scale(1.3);
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  #banner.show { opacity: 1; transform: scale(1); }
+
+  #damageFlash {
+    position: absolute;
+    inset: 0;
+    box-shadow: inset 0 0 120px rgba(255,20,20,0.85);
+    opacity: 0;
+  }
+  #whiteFlash {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    opacity: 0;
+  }
+
+  #muteBtn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.35);
+    border: 2px solid rgba(255,255,255,0.5);
+    color: #fff;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+  }
+
+  #gameNav {
+    position: absolute;
+    top: 56px;
+    right: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+    max-width: 205px;
+    pointer-events: auto;
+  }
+  .navLink, .navCurrent {
+    color: #fff;
+    text-decoration: none;
+    font-size: 12px;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 6px;
+    padding: 4px 7px;
+  }
+  .navCurrent {
+    background: rgba(255,255,255,0.28);
+    font-weight: 700;
+  }
+
+  #lookPad {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 58%;
+    top: 130px;
+    pointer-events: auto;
+    touch-action: none;
+  }
+
+  #joystick {
+    position: absolute;
+    left: 24px;
+    bottom: 24px;
+    width: 116px;
+    height: 116px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.14);
+    border: 2px solid rgba(255,255,255,0.4);
+    pointer-events: auto;
+    touch-action: none;
+  }
+  #joystickKnob {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 48px;
+    height: 48px;
+    margin-left: -24px;
+    margin-top: -24px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.55);
+    border: 2px solid rgba(255,255,255,0.85);
+  }
+
+  .actBtn {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.75);
+    color: #fff;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    pointer-events: auto;
+    touch-action: none;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    line-height: 1.1;
+  }
+  .actBtn.pressed { transform: scale(0.92); }
+  #punchBtn {
+    right: 22px;
+    bottom: 24px;
+    width: 88px;
+    height: 88px;
+    font-size: 15px;
+    background: rgba(230,60,40,0.5);
+  }
+  #dashBtn {
+    right: 124px;
+    bottom: 20px;
+    width: 66px;
+    height: 66px;
+    font-size: 12px;
+    background: rgba(40,140,255,0.45);
+  }
+  #dashBtn.cooling { opacity: 0.4; }
+  #smashBtn {
+    right: 36px;
+    bottom: 124px;
+    width: 66px;
+    height: 66px;
+    font-size: 11px;
+    background: rgba(60,60,70,0.45);
+    opacity: 0.55;
+  }
+  #smashBtn.ready {
+    opacity: 1;
+    background: rgba(255,180,30,0.6);
+    animation: pulse 0.9s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(255,200,60,0.6); }
+    50% { box-shadow: 0 0 22px rgba(255,200,60,1); }
+  }
+
+  #overlay {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(20,10,40,0.55), rgba(10,6,24,0.88));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    text-align: center;
+    z-index: 50;
+    pointer-events: auto;
+    padding: 0 16px;
+  }
+  #overlay h1 {
+    font-size: 36px;
+    margin: 0 0 4px;
+    letter-spacing: 3px;
+    text-shadow: 0 0 20px rgba(255,120,60,0.8), 0 2px 6px rgba(0,0,0,0.7);
+  }
+  #overlay .sub {
+    font-size: 13px;
+    letter-spacing: 4px;
+    color: #ffb46b;
+    margin-bottom: 12px;
+    font-weight: 700;
+  }
+  #overlay p {
+    font-size: 14px;
+    opacity: 0.88;
+    max-width: 340px;
+    line-height: 1.5;
+    margin: 4px 0;
+  }
+  #overlayScore { font-size: 22px; margin: 14px 0 4px; font-weight: 800; }
+  #overlayBest { font-size: 13px; opacity: 0.8; margin-bottom: 18px; }
+  #startBtn {
+    background: linear-gradient(180deg, #ff6a3d, #d8341c);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 13px 30px;
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    box-shadow: 0 0 18px rgba(255,100,50,0.6);
+  }
+
+  #loading {
+    position: fixed;
+    inset: 0;
+    background: #1b1440;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 18px;
+    z-index: 100;
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">Booting reactor...</div>
+
+<div id="hud">
+  <div id="damageFlash"></div>
+  <div id="whiteFlash"></div>
+  <div id="topBar">
+    <div class="barLabel">ARMOR</div>
+    <div class="bar"><div id="hpFill" class="barFill"></div></div>
+    <div class="barLabel">SMASH CHARGE</div>
+    <div class="bar"><div id="enFill" class="barFill"></div></div>
+    <div id="scoreLine">0</div>
+    <div id="destroyLine">City blocks leveled: 0</div>
+  </div>
+  <div id="waveLine"></div>
+  <div id="comboLine"></div>
+  <div id="banner"></div>
+  <div id="muteBtn">&#128266;</div>
+  <div id="gameNav">
+    <a class="navLink" href="index.html">Builder</a>
+    <a class="navLink" href="fps.html">Range</a>
+    <a class="navLink" href="powers.html">Powers</a>
+    <a class="navLink" href="zombies.html">Zombies</a>
+    <a class="navLink" href="netrunner.html">Netrunner</a>
+    <a class="navLink" href="hero.html">Vanguard</a>
+    <a class="navLink" href="swinger.html">Slinger</a>
+    <span class="navCurrent">Titans</span>
+  </div>
+
+  <div id="lookPad"></div>
+  <div id="joystick"><div id="joystickKnob"></div></div>
+  <div id="punchBtn" class="actBtn">PUNCH</div>
+  <div id="dashBtn" class="actBtn">DASH</div>
+  <div id="smashBtn" class="actBtn">GROUND<br>SMASH</div>
+</div>
+
+<div id="overlay">
+  <h1>TITAN CLASH</h1>
+  <div class="sub">MECH BRAWLER</div>
+  <p>Enemy mechs are dropping into the city. Punch them through buildings,
+     rocket-dash through skyscrapers, and when your charge is full, leap up
+     and <b>GROUND SMASH</b> the whole block flat.</p>
+  <p style="font-size:12px;opacity:0.7">Left pad: walk &middot; Drag right side: look &middot;
+     Keyboard: WASD, J punch, K dash, L smash</p>
+  <div id="overlayScore"></div>
+  <div id="overlayBest"></div>
+  <button id="startBtn">DEPLOY</button>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var T = THREE;
+
+  // ---------- Config ----------
+  var GRID = 42;             // city cells per side
+  var BLOCK = 2;             // world units per building block
+  var HALF = GRID * BLOCK / 2;
+  var GRAVITY = -30;
+  var PLAYER_MAX_HP = 200;
+  var WALK_SPEED = 10.5;
+  var DASH_SPEED = 38;
+  var DASH_TIME = 0.28;
+  var DASH_CD = 1.1;
+  var CRUSH_SPEED = 12;      // knockback speed at which a mech smashes through buildings
+  var BEST_KEY = "titanclash_best_score";
+
+  // ---------- Sound (synthesized) ----------
+  var audioCtx = null;
+  var master = null;
+  var muted = false;
+  function ensureAudio() {
+    if (muted) return null;
+    if (!audioCtx) {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      audioCtx = new Ctx();
+      master = audioCtx.createGain();
+      master.gain.value = 0.8;
+      master.connect(audioCtx.destination);
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+  function playTone(freq, freqEnd, duration, type, volume) {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var t0 = ctx.currentTime;
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(1, freqEnd), t0 + duration);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(volume, t0 + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(gain);
+    gain.connect(master);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.02);
+  }
+  var noiseBuffer = null;
+  function playNoise(duration, filterFreq, volume, filterType) {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    if (!noiseBuffer) {
+      noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+      var data = noiseBuffer.getChannelData(0);
+      for (var i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    }
+    var t0 = ctx.currentTime;
+    var src = ctx.createBufferSource();
+    src.buffer = noiseBuffer;
+    var filter = ctx.createBiquadFilter();
+    filter.type = filterType || "lowpass";
+    filter.frequency.value = filterFreq;
+    var gain = ctx.createGain();
+    gain.gain.setValueAtTime(volume, t0);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(master);
+    src.start(t0, Math.random());
+    src.stop(t0 + duration + 0.02);
+  }
+  var lastCrumbleSfx = 0;
+  function sfxWhoosh() { playNoise(0.14, 2200, 0.1, "bandpass"); }
+  function sfxPunchHit() { playTone(170, 45, 0.2, "square", 0.2); playNoise(0.18, 1600, 0.3); }
+  function sfxCrumble() {
+    var now = performance.now();
+    if (now - lastCrumbleSfx < 70) return;
+    lastCrumbleSfx = now;
+    playNoise(0.6, 450, 0.22);
+    playTone(70, 35, 0.35, "sine", 0.12);
+  }
+  function sfxStep() { playTone(85, 38, 0.14, "sine", 0.22); }
+  function sfxDash() { playTone(140, 520, 0.25, "sawtooth", 0.1); playNoise(0.35, 1300, 0.14); }
+  function sfxExplode() { playNoise(1.0, 650, 0.4); playTone(110, 28, 0.7, "sine", 0.4); }
+  function sfxMissile() { playTone(950, 320, 0.3, "sawtooth", 0.05); }
+  function sfxSmash() { playNoise(1.4, 380, 0.5); playTone(75, 22, 1.0, "sine", 0.55); }
+  function sfxHurt() { playTone(230, 80, 0.25, "square", 0.16); }
+  function sfxWindup() { playTone(220, 520, 0.3, "triangle", 0.05); }
+  function sfxPickup() { playTone(500, 1100, 0.22, "triangle", 0.16); }
+  function sfxLand() { playNoise(0.6, 320, 0.32); playTone(70, 28, 0.45, "sine", 0.35); }
+  function sfxWave() {
+    playTone(330, 330, 0.22, "square", 0.08);
+    setTimeout(function () { playTone(440, 440, 0.35, "square", 0.08); }, 220);
+  }
+
+  document.getElementById("muteBtn").addEventListener("click", function () {
+    muted = !muted;
+    document.getElementById("muteBtn").innerHTML = muted ? "&#128263;" : "&#128266;";
+  });
+
+  // ---------- Renderer / scene ----------
+  var renderer = new T.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = T.PCFSoftShadowMap;
+  renderer.toneMapping = T.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.outputColorSpace = T.SRGBColorSpace;
+  document.body.appendChild(renderer.domElement);
+
+  var scene = new T.Scene();
+  var FOG_COLOR = new T.Color("#9a5470");
+  scene.fog = new T.Fog(FOG_COLOR, 60, 190);
+
+  var camera = new T.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.5, 900);
+
+  var SUN_DIR = new T.Vector3(-0.85, 0.34, -0.36).normalize();
+
+  // sunset skydome with a sun disc; the lowest band blends into the fog color so the city horizon melts into the sky
+  var skyMat = new T.ShaderMaterial({
+    uniforms: {
+      top: { value: new T.Color("#150f38") },
+      mid: { value: new T.Color("#6a2f73") },
+      horizon: { value: new T.Color("#ff8a4c") },
+      fogCol: { value: FOG_COLOR },
+      sunDir: { value: SUN_DIR },
+      sunColor: { value: new T.Color("#ffdca8") }
+    },
+    vertexShader:
+      "varying vec3 vDir;\n" +
+      "void main() {\n" +
+      "  vDir = position;\n" +
+      "  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n" +
+      "}",
+    fragmentShader:
+      "uniform vec3 top; uniform vec3 mid; uniform vec3 horizon; uniform vec3 fogCol;\n" +
+      "uniform vec3 sunDir; uniform vec3 sunColor;\n" +
+      "varying vec3 vDir;\n" +
+      "void main() {\n" +
+      "  vec3 d = normalize(vDir);\n" +
+      "  float h = d.y;\n" +
+      "  vec3 col = mix(horizon, mid, smoothstep(0.02, 0.28, h));\n" +
+      "  col = mix(col, top, smoothstep(0.25, 0.75, h));\n" +
+      "  float s = max(dot(d, normalize(sunDir)), 0.0);\n" +
+      "  col += sunColor * (smoothstep(0.9975, 0.9985, s) * 3.0 + pow(s, 60.0) * 0.8 + pow(s, 6.0) * 0.18);\n" +
+      "  gl_FragColor = vec4(col, 1.0);\n" +
+      "  #include <tonemapping_fragment>\n" +
+      "  #include <colorspace_fragment>\n" +
+      "  gl_FragColor.rgb = mix(gl_FragColor.rgb, fogCol, 1.0 - smoothstep(-0.02, 0.06, h));\n" +
+      "}",
+    side: T.BackSide,
+    depthWrite: false,
+    fog: false
+  });
+  var sky = new T.Mesh(new T.SphereGeometry(500, 32, 16), skyMat);
+  scene.add(sky);
+
+  var hemi = new T.HemisphereLight(0xb6a4f0, 0x5a3a3e, 2.1);
+  scene.add(hemi);
+  var sun = new T.DirectionalLight(0xffb27a, 3.6);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.near = 5;
+  sun.shadow.camera.far = 200;
+  sun.shadow.camera.left = -48;
+  sun.shadow.camera.right = 48;
+  sun.shadow.camera.top = 48;
+  sun.shadow.camera.bottom = -48;
+  sun.shadow.bias = -0.0008;
+  sun.shadow.normalBias = 0.04;
+  scene.add(sun);
+  scene.add(sun.target);
+
+  // flash light used by explosions / smashes to light up nearby buildings
+  var boomLight = new T.PointLight(0xff8a3a, 0, 40, 1.4);
+  scene.add(boomLight);
+  var boomLevel = 0;
+  function boom(pos, strength) {
+    boomLight.position.set(pos.x, pos.y + 3, pos.z);
+    boomLevel = Math.max(boomLevel, strength);
+  }
+
+  function canvasTex(size, draw) {
+    var c = document.createElement("canvas");
+    c.width = size; c.height = size;
+    var ctx = c.getContext("2d");
+    draw(ctx, size);
+    var tex = new T.CanvasTexture(c);
+    tex.colorSpace = T.SRGBColorSpace;
+    tex.anisotropy = 4;
+    return tex;
+  }
+
+  // Building block facade: 3x3 windows per block (one block is roughly a storey or two,
+  // which keeps the mechs feeling gigantic). Emissive map lights a random subset of windows.
+  var litPattern = [];
+  for (var lp = 0; lp < 9; lp++) litPattern.push(Math.random() < 0.34);
+  var facadeTex = canvasTex(128, function (ctx, s) {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, s, s);
+    ctx.fillStyle = "rgba(0,0,0,0.12)";
+    ctx.fillRect(0, 0, s, 3);
+    for (var r = 0; r < 3; r++) {
+      for (var c = 0; c < 3; c++) {
+        ctx.fillStyle = litPattern[r * 3 + c] ? "#6a5a3a" : "#3a4254";
+        ctx.fillRect(12 + c * 40, 14 + r * 40, 24, 22);
+      }
+    }
+  });
+  var facadeEmis = canvasTex(128, function (ctx, s) {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, s, s);
+    for (var r = 0; r < 3; r++) {
+      for (var c = 0; c < 3; c++) {
+        if (!litPattern[r * 3 + c]) continue;
+        ctx.fillStyle = Math.random() < 0.5 ? "#ffc56a" : "#ffe3a0";
+        ctx.fillRect(12 + c * 40, 14 + r * 40, 24, 22);
+      }
+    }
+  });
+
+  var blockGeo = new T.BoxGeometry(BLOCK, BLOCK, BLOCK);
+  // top/bottom faces (vertices 8..15) sample the plain wall margin instead of windows
+  (function () {
+    var uv = blockGeo.attributes.uv;
+    for (var i = 8; i < 16; i++) uv.setXY(i, 0.02, 0.5);
+    uv.needsUpdate = true;
+  })();
+  var blockMat = new T.MeshStandardMaterial({
+    map: facadeTex,
+    emissiveMap: facadeEmis,
+    emissive: 0xffffff,
+    emissiveIntensity: 0.75,
+    roughness: 0.82,
+    metalness: 0.05
+  });
+
+  // ---------- Ground ----------
+  function isLotCell(ix, iz) {
+    var mx = ix % 6, mz = iz % 6;
+    return mx >= 1 && mx <= 4 && mz >= 1 && mz <= 4;
+  }
+  var groundTex = canvasTex(1024, function (ctx, s) {
+    var k = s / GRID;
+    ctx.fillStyle = "#2a2833";
+    ctx.fillRect(0, 0, s, s);
+    // sidewalks under each lot
+    for (var lx = 0; lx < 7; lx++) {
+      for (var lz = 0; lz < 7; lz++) {
+        ctx.fillStyle = "#4e4a57";
+        ctx.fillRect((lx * 6 + 0.7) * k, (lz * 6 + 0.7) * k, 4.6 * k, 4.6 * k);
+        ctx.fillStyle = "#5c5866";
+        ctx.fillRect((lx * 6 + 0.85) * k, (lz * 6 + 0.85) * k, 4.3 * k, 4.3 * k);
+      }
+    }
+    // dashed lane lines down the middle of each street
+    ctx.fillStyle = "#e0b24a";
+    for (var i = 0; i <= 7; i++) {
+      var p = i * 6 * k;
+      for (var d = 0; d < s; d += 22) {
+        ctx.fillRect(p - 1.5, d, 3, 11);
+        ctx.fillRect(d, p - 1.5, 11, 3);
+      }
+    }
+  });
+  var ground = new T.Mesh(
+    new T.PlaneGeometry(HALF * 2, HALF * 2),
+    new T.MeshStandardMaterial({ map: groundTex, roughness: 0.95 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+  var outerGround = new T.Mesh(
+    new T.PlaneGeometry(1200, 1200),
+    new T.MeshStandardMaterial({ color: 0x24222c, roughness: 1 })
+  );
+  outerGround.rotation.x = -Math.PI / 2;
+  outerGround.position.y = -0.02;
+  scene.add(outerGround);
+
+  // distant skyline ring (decorative, fog turns it into silhouettes with glowing windows)
+  (function () {
+    var count = 110;
+    var mesh = new T.InstancedMesh(new T.BoxGeometry(1, 1, 1), blockMat, count);
+    var dummy = new T.Object3D();
+    var col = new T.Color();
+    for (var i = 0; i < count; i++) {
+      var a = (i / count) * Math.PI * 2 + Math.random() * 0.03;
+      var r = 60 + Math.random() * 50;
+      var w = 6 + Math.random() * 8;
+      var h = 8 + Math.random() * 26;
+      dummy.position.set(Math.cos(a) * r, h / 2, Math.sin(a) * r);
+      dummy.rotation.y = -a;
+      dummy.scale.set(w, h, w);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+      col.setHSL(0.72 + Math.random() * 0.1, 0.15, 0.22 + Math.random() * 0.1);
+      mesh.setColorAt(i, col);
+    }
+    scene.add(mesh);
+  })();
+
+  // ---------- City (destructible voxel columns) ----------
+  var colH = new Int8Array(GRID * GRID);     // remaining height of each column (0 = rubble)
+  var colBase = new Int32Array(GRID * GRID); // first instance index of the column
+  var colBld = new Int16Array(GRID * GRID);  // building id, for chain collapses
+  var cityMesh = null;
+  var blockColors = null;
+  var totalBlocks = 0;
+  var blocksDestroyed = 0;
+  var pendingCollapses = [];
+  var zeroMatrix = new T.Matrix4().makeScale(0, 0, 0);
+
+  var palette = ["#c9b8a8", "#a7b4c8", "#d6c7a1", "#9fb0a6", "#c9a49a", "#b8bccb", "#e0d2c0", "#8f9bb8", "#c7b2c9"];
+
+  function cellX(ix) { return -HALF + (ix + 0.5) * BLOCK; }
+  function toCell(v) { return Math.floor((v + HALF) / BLOCK); }
+
+  function buildCity() {
+    if (cityMesh) {
+      scene.remove(cityMesh);
+      cityMesh.dispose();
+    }
+    colH.fill(0);
+    colBld.fill(-1);
+    var bid = 0;
+    for (var lx = 0; lx < 7; lx++) {
+      for (var lz = 0; lz < 7; lz++) {
+        var cx = lx * 12 - 36, cz = lz * 12 - 36;
+        if (Math.sqrt(cx * cx + cz * cz) < 13) continue; // central plaza
+        var edge = Math.max(Math.abs(cx), Math.abs(cz)) / 36;
+        var ox = lx * 6 + 1, oz = lz * 6 + 1;
+        // split the 4x4 lot into buildings
+        var parts;
+        var roll = Math.random();
+        if (roll < 0.3) parts = [[0, 0, 4, 4]];
+        else if (roll < 0.6) parts = [[0, 0, 2, 2], [2, 0, 2, 2], [0, 2, 2, 2], [2, 2, 2, 2]];
+        else if (roll < 0.8) parts = [[0, 0, 4, 2], [0, 2, 4, 2]];
+        else parts = [[0, 0, 2, 4], [2, 0, 2, 4]];
+        for (var p = 0; p < parts.length; p++) {
+          var pr = parts[p];
+          var area = pr[2] * pr[3];
+          var h = 1 + Math.floor(Math.random() * (2 + edge * 2.5)) + (area >= 16 ? 1 : 0);
+          h = Math.min(h, 5);
+          for (var ix = pr[0]; ix < pr[0] + pr[2]; ix++) {
+            for (var iz = pr[1]; iz < pr[1] + pr[3]; iz++) {
+              var ci = (oz + iz) * GRID + (ox + ix);
+              colH[ci] = h;
+              colBld[ci] = bid;
+            }
+          }
+          bid++;
+        }
+      }
+    }
+    totalBlocks = 0;
+    for (var i = 0; i < colH.length; i++) totalBlocks += colH[i];
+    cityMesh = new T.InstancedMesh(blockGeo, blockMat, totalBlocks);
+    cityMesh.castShadow = true;
+    cityMesh.receiveShadow = true;
+    cityMesh.frustumCulled = false;
+    blockColors = new Float32Array(totalBlocks * 3);
+    var m = new T.Matrix4();
+    var col = new T.Color();
+    var bldColors = [];
+    var idx = 0;
+    for (var ci2 = 0; ci2 < colH.length; ci2++) {
+      colBase[ci2] = idx;
+      var hh = colH[ci2];
+      if (!hh) continue;
+      var b = colBld[ci2];
+      if (!bldColors[b]) bldColors[b] = new T.Color(palette[Math.floor(Math.random() * palette.length)]);
+      var x = cellX(ci2 % GRID), z = cellX(Math.floor(ci2 / GRID));
+      for (var l = 0; l < hh; l++) {
+        m.makeTranslation(x, l * BLOCK + BLOCK / 2, z);
+        cityMesh.setMatrixAt(idx, m);
+        col.copy(bldColors[b]).multiplyScalar(0.92 + Math.random() * 0.1);
+        cityMesh.setColorAt(idx, col);
+        blockColors[idx * 3] = col.r;
+        blockColors[idx * 3 + 1] = col.g;
+        blockColors[idx * 3 + 2] = col.b;
+        idx++;
+      }
+    }
+    scene.add(cityMesh);
+    blocksDestroyed = 0;
+    pendingCollapses.length = 0;
+  }
+
+  // Knock a whole column down: every block becomes a tumbling debris piece.
+  function destroyColumn(ci, fromX, fromZ, force) {
+    var h = colH[ci];
+    if (h <= 0) return 0;
+    var x = cellX(ci % GRID), z = cellX(Math.floor(ci / GRID));
+    var dx = x - fromX, dz = z - fromZ;
+    var d = Math.sqrt(dx * dx + dz * dz) || 1;
+    dx /= d; dz /= d;
+    for (var l = 0; l < h; l++) {
+      var id = colBase[ci] + l;
+      cityMesh.setMatrixAt(id, zeroMatrix);
+      var y = l * BLOCK + BLOCK / 2;
+      var low = 1 - l / Math.max(1, h);
+      var push = force * (0.25 + 0.75 * low) * (0.6 + Math.random() * 0.6);
+      blockDebris.spawn(
+        x + (Math.random() - 0.5) * 0.4, y, z + (Math.random() - 0.5) * 0.4,
+        dx * push + (Math.random() - 0.5) * 6, 2 + Math.random() * 6 * low + force * 0.15, dz * push + (Math.random() - 0.5) * 6,
+        BLOCK * (0.75 + Math.random() * 0.2), BLOCK * (0.75 + Math.random() * 0.2), BLOCK * (0.75 + Math.random() * 0.2),
+        blockColors[id * 3], blockColors[id * 3 + 1], blockColors[id * 3 + 2],
+        3.5 + Math.random() * 2
+      );
+      if (Math.random() < 0.6) {
+        dust(x, y, z, 1);
+      }
+    }
+    cityMesh.instanceMatrix.needsUpdate = true;
+    colH[ci] = 0;
+    blocksDestroyed += h;
+    addScore(h * 10);
+    addEnergy(h * 0.8);
+    sfxCrumble();
+    // same-building neighbours may cave in as well
+    var ix = ci % GRID, iz = Math.floor(ci / GRID);
+    var nbs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (var n = 0; n < 4; n++) {
+      var nx = ix + nbs[n][0], nz = iz + nbs[n][1];
+      if (nx < 0 || nz < 0 || nx >= GRID || nz >= GRID) continue;
+      var nci = nz * GRID + nx;
+      if (colH[nci] > 0 && colBld[nci] === colBld[ci] && Math.random() < 0.3) {
+        pendingCollapses.push({ ci: nci, t: 0.08 + Math.random() * 0.2, fx: x, fz: z });
+      }
+    }
+    return h;
+  }
+
+  function destroyColumnsInRadius(x, z, radius, force, maxY) {
+    var n = 0;
+    var x0 = toCell(x - radius), x1 = toCell(x + radius);
+    var z0 = toCell(z - radius), z1 = toCell(z + radius);
+    for (var iz = Math.max(0, z0); iz <= Math.min(GRID - 1, z1); iz++) {
+      for (var ix = Math.max(0, x0); ix <= Math.min(GRID - 1, x1); ix++) {
+        var ci = iz * GRID + ix;
+        if (colH[ci] <= 0) continue;
+        if (maxY !== undefined && maxY > colH[ci] * BLOCK + 0.5) continue;
+        // distance from point to the cell square
+        var minx = -HALF + ix * BLOCK, minz = -HALF + iz * BLOCK;
+        var px = Math.max(minx, Math.min(x, minx + BLOCK));
+        var pz = Math.max(minz, Math.min(z, minz + BLOCK));
+        var ddx = x - px, ddz = z - pz;
+        if (ddx * ddx + ddz * ddz <= radius * radius) n += destroyColumn(ci, x, z, force);
+      }
+    }
+    return n;
+  }
+
+  // ---------- Particles ----------
+  var particleVS =
+    "attribute float psize;\n" +
+    "attribute vec4 pcolor;\n" +
+    "uniform float uScale;\n" +
+    "varying vec4 vColor;\n" +
+    "void main() {\n" +
+    "  vColor = pcolor;\n" +
+    "  vec4 mv = modelViewMatrix * vec4(position, 1.0);\n" +
+    "  gl_PointSize = psize * uScale / max(0.1, -mv.z);\n" +
+    "  gl_Position = projectionMatrix * mv;\n" +
+    "}";
+  var particleFS =
+    "varying vec4 vColor;\n" +
+    "void main() {\n" +
+    "  float d = length(gl_PointCoord - 0.5);\n" +
+    "  if (d > 0.5) discard;\n" +
+    "  float a = smoothstep(0.5, 0.05, d);\n" +
+    "  gl_FragColor = vec4(vColor.rgb, vColor.a * a);\n" +
+    "  #include <colorspace_fragment>\n" +
+    "}";
+  var particleSystems = [];
+  function ParticleSystem(max, additive) {
+    this.max = max;
+    this.next = 0;
+    this.pos = new Float32Array(max * 3);
+    this.col = new Float32Array(max * 4);
+    this.size = new Float32Array(max);
+    this.vel = new Float32Array(max * 3);
+    this.base = new Float32Array(max * 4); // r,g,b,alpha0
+    this.life = new Float32Array(max);
+    this.maxLife = new Float32Array(max);
+    this.s0 = new Float32Array(max);
+    this.s1 = new Float32Array(max);
+    this.grav = new Float32Array(max);
+    this.drag = new Float32Array(max);
+    var geo = new T.BufferGeometry();
+    this.posAttr = new T.BufferAttribute(this.pos, 3);
+    this.colAttr = new T.BufferAttribute(this.col, 4);
+    this.sizeAttr = new T.BufferAttribute(this.size, 1);
+    this.posAttr.setUsage(T.DynamicDrawUsage);
+    this.colAttr.setUsage(T.DynamicDrawUsage);
+    this.sizeAttr.setUsage(T.DynamicDrawUsage);
+    geo.setAttribute("position", this.posAttr);
+    geo.setAttribute("pcolor", this.colAttr);
+    geo.setAttribute("psize", this.sizeAttr);
+    this.mat = new T.ShaderMaterial({
+      uniforms: { uScale: { value: 400 } },
+      vertexShader: particleVS,
+      fragmentShader: particleFS,
+      transparent: true,
+      depthWrite: false,
+      blending: additive ? T.AdditiveBlending : T.NormalBlending
+    });
+    this.points = new T.Points(geo, this.mat);
+    this.points.frustumCulled = false;
+    this.points.renderOrder = additive ? 6 : 5;
+    scene.add(this.points);
+    particleSystems.push(this);
+  }
+  ParticleSystem.prototype.spawn = function (x, y, z, vx, vy, vz, r, g, b, a, s0, s1, life, grav, drag) {
+    var i = this.next;
+    this.next = (i + 1) % this.max;
+    this.pos[i * 3] = x; this.pos[i * 3 + 1] = y; this.pos[i * 3 + 2] = z;
+    this.vel[i * 3] = vx; this.vel[i * 3 + 1] = vy; this.vel[i * 3 + 2] = vz;
+    this.base[i * 4] = r; this.base[i * 4 + 1] = g; this.base[i * 4 + 2] = b; this.base[i * 4 + 3] = a;
+    this.life[i] = life; this.maxLife[i] = life;
+    this.s0[i] = s0; this.s1[i] = s1;
+    this.grav[i] = grav || 0;
+    this.drag[i] = drag || 0;
+  };
+  ParticleSystem.prototype.update = function (dt) {
+    for (var i = 0; i < this.max; i++) {
+      if (this.life[i] <= 0) continue;
+      this.life[i] -= dt;
+      if (this.life[i] <= 0) { this.size[i] = 0; continue; }
+      var t = 1 - this.life[i] / this.maxLife[i];
+      var dr = Math.max(0, 1 - this.drag[i] * dt);
+      var i3 = i * 3;
+      this.vel[i3] *= dr; this.vel[i3 + 1] = this.vel[i3 + 1] * dr + this.grav[i] * dt; this.vel[i3 + 2] *= dr;
+      this.pos[i3] += this.vel[i3] * dt;
+      this.pos[i3 + 1] += this.vel[i3 + 1] * dt;
+      this.pos[i3 + 2] += this.vel[i3 + 2] * dt;
+      if (this.pos[i3 + 1] < 0.05) { this.pos[i3 + 1] = 0.05; this.vel[i3 + 1] *= -0.3; }
+      this.size[i] = this.s0[i] + (this.s1[i] - this.s0[i]) * t;
+      var i4 = i * 4;
+      this.col[i4] = this.base[i4];
+      this.col[i4 + 1] = this.base[i4 + 1];
+      this.col[i4 + 2] = this.base[i4 + 2];
+      this.col[i4 + 3] = this.base[i4 + 3] * (1 - t) * (1 - t * 0.3);
+    }
+    this.posAttr.needsUpdate = true;
+    this.colAttr.needsUpdate = true;
+    this.sizeAttr.needsUpdate = true;
+  };
+  ParticleSystem.prototype.clear = function () {
+    this.life.fill(0);
+    this.size.fill(0);
+    this.sizeAttr.needsUpdate = true;
+  };
+  var glow = new ParticleSystem(1800, true);
+  var smoke = new ParticleSystem(1400, false);
+
+  function rnd(a) { return (Math.random() - 0.5) * 2 * a; }
+
+  function sparks(x, y, z, n, hot) {
+    for (var i = 0; i < n; i++) {
+      var sp = 8 + Math.random() * 18;
+      var a = Math.random() * Math.PI * 2, b = Math.random() * Math.PI - Math.PI / 2;
+      glow.spawn(x, y, z,
+        Math.cos(a) * Math.cos(b) * sp, Math.sin(b) * sp + 5, Math.sin(a) * Math.cos(b) * sp,
+        1, hot ? 0.85 : 0.6, hot ? 0.4 : 0.2, 1,
+        0.35, 0.1, 0.25 + Math.random() * 0.35, -30, 1.5);
+    }
+    glow.spawn(x, y, z, 0, 0, 0, 1, 0.9, 0.6, 1, 7, 10, 0.12, 0, 0);
+  }
+  function dust(x, y, z, n) {
+    for (var i = 0; i < n; i++) {
+      var g = 0.45 + Math.random() * 0.15;
+      smoke.spawn(x + rnd(1), y + rnd(0.6), z + rnd(1),
+        rnd(3), 1 + Math.random() * 2, rnd(3),
+        g, g * 0.92, g * 0.88, 0.55,
+        3 + Math.random() * 2, 8 + Math.random() * 5, 1.4 + Math.random() * 1.2, 0.4, 1.2);
+    }
+  }
+  function explosion(x, y, z, scale) {
+    scale = scale || 1;
+    for (var i = 0; i < 40 * scale; i++) {
+      var sp = (6 + Math.random() * 14) * scale;
+      var a = Math.random() * Math.PI * 2, b = Math.random() * Math.PI - Math.PI / 2;
+      glow.spawn(x, y, z,
+        Math.cos(a) * Math.cos(b) * sp, Math.sin(b) * sp + 3, Math.sin(a) * Math.cos(b) * sp,
+        1, 0.45 + Math.random() * 0.35, 0.12, 1,
+        (2 + Math.random() * 2) * scale, 0.5, 0.35 + Math.random() * 0.4, 2, 3);
+    }
+    glow.spawn(x, y, z, 0, 0, 0, 1, 0.8, 0.5, 1, 14 * scale, 22 * scale, 0.18, 0, 0);
+    for (var j = 0; j < 18 * scale; j++) {
+      var g = 0.12 + Math.random() * 0.12;
+      smoke.spawn(x + rnd(1.5), y + rnd(1.5), z + rnd(1.5),
+        rnd(5 * scale), 2 + Math.random() * 5, rnd(5 * scale),
+        g, g, g * 1.1, 0.75,
+        3 * scale, 9 * scale, 1.2 + Math.random() * 1.2, 1.5, 1.5);
+    }
+    sparks(x, y, z, 14, true);
+    boom({ x: x, y: y, z: z }, 60 * scale);
+  }
+
+  // ---------- Shockwave rings ----------
+  var rings = [];
+  var ringGeo = new T.RingGeometry(0.85, 1, 64);
+  ringGeo.rotateX(-Math.PI / 2);
+  function spawnRing(x, y, z, color, maxR, dur) {
+    var mat = new T.MeshBasicMaterial({
+      color: color, transparent: true, opacity: 1, blending: T.AdditiveBlending,
+      depthWrite: false, side: T.DoubleSide, fog: false
+    });
+    var mesh = new T.Mesh(ringGeo, mat);
+    mesh.position.set(x, y, z);
+    scene.add(mesh);
+    rings.push({ mesh: mesh, t: 0, dur: dur, maxR: maxR });
+  }
+  function updateRings(dt) {
+    for (var i = rings.length - 1; i >= 0; i--) {
+      var r = rings[i];
+      r.t += dt;
+      var k = Math.min(1, r.t / r.dur);
+      var e = 1 - Math.pow(1 - k, 3);
+      r.mesh.scale.setScalar(0.5 + e * r.maxR);
+      r.mesh.material.opacity = 1 - k;
+      if (k >= 1) {
+        scene.remove(r.mesh);
+        r.mesh.material.dispose();
+        rings.splice(i, 1);
+      }
+    }
+  }
+
+  // ---------- Debris (instanced rigid chunks) ----------
+  function DebrisPool(max, material) {
+    this.max = max;
+    this.next = 0;
+    this.mesh = new T.InstancedMesh(new T.BoxGeometry(1, 1, 1), material, max);
+    this.mesh.castShadow = true;
+    this.mesh.receiveShadow = true;
+    this.mesh.frustumCulled = false;
+    this.p = new Float32Array(max * 3);
+    this.v = new Float32Array(max * 3);
+    this.r = new Float32Array(max * 3);
+    this.w = new Float32Array(max * 3);
+    this.s = new Float32Array(max * 3);
+    this.life = new Float32Array(max);
+    var white = new T.Color(1, 1, 1);
+    for (var i = 0; i < max; i++) {
+      this.mesh.setMatrixAt(i, zeroMatrix);
+      this.mesh.setColorAt(i, white);
+    }
+    this.dummy = new T.Object3D();
+    this.tmpColor = new T.Color();
+    scene.add(this.mesh);
+  }
+  DebrisPool.prototype.spawn = function (x, y, z, vx, vy, vz, sx, sy, sz, cr, cg, cb, life) {
+    var i = this.next;
+    this.next = (i + 1) % this.max;
+    var i3 = i * 3;
+    this.p[i3] = x; this.p[i3 + 1] = y; this.p[i3 + 2] = z;
+    this.v[i3] = vx; this.v[i3 + 1] = vy; this.v[i3 + 2] = vz;
+    this.r[i3] = 0; this.r[i3 + 1] = Math.random() * 6; this.r[i3 + 2] = 0;
+    this.w[i3] = rnd(6); this.w[i3 + 1] = rnd(6); this.w[i3 + 2] = rnd(6);
+    this.s[i3] = sx; this.s[i3 + 1] = sy; this.s[i3 + 2] = sz;
+    this.life[i] = life;
+    this.mesh.setColorAt(i, this.tmpColor.setRGB(cr, cg, cb));
+    this.mesh.instanceColor.needsUpdate = true;
+  };
+  DebrisPool.prototype.update = function (dt) {
+    var d = this.dummy;
+    var any = false;
+    for (var i = 0; i < this.max; i++) {
+      if (this.life[i] <= 0) continue;
+      any = true;
+      var i3 = i * 3;
+      this.life[i] -= dt;
+      if (this.life[i] <= 0) { this.mesh.setMatrixAt(i, zeroMatrix); continue; }
+      this.v[i3 + 1] += GRAVITY * dt;
+      this.p[i3] += this.v[i3] * dt;
+      this.p[i3 + 1] += this.v[i3 + 1] * dt;
+      this.p[i3 + 2] += this.v[i3 + 2] * dt;
+      var half = Math.min(this.s[i3], this.s[i3 + 1], this.s[i3 + 2]) * 0.5;
+      if (this.p[i3 + 1] < half) {
+        this.p[i3 + 1] = half;
+        if (this.v[i3 + 1] < -3) {
+          this.v[i3 + 1] *= -0.3;
+          this.v[i3] *= 0.6; this.v[i3 + 2] *= 0.6;
+          this.w[i3] *= 0.5; this.w[i3 + 1] *= 0.5; this.w[i3 + 2] *= 0.5;
+        } else {
+          this.v[i3 + 1] = 0;
+          var f = Math.max(0, 1 - 5 * dt);
+          this.v[i3] *= f; this.v[i3 + 2] *= f;
+          this.w[i3] *= f; this.w[i3 + 1] *= f; this.w[i3 + 2] *= f;
+        }
+      }
+      this.r[i3] += this.w[i3] * dt;
+      this.r[i3 + 1] += this.w[i3 + 1] * dt;
+      this.r[i3 + 2] += this.w[i3 + 2] * dt;
+      var sc = Math.min(1, this.life[i] / 0.6);
+      d.position.set(this.p[i3], this.p[i3 + 1], this.p[i3 + 2]);
+      d.rotation.set(this.r[i3], this.r[i3 + 1], this.r[i3 + 2]);
+      d.scale.set(this.s[i3] * sc, this.s[i3 + 1] * sc, this.s[i3 + 2] * sc);
+      d.updateMatrix();
+      this.mesh.setMatrixAt(i, d.matrix);
+    }
+    if (any) this.mesh.instanceMatrix.needsUpdate = true;
+  };
+  DebrisPool.prototype.clear = function () {
+    for (var i = 0; i < this.max; i++) {
+      this.life[i] = 0;
+      this.mesh.setMatrixAt(i, zeroMatrix);
+    }
+    this.mesh.instanceMatrix.needsUpdate = true;
+  };
+  var blockDebris = new DebrisPool(700, blockMat);
+  var metalDebris = new DebrisPool(200, new T.MeshStandardMaterial({ roughness: 0.45, metalness: 0.6 }));
+
+  // ---------- Mech model ----------
+  function stdMat(color, metal, rough) {
+    return new T.MeshStandardMaterial({ color: color, metalness: metal, roughness: rough });
+  }
+  function buildMech(o) {
+    var mats = {
+      primary: stdMat(o.primary, 0.55, 0.38),
+      secondary: stdMat(o.secondary, 0.4, 0.5),
+      dark: stdMat("#2b2e37", 0.6, 0.55),
+      accent: stdMat(o.accent, 0.3, 0.4),
+      eye: new T.MeshStandardMaterial({ color: 0x000000, emissive: o.eye, emissiveIntensity: 4 }),
+      flame: new T.MeshBasicMaterial({
+        color: o.flame || 0x6fd8ff, transparent: true, opacity: 0.85,
+        blending: T.AdditiveBlending, depthWrite: false, fog: false
+      })
+    };
+    var root = new T.Group();
+    var body = new T.Group();
+    root.add(body);
+    function box(w, h, d, mat, x, y, z, parent) {
+      var mesh = new T.Mesh(new T.BoxGeometry(w, h, d), mat);
+      mesh.position.set(x, y, z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      parent.add(mesh);
+      return mesh;
+    }
+    var hips = new T.Group();
+    hips.position.y = 3.2;
+    body.add(hips);
+    box(2.0, 0.8, 1.3, mats.dark, 0, 0.1, 0, hips);
+    var torso = new T.Group();
+    torso.position.y = 0.5;
+    hips.add(torso);
+    box(1.8, 0.8, 1.4, mats.dark, 0, 0.2, 0, torso);
+    box(3.0, 2.0, 2.0, mats.primary, 0, 1.4, 0, torso);
+    box(2.2, 1.1, 0.3, mats.secondary, 0, 1.25, 1.05, torso);
+    box(0.6, 0.5, 0.2, mats.eye, 0, 1.3, 1.25, torso);
+    box(3.1, 0.25, 2.1, mats.accent, 0, 2.2, 0, torso);
+    // backpack + thrusters
+    box(2.0, 1.6, 0.8, mats.dark, 0, 1.4, -1.3, torso);
+    var flames = [];
+    for (var t = -1; t <= 1; t += 2) {
+      var noz = new T.Mesh(new T.CylinderGeometry(0.32, 0.42, 0.7, 10), mats.dark);
+      noz.position.set(t * 0.55, 0.55, -1.55);
+      noz.castShadow = true;
+      torso.add(noz);
+      var flame = new T.Mesh(new T.ConeGeometry(0.34, 2.2, 10, 1, true), mats.flame);
+      flame.geometry.translate(0, -1.1, 0);
+      flame.position.set(t * 0.55, 0.2, -1.55);
+      flame.rotation.x = -0.35;
+      torso.add(flame);
+      flames.push(flame);
+    }
+    // head
+    var head = new T.Group();
+    head.position.y = 2.75;
+    torso.add(head);
+    box(1.2, 0.9, 1.3, mats.secondary, 0, 0, 0, head);
+    box(1.0, 0.22, 0.12, mats.eye, 0, 0.05, 0.66, head);
+    box(0.14, 0.55, 0.9, mats.accent, 0, 0.6, -0.05, head);
+    // arms
+    var shoulders = [], elbows = [];
+    for (var s = -1; s <= 1; s += 2) {
+      var sh = new T.Group();
+      sh.position.set(s * 1.95, 2.0, 0);
+      torso.add(sh);
+      box(1.3, 1.0, 1.5, mats.primary, s * 0.15, 0.2, 0, sh);
+      box(1.32, 0.18, 1.52, mats.accent, s * 0.15, 0.5, 0, sh);
+      if (o.launcher) {
+        box(0.9, 0.8, 1.6, mats.dark, s * 0.2, 1.1, 0, sh);
+        box(0.6, 0.5, 0.1, mats.eye, s * 0.2, 1.1, 0.81, sh);
+      }
+      box(0.7, 1.4, 0.7, mats.dark, 0, -0.8, 0, sh);
+      var el = new T.Group();
+      el.position.y = -1.5;
+      sh.add(el);
+      box(0.95, 1.2, 0.95, mats.secondary, 0, -0.55, 0, el);
+      box(1.15, 0.9, 1.15, mats.primary, 0, -1.5, 0, el);
+      shoulders.push(sh);
+      elbows.push(el);
+    }
+    // legs
+    var legs = [], knees = [];
+    for (var s2 = -1; s2 <= 1; s2 += 2) {
+      var hp = new T.Group();
+      hp.position.set(s2 * 0.8, 0, 0);
+      hips.add(hp);
+      box(0.95, 1.6, 1.05, mats.secondary, 0, -0.8, 0, hp);
+      var kn = new T.Group();
+      kn.position.y = -1.6;
+      hp.add(kn);
+      box(0.8, 0.6, 0.4, mats.primary, 0, 0, 0.55, kn);
+      box(1.0, 1.2, 1.1, mats.primary, 0, -0.6, 0, kn);
+      box(1.2, 0.45, 1.9, mats.dark, 0, -1.37, 0.25, kn);
+      legs.push(hp);
+      knees.push(kn);
+    }
+    root.scale.setScalar(o.scale || 1);
+    return {
+      root: root, body: body, hips: hips, torso: torso, head: head,
+      shoulders: shoulders, elbows: elbows, legs: legs, knees: knees,
+      flames: flames, mats: mats
+    };
+  }
+
+  // ---------- Mech entities ----------
+  var TYPES = {
+    player: { primary: "#2f6fd6", secondary: "#e6e9ef", accent: "#ffc233", eye: "#39e8ff", flame: 0x6fd8ff, scale: 1.3, hp: PLAYER_MAX_HP, radius: 2.2 },
+    grunt: { primary: "#9a2e2e", secondary: "#3e424c", accent: "#ff9f1c", eye: "#ff2a2a", flame: 0xff7a2a, scale: 1.3, hp: 60, radius: 2.2, speed: 6.5, dmg: 12, points: 100 },
+    gunner: { primary: "#5b2d8a", secondary: "#3e424c", accent: "#d25cff", eye: "#ff3adf", flame: 0xff5ad9, scale: 1.3, hp: 45, radius: 2.2, speed: 5.5, dmg: 10, points: 150, launcher: true },
+    brute: { primary: "#4a4f3a", secondary: "#2a2d33", accent: "#ff5a1f", eye: "#ff7a00", flame: 0xff7a2a, scale: 1.8, hp: 170, radius: 3.1, speed: 4.5, dmg: 24, points: 300 }
+  };
+
+  var mechs = [];
+  var player = null;
+
+  function createMech(type, x, z) {
+    var def = TYPES[type];
+    var model = buildMech(def);
+    scene.add(model.root);
+    var m = {
+      type: type, def: def, model: model, isPlayer: type === "player",
+      pos: new T.Vector3(x, 0, z),
+      move: new T.Vector3(), knock: new T.Vector3(), vy: 0,
+      yaw: 0, targetYaw: 0,
+      hp: def.hp, maxHp: def.hp, radius: def.radius,
+      scale: def.scale || 1,
+      phase: 0, walkAmt: 0, lastStepSign: 1,
+      punchT: -1, punchDur: 0, punchHitT: 0, punchArm: 0, punchHeavy: false, punchDone: false,
+      atkCd: 1 + Math.random(), fireCd: 2 + Math.random() * 2,
+      stagger: 0, flashT: 0, blockedT: 0, blockedCell: -1,
+      dashT: 0, dashCd: 0, smashing: false, dropping: false, marker: null,
+      strafe: Math.random() < 0.5 ? -1 : 1, dead: false, bar: null
+    };
+    if (!m.isPlayer) {
+      var bg = new T.Sprite(new T.SpriteMaterial({ color: 0x111111, depthTest: false, fog: false, transparent: true, opacity: 0.7 }));
+      bg.scale.set(3.3, 0.38, 1);
+      bg.renderOrder = 20;
+      var fill = new T.Sprite(new T.SpriteMaterial({ color: 0xff3a3a, depthTest: false, fog: false }));
+      fill.center.set(0, 0.5);
+      fill.scale.set(3.1, 0.24, 1);
+      fill.renderOrder = 21;
+      scene.add(bg); scene.add(fill);
+      m.bar = { bg: bg, fill: fill };
+    }
+    mechs.push(m);
+    return m;
+  }
+
+  // Detach a mech's meshes from the scene. The entry stays in `mechs` (flagged dead)
+  // until sweepDead() runs, so loops over `mechs` never see the array shift mid-iteration.
+  function removeMech(m) {
+    if (m.removed) return;
+    m.removed = true;
+    scene.remove(m.model.root);
+    m.model.root.traverse(function (o) { if (o.geometry) o.geometry.dispose(); });
+    for (var k in m.model.mats) m.model.mats[k].dispose();
+    if (m.bar) {
+      scene.remove(m.bar.bg); scene.remove(m.bar.fill);
+      m.bar.bg.material.dispose(); m.bar.fill.material.dispose();
+    }
+    if (m.marker) { scene.remove(m.marker); m.marker.material.dispose(); m.marker = null; }
+  }
+  function sweepDead() {
+    for (var i = mechs.length - 1; i >= 0; i--) {
+      if (mechs[i].removed) mechs.splice(i, 1);
+    }
+  }
+
+  function forwardOf(m) { return new T.Vector3(Math.sin(m.yaw), 0, Math.cos(m.yaw)); }
+  function angleDiff(a, b) {
+    var d = b - a;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    return d;
+  }
+  function isAirborne(m) { return m.pos.y > 0.001 || m.vy > 0; }
+
+  // ---------- Game state ----------
+  var state = "menu";
+  var score = 0, best = 0;
+  var energy = 0;
+  var wave = 0, toSpawn = [], spawnTimer = 0, waveClearT = -1;
+  var shake = 0, hitStop = 0, timeScale = 1, slowT = 0;
+  var comboCount = 0, comboTimer = 0;
+  var deathT = 0;
+  var orbs = [];
+  var missiles = [];
+  try { best = parseInt(localStorage.getItem(BEST_KEY), 10) || 0; } catch (e) { best = 0; }
+
+  var hpFill = document.getElementById("hpFill");
+  var enFill = document.getElementById("enFill");
+  var scoreLine = document.getElementById("scoreLine");
+  var destroyLine = document.getElementById("destroyLine");
+  var waveLine = document.getElementById("waveLine");
+  var comboLine = document.getElementById("comboLine");
+  var bannerEl = document.getElementById("banner");
+  var damageFlash = document.getElementById("damageFlash");
+  var whiteFlash = document.getElementById("whiteFlash");
+  var smashBtn = document.getElementById("smashBtn");
+  var dashBtn = document.getElementById("dashBtn");
+  var damageFlashLevel = 0, whiteFlashLevel = 0;
+
+  function addScore(n) { if (state === "playing") score += n; }
+  function addEnergy(n) { if (state === "playing") energy = Math.min(100, energy + n); }
+  var bannerTimer = null;
+  function banner(text, ms) {
+    bannerEl.textContent = text;
+    bannerEl.classList.add("show");
+    if (bannerTimer) clearTimeout(bannerTimer);
+    bannerTimer = setTimeout(function () { bannerEl.classList.remove("show"); }, ms || 1600);
+  }
+  function addShake(a) { shake = Math.min(2.2, shake + a); }
+
+  // ---------- Combat ----------
+  function damageMech(m, dmg, kx, kz, up, stagger) {
+    if (m.dead) return;
+    if (m.isPlayer) {
+      if (m.dashT > 0 || m.smashing || state !== "playing") return;
+      damageFlashLevel = Math.min(1, damageFlashLevel + 0.6);
+      sfxHurt();
+      addShake(0.5);
+      stagger = 0; // the player keeps control
+    }
+    m.hp -= dmg;
+    m.flashT = 0.14;
+    m.knock.x += kx;
+    m.knock.z += kz;
+    if (up > 0) {
+      m.vy = Math.max(m.vy, up);
+      if (m.pos.y <= 0) m.pos.y = 0.01;
+    }
+    // enemies have armor while winding up a punch: only heavy blows (stagger >= 0.8) interrupt them
+    var windingUp = !m.isPlayer && m.punchT >= 0 && !m.punchDone;
+    if (stagger > 0 && (!windingUp || stagger >= 0.8)) {
+      m.stagger = Math.max(m.stagger, stagger);
+      if (windingUp) m.punchT = -1;
+    }
+    if (m.hp <= 0) killMech(m);
+  }
+
+  function torsoPos(m) { return new T.Vector3(m.pos.x, m.pos.y + 4.4 * m.scale, m.pos.z); }
+
+  function killMech(m) {
+    m.dead = true;
+    var c = torsoPos(m);
+    explosion(c.x, c.y, c.z, 1.4 * m.scale);
+    spawnRing(m.pos.x, 0.2, m.pos.z, 0xff8a3a, 12 * m.scale, 0.6);
+    addShake(0.9);
+    hitStop = Math.max(hitStop, 0.09);
+    sfxExplode();
+    // blow the mech apart into its component plates
+    m.model.root.updateMatrixWorld(true);
+    var wp = new T.Vector3(), ws = new T.Vector3();
+    m.model.root.traverse(function (o) {
+      if (!o.isMesh || !o.geometry.parameters || o.geometry.parameters.width === undefined) return;
+      if (o.material === m.model.mats.flame) return;
+      o.getWorldPosition(wp);
+      o.getWorldScale(ws);
+      var pr = o.geometry.parameters;
+      var dx = wp.x - c.x, dz = wp.z - c.z;
+      var col = o.material.color || new T.Color(1, 0.3, 0.2);
+      if (o.material === m.model.mats.eye) col = new T.Color(0.2, 0.2, 0.22);
+      metalDebris.spawn(wp.x, wp.y, wp.z,
+        dx * 4 + rnd(6) + m.knock.x * 0.3, 8 + Math.random() * 12, dz * 4 + rnd(6) + m.knock.z * 0.3,
+        pr.width * ws.x, pr.height * ws.y, pr.depth * ws.z,
+        col.r, col.g, col.b, 4 + Math.random() * 2);
+    });
+    if (m.isPlayer) {
+      deathT = 2.2;
+      slowT = 1.6;
+      removeMech(m);
+      return;
+    }
+    score += m.def.points * Math.max(1, wave);
+    addEnergy(14);
+    if (Math.random() < 0.45) spawnOrb(m.pos.x, m.pos.z);
+    removeMech(m);
+  }
+
+  function registerHit() {
+    comboCount++;
+    comboTimer = 1.6;
+    if (comboCount >= 2) {
+      comboLine.textContent = comboCount + " HITS";
+      comboLine.style.opacity = 1;
+    }
+  }
+
+  function startPunch(m, heavy) {
+    m.punchT = 0;
+    m.punchHeavy = !!heavy;
+    m.punchDone = false;
+    if (m.isPlayer) {
+      m.punchHitT = heavy ? 0.2 : 0.11;
+      m.punchDur = heavy ? 0.5 : 0.34;
+    } else {
+      m.punchHitT = m.type === "brute" ? 0.7 : 0.5;
+      m.punchDur = m.punchHitT + 0.35;
+      sfxWindup();
+    }
+    m.punchArm = heavy ? 2 : (m.punchArm === 0 ? 1 : 0);
+  }
+
+  function resolvePunch(m) {
+    m.punchDone = true;
+    var fwd = forwardOf(m);
+    var reach = 3.4 * m.scale;
+    var fist = new T.Vector3(m.pos.x + fwd.x * reach, m.pos.y + 3.8 * m.scale, m.pos.z + fwd.z * reach);
+    if (m.isPlayer) sfxWhoosh();
+    var hitSomething = false;
+    var heavy = m.punchHeavy;
+    for (var i = 0; i < mechs.length; i++) {
+      var o = mechs[i];
+      if (o === m || o.dead || o.dropping) continue;
+      if (o.isPlayer === m.isPlayer) continue;
+      var dx = o.pos.x - m.pos.x, dz = o.pos.z - m.pos.z;
+      var d = Math.sqrt(dx * dx + dz * dz);
+      if (d > reach + o.radius + 1.2) continue;
+      if (Math.abs(o.pos.y - m.pos.y) > 5) continue;
+      var dot = (dx * fwd.x + dz * fwd.z) / (d || 1);
+      if (dot < 0.35 && d > o.radius + m.radius) continue;
+      var nx = dx / (d || 1), nz = dz / (d || 1);
+      var dmg, kb, up, stg;
+      if (m.isPlayer) {
+        dmg = heavy ? 26 : 12;
+        kb = heavy ? 34 : 13;
+        up = heavy ? 9 : 0;
+        stg = heavy ? 0.9 : 0.25;
+      } else {
+        dmg = m.def.dmg;
+        kb = m.type === "brute" ? 26 : 14;
+        up = m.type === "brute" ? 6 : 0;
+        stg = 0;
+      }
+      damageMech(o, dmg, nx * kb, nz * kb, up, stg);
+      var hp = torsoPos(o);
+      hp.x -= nx * o.radius; hp.z -= nz * o.radius;
+      sparks(hp.x, hp.y, hp.z, heavy ? 30 : 18, heavy);
+      if (heavy) spawnRing(hp.x, hp.y, hp.z, 0xffc86a, 5, 0.3);
+      hitSomething = true;
+      if (m.isPlayer) {
+        registerHit();
+        addEnergy(heavy ? 12 : 7);
+        score += heavy ? 40 : 15;
+      }
+    }
+    // fists also demolish buildings
+    var n = destroyColumnsInRadius(fist.x, fist.z, heavy ? 2.6 : 1.7, heavy ? 22 : 14, 0);
+    if (n > 0 && m.isPlayer) addShake(0.25);
+    if (hitSomething) {
+      sfxPunchHit();
+      hitStop = Math.max(hitStop, heavy ? 0.1 : 0.055);
+      addShake(heavy ? 0.7 : 0.35);
+    }
+    if (m.isPlayer && heavy) {
+      spawnRing(fist.x, 0.25, fist.z, 0xffb040, 4, 0.35);
+      dust(fist.x, 0.5, fist.z, 4);
+    }
+  }
+
+  function playerPunch() {
+    var p = player;
+    if (!p || p.dead || p.smashing || state !== "playing") return;
+    if (p.punchT >= 0 && p.punchT < p.punchDur * 0.72) return;
+    var heavy = false;
+    if (comboStepTimer > 0) {
+      comboStep = (comboStep + 1) % 3;
+      heavy = comboStep === 2;
+    } else {
+      comboStep = 0;
+    }
+    comboStepTimer = 0.75;
+    // auto-aim at the nearest enemy
+    var bestD = 11, target = null;
+    for (var i = 0; i < mechs.length; i++) {
+      var o = mechs[i];
+      if (o.isPlayer || o.dead || o.dropping) continue;
+      var d = Math.hypot(o.pos.x - p.pos.x, o.pos.z - p.pos.z);
+      if (d < bestD) { bestD = d; target = o; }
+    }
+    if (target) {
+      p.yaw = Math.atan2(target.pos.x - p.pos.x, target.pos.z - p.pos.z);
+      p.targetYaw = p.yaw;
+    }
+    startPunch(p, heavy);
+    if (heavy) {
+      var f = forwardOf(p);
+      p.knock.x += f.x * 16;
+      p.knock.z += f.z * 16;
+    }
+  }
+  var comboStep = 0, comboStepTimer = 0;
+
+  function playerDash() {
+    var p = player;
+    if (!p || p.dead || p.smashing || p.dashCd > 0 || state !== "playing") return;
+    var dir = moveInputWorld();
+    if (dir.lengthSq() < 0.01) dir = forwardOf(p);
+    dir.normalize();
+    p.dashDir = dir;
+    p.yaw = Math.atan2(dir.x, dir.z);
+    p.targetYaw = p.yaw;
+    p.dashT = DASH_TIME;
+    p.dashCd = DASH_CD;
+    p.punchT = -1;
+    p.dashHits = [];
+    sfxDash();
+    addShake(0.2);
+  }
+
+  function playerSmash() {
+    var p = player;
+    if (!p || p.dead || p.smashing || energy < 100 || state !== "playing") return;
+    energy = 0;
+    p.smashing = true;
+    p.slamming = false;
+    p.vy = 22;
+    p.pos.y = 0.01;
+    p.punchT = -1;
+    p.dashT = 0;
+    sfxDash();
+    dust(p.pos.x, 0.5, p.pos.z, 8);
+  }
+
+  function smashImpact(p) {
+    var x = p.pos.x, z = p.pos.z;
+    sfxSmash();
+    addShake(2.0);
+    hitStop = Math.max(hitStop, 0.12);
+    whiteFlashLevel = 0.7;
+    spawnRing(x, 0.3, z, 0xffc040, 18, 0.7);
+    spawnRing(x, 0.3, z, 0xff5a20, 12, 0.5);
+    spawnRing(x, 2.5, z, 0xfff0a0, 8, 0.35);
+    boom(p.pos, 140);
+    for (var i = 0; i < 40; i++) {
+      var a = (i / 40) * Math.PI * 2;
+      var g = 0.5;
+      smoke.spawn(x + Math.cos(a) * 3, 0.8, z + Math.sin(a) * 3,
+        Math.cos(a) * 26, 1.5, Math.sin(a) * 26,
+        g, g * 0.9, g * 0.85, 0.6, 5, 12, 1.4, 0, 2.2);
+      glow.spawn(x + Math.cos(a) * 2, 0.6, z + Math.sin(a) * 2,
+        Math.cos(a) * 30, 3 + Math.random() * 6, Math.sin(a) * 30,
+        1, 0.6, 0.2, 1, 1.4, 0.3, 0.5, -10, 2);
+    }
+    destroyColumnsInRadius(x, z, 10, 26);
+    for (var j = 0; j < mechs.length; j++) {
+      var o = mechs[j];
+      if (o.isPlayer || o.dead || o.dropping) continue;
+      var dx = o.pos.x - x, dz = o.pos.z - z;
+      var d = Math.sqrt(dx * dx + dz * dz);
+      if (d > 15) continue;
+      var f = 1 - d / 15;
+      var nx = dx / (d || 1), nz = dz / (d || 1);
+      damageMech(o, 22 + 38 * f, nx * (18 + 22 * f), nz * (18 + 22 * f), 10 + 8 * f, 1.3);
+      registerHit();
+    }
+    score += 50;
+  }
+
+  // ---------- Missiles ----------
+  var missileGeo = new T.CylinderGeometry(0.18, 0.25, 1.2, 8);
+  missileGeo.rotateX(Math.PI / 2);
+  var missileMat = new T.MeshStandardMaterial({ color: 0x33313a, emissive: 0xff3adf, emissiveIntensity: 0.8 });
+  function fireMissile(m, side) {
+    var sh = m.model.shoulders[side];
+    var wp = new T.Vector3();
+    sh.getWorldPosition(wp);
+    wp.y += 1.2;
+    var mesh = new T.Mesh(missileGeo, missileMat);
+    mesh.position.copy(wp);
+    scene.add(mesh);
+    var f = forwardOf(m);
+    missiles.push({
+      mesh: mesh, pos: wp.clone(),
+      vel: new T.Vector3(f.x * 6, 14, f.z * 6),
+      life: 5
+    });
+    sfxMissile();
+  }
+  function explodeMissile(k) {
+    var ms = missiles[k];
+    explosion(ms.pos.x, ms.pos.y, ms.pos.z, 0.6);
+    sfxExplode();
+    if (player && !player.dead) {
+      var tp = torsoPos(player);
+      var d = tp.distanceTo(ms.pos);
+      if (d < 4.2) {
+        var nx = (player.pos.x - ms.pos.x) / (d || 1), nz = (player.pos.z - ms.pos.z) / (d || 1);
+        damageMech(player, 10, nx * 10, nz * 10, 0, 0);
+      }
+    }
+    destroyColumnsInRadius(ms.pos.x, ms.pos.z, 1.8, 12, ms.pos.y - 1);
+    scene.remove(ms.mesh);
+    missiles.splice(k, 1);
+  }
+  function updateMissiles(dt) {
+    var desired = new T.Vector3();
+    for (var k = missiles.length - 1; k >= 0; k--) {
+      var ms = missiles[k];
+      ms.life -= dt;
+      var speed = 19;
+      if (player && !player.dead) {
+        desired.copy(torsoPos(player)).sub(ms.pos).normalize().multiplyScalar(speed);
+        var turn = ms.life > 4.4 ? 0.5 : 2.4;
+        ms.vel.lerp(desired, Math.min(1, turn * dt));
+      }
+      ms.vel.y += (ms.life > 4.4 ? -8 : 0) * dt;
+      ms.pos.addScaledVector(ms.vel, dt);
+      ms.mesh.position.copy(ms.pos);
+      ms.mesh.lookAt(ms.pos.x + ms.vel.x, ms.pos.y + ms.vel.y, ms.pos.z + ms.vel.z);
+      glow.spawn(ms.pos.x, ms.pos.y, ms.pos.z, rnd(1), rnd(1), rnd(1), 1, 0.35, 0.9, 1, 1.4, 0.4, 0.22, 0, 0);
+      smoke.spawn(ms.pos.x, ms.pos.y, ms.pos.z, rnd(0.6), 0.6, rnd(0.6), 0.55, 0.5, 0.58, 0.4, 0.8, 2.6, 0.9, 0.5, 1);
+      var hit = ms.life <= 0 || ms.pos.y < 0.3;
+      if (!hit && player && !player.dead && player.dashT <= 0 && !player.smashing) {
+        if (torsoPos(player).distanceTo(ms.pos) < 2.6) hit = true;
+      }
+      if (!hit) {
+        var cx = toCell(ms.pos.x), cz = toCell(ms.pos.z);
+        if (cx >= 0 && cz >= 0 && cx < GRID && cz < GRID && colH[cz * GRID + cx] * BLOCK > ms.pos.y) hit = true;
+      }
+      if (hit) explodeMissile(k);
+    }
+  }
+
+  // ---------- Repair orbs ----------
+  var orbGeo = new T.IcosahedronGeometry(0.7, 1);
+  var orbMat = new T.MeshStandardMaterial({ color: 0x1a4a2a, emissive: 0x3dff8a, emissiveIntensity: 2.2 });
+  function spawnOrb(x, z) {
+    var mesh = new T.Mesh(orbGeo, orbMat);
+    mesh.position.set(x, 2, z);
+    scene.add(mesh);
+    orbs.push({ mesh: mesh, t: 0 });
+  }
+  function updateOrbs(dt) {
+    for (var i = orbs.length - 1; i >= 0; i--) {
+      var o = orbs[i];
+      o.t += dt;
+      o.mesh.position.y = 2 + Math.sin(o.t * 3) * 0.4;
+      o.mesh.rotation.y += dt * 2;
+      if (Math.random() < 0.3) {
+        glow.spawn(o.mesh.position.x + rnd(0.6), o.mesh.position.y, o.mesh.position.z + rnd(0.6), 0, 2, 0, 0.3, 1, 0.5, 0.8, 0.6, 0.1, 0.6, 0, 0);
+      }
+      var gone = o.t > 18;
+      if (player && !player.dead && Math.hypot(player.pos.x - o.mesh.position.x, player.pos.z - o.mesh.position.z) < 3) {
+        player.hp = Math.min(PLAYER_MAX_HP, player.hp + 30);
+        sfxPickup();
+        sparks(o.mesh.position.x, o.mesh.position.y, o.mesh.position.z, 12, false);
+        gone = true;
+      }
+      if (gone) {
+        scene.remove(o.mesh);
+        orbs.splice(i, 1);
+      }
+    }
+  }
+
+  // ---------- Waves ----------
+  function waveList(n) {
+    var list = [];
+    var grunts = 1 + Math.ceil(n * 0.8);
+    var gunners = Math.floor(n / 2);
+    var brutes = Math.floor((n - 1) / 2);
+    for (var i = 0; i < grunts; i++) list.push("grunt");
+    for (var j = 0; j < gunners; j++) list.push("gunner");
+    for (var k = 0; k < brutes; k++) list.push("brute");
+    for (var s = list.length - 1; s > 0; s--) {
+      var r = Math.floor(Math.random() * (s + 1));
+      var tmp = list[s]; list[s] = list[r]; list[r] = tmp;
+    }
+    return list;
+  }
+  function startWave(n) {
+    wave = n;
+    toSpawn = waveList(n);
+    spawnTimer = 0.8;
+    waveClearT = -1;
+    banner("WAVE " + n, 1700);
+    sfxWave();
+  }
+  function enemiesAlive() {
+    var c = 0;
+    for (var i = 0; i < mechs.length; i++) if (!mechs[i].isPlayer && !mechs[i].dead) c++;
+    return c;
+  }
+  var markerGeo = new T.RingGeometry(2.2, 3, 40);
+  markerGeo.rotateX(-Math.PI / 2);
+  function spawnEnemy(type) {
+    var x = 0, z = 0;
+    for (var tries = 0; tries < 20; tries++) {
+      var a = Math.random() * Math.PI * 2;
+      var r = 16 + Math.random() * 14;
+      x = player.pos.x + Math.cos(a) * r;
+      z = player.pos.z + Math.sin(a) * r;
+      if (Math.abs(x) < HALF - 4 && Math.abs(z) < HALF - 4) break;
+    }
+    x = Math.max(-HALF + 4, Math.min(HALF - 4, x));
+    z = Math.max(-HALF + 4, Math.min(HALF - 4, z));
+    var m = createMech(type, x, z);
+    m.pos.y = 50;
+    m.vy = -36;
+    m.dropping = true;
+    m.yaw = Math.atan2(player.pos.x - x, player.pos.z - z);
+    var marker = new T.Mesh(markerGeo, new T.MeshBasicMaterial({
+      color: 0xff3030, transparent: true, opacity: 0.8, blending: T.AdditiveBlending, depthWrite: false, fog: false
+    }));
+    marker.position.set(x, 0.15, z);
+    marker.scale.setScalar(m.scale);
+    scene.add(marker);
+    m.marker = marker;
+  }
+  function onLand(m, impactVy) {
+    if (m.dropping) {
+      m.dropping = false;
+      if (m.marker) { scene.remove(m.marker); m.marker.material.dispose(); m.marker = null; }
+      sfxLand();
+      spawnRing(m.pos.x, 0.3, m.pos.z, 0xff6a30, 9 * m.scale, 0.5);
+      dust(m.pos.x, 0.5, m.pos.z, 10);
+      sparks(m.pos.x, 0.5, m.pos.z, 16, true);
+      destroyColumnsInRadius(m.pos.x, m.pos.z, 3.2 * m.scale, 16);
+      if (player && !player.dead) {
+        var dx = player.pos.x - m.pos.x, dz = player.pos.z - m.pos.z;
+        var d = Math.sqrt(dx * dx + dz * dz);
+        addShake(Math.max(0, 0.9 - d / 40));
+        if (d < 5.5) damageMech(player, 8, dx / (d || 1) * 14, dz / (d || 1) * 14, 0, 0);
+      }
+      m.stagger = 0.5;
+    } else if (m.isPlayer && m.smashing) {
+      m.smashing = false;
+      smashImpact(m);
+    } else if (impactVy < -12) {
+      dust(m.pos.x, 0.5, m.pos.z, 5);
+      sfxStep();
+      addShake(0.25);
+    }
+  }
+
+  // ---------- Physics / collision ----------
+  function collideCity(m) {
+    var r = m.radius;
+    var crushing = (m.isPlayer && m.dashT > 0) || Math.hypot(m.knock.x, m.knock.z) > CRUSH_SPEED;
+    var blocked = -1;
+    var x0 = toCell(m.pos.x - r), x1 = toCell(m.pos.x + r);
+    var z0 = toCell(m.pos.z - r), z1 = toCell(m.pos.z + r);
+    for (var iz = Math.max(0, z0); iz <= Math.min(GRID - 1, z1); iz++) {
+      for (var ix = Math.max(0, x0); ix <= Math.min(GRID - 1, x1); ix++) {
+        var ci = iz * GRID + ix;
+        if (colH[ci] <= 0) continue;
+        if (m.pos.y > colH[ci] * BLOCK - 0.3) continue;
+        var minx = -HALF + ix * BLOCK, minz = -HALF + iz * BLOCK;
+        var px = Math.max(minx, Math.min(m.pos.x, minx + BLOCK));
+        var pz = Math.max(minz, Math.min(m.pos.z, minz + BLOCK));
+        var dx = m.pos.x - px, dz = m.pos.z - pz;
+        var d2 = dx * dx + dz * dz;
+        if (d2 >= r * r) continue;
+        if (crushing) {
+          var sp = m.isPlayer && m.dashT > 0 ? 24 : Math.hypot(m.knock.x, m.knock.z) * 0.9;
+          destroyColumn(ci, m.pos.x - (m.dashDir && m.dashT > 0 ? m.dashDir.x * 3 : m.knock.x * 0.2), m.pos.z - (m.dashDir && m.dashT > 0 ? m.dashDir.z * 3 : m.knock.z * 0.2), sp);
+          if (!m.isPlayer) {
+            m.knock.multiplyScalar(0.82);
+            damageMech(m, 4, 0, 0, 0, 0.2);
+          }
+          addShake(0.12);
+          continue;
+        }
+        var d = Math.sqrt(d2);
+        if (d < 1e-4) {
+          dx = m.pos.x - (minx + BLOCK / 2);
+          dz = m.pos.z - (minz + BLOCK / 2);
+          d = Math.sqrt(dx * dx + dz * dz) || 1;
+          m.pos.x += dx / d * r;
+          m.pos.z += dz / d * r;
+        } else {
+          m.pos.x += dx / d * (r - d);
+          m.pos.z += dz / d * (r - d);
+        }
+        blocked = ci;
+      }
+    }
+    return blocked;
+  }
+
+  function physics(m, dt) {
+    var vx = m.move.x + m.knock.x, vz = m.move.z + m.knock.z;
+    m.pos.x += vx * dt;
+    m.pos.z += vz * dt;
+    var kd = Math.exp(-(isAirborne(m) ? 1.5 : 5) * dt);
+    m.knock.x *= kd;
+    m.knock.z *= kd;
+    if (isAirborne(m)) {
+      m.vy += GRAVITY * dt;
+      m.pos.y += m.vy * dt;
+      if (m.pos.y <= 0) {
+        var impact = m.vy;
+        m.pos.y = 0;
+        m.vy = 0;
+        onLand(m, impact);
+      }
+    }
+    var lim = HALF - m.radius;
+    m.pos.x = Math.max(-lim, Math.min(lim, m.pos.x));
+    m.pos.z = Math.max(-lim, Math.min(lim, m.pos.z));
+    var b = collideCity(m);
+    if (b >= 0) {
+      m.blockedT += dt;
+      m.blockedCell = b;
+    } else {
+      m.blockedT = Math.max(0, m.blockedT - dt * 2);
+    }
+  }
+
+  function separateMechs() {
+    for (var i = 0; i < mechs.length; i++) {
+      var a = mechs[i];
+      if (a.dead || a.dropping) continue;
+      for (var j = i + 1; j < mechs.length; j++) {
+        var b = mechs[j];
+        if (b.dead || b.dropping) continue;
+        if (Math.abs(a.pos.y - b.pos.y) > 5) continue;
+        var dx = b.pos.x - a.pos.x, dz = b.pos.z - a.pos.z;
+        var d = Math.sqrt(dx * dx + dz * dz);
+        var min = a.radius + b.radius;
+        if (d >= min || d < 1e-4) continue;
+        var nx = dx / d, nz = dz / d;
+        var push = (min - d) / 2;
+        a.pos.x -= nx * push; a.pos.z -= nz * push;
+        b.pos.x += nx * push; b.pos.z += nz * push;
+        // a mech flying from a big hit bowls into its neighbour
+        var ka = Math.hypot(a.knock.x, a.knock.z), kb = Math.hypot(b.knock.x, b.knock.z);
+        if (!a.isPlayer && !b.isPlayer) {
+          if (ka > 16 && kb < 8) { damageMech(b, 10, a.knock.x * 0.6, a.knock.z * 0.6, 4, 0.5); a.knock.multiplyScalar(0.5); sparks(a.pos.x + nx * a.radius, 4, a.pos.z + nz * a.radius, 12, true); sfxPunchHit(); }
+          else if (kb > 16 && ka < 8) { damageMech(a, 10, b.knock.x * 0.6, b.knock.z * 0.6, 4, 0.5); b.knock.multiplyScalar(0.5); sparks(b.pos.x - nx * b.radius, 4, b.pos.z - nz * b.radius, 12, true); sfxPunchHit(); }
+        }
+        // the player's dash rams enemies
+        var p = a.isPlayer ? a : (b.isPlayer ? b : null);
+        if (p && p.dashT > 0) {
+          var o = p === a ? b : a;
+          if (p.dashHits.indexOf(o) < 0) {
+            p.dashHits.push(o);
+            var sx = p === a ? nx : -nx, sz = p === a ? nz : -nz;
+            damageMech(o, 14, sx * 24 + p.dashDir.x * 10, sz * 24 + p.dashDir.z * 10, 6, 0.8);
+            var tp = torsoPos(o);
+            sparks(tp.x, tp.y, tp.z, 24, true);
+            sfxPunchHit();
+            hitStop = Math.max(hitStop, 0.07);
+            addShake(0.6);
+            registerHit();
+            addEnergy(8);
+          }
+        }
+      }
+    }
+  }
+
+  // ---------- Animation ----------
+  function animateMech(m, dt, time) {
+    var md = m.model;
+    var sp = Math.hypot(m.move.x, m.move.z);
+    var targetWalk = Math.min(1, sp / 6);
+    if (isAirborne(m)) targetWalk = 0;
+    m.walkAmt += (targetWalk - m.walkAmt) * Math.min(1, dt * 8);
+    m.phase += dt * sp * 0.62 / m.scale;
+    var s = Math.sin(m.phase);
+    var a = s * 0.6 * m.walkAmt;
+    md.legs[0].rotation.x = a;
+    md.legs[1].rotation.x = -a;
+    md.knees[0].rotation.x = Math.max(0, -Math.cos(m.phase)) * 0.9 * m.walkAmt;
+    md.knees[1].rotation.x = Math.max(0, Math.cos(m.phase)) * 0.9 * m.walkAmt;
+    md.body.position.y = -Math.abs(Math.cos(m.phase)) * 0.28 * m.walkAmt + Math.sin(time * 2 + m.pos.x) * 0.04;
+    var sign = s >= 0 ? 1 : -1;
+    if (sign !== m.lastStepSign && m.walkAmt > 0.3) {
+      m.lastStepSign = sign;
+      var foot = sign > 0 ? -1 : 1;
+      var f = forwardOf(m);
+      var fx = m.pos.x + Math.cos(m.yaw) * foot * 0.8 * m.scale + f.x;
+      var fz = m.pos.z - Math.sin(m.yaw) * foot * 0.8 * m.scale + f.z;
+      dust(fx, 0.3, fz, 1);
+      if (player && !player.dead) {
+        var dd = Math.hypot(player.pos.x - m.pos.x, player.pos.z - m.pos.z);
+        if (m.isPlayer) { sfxStep(); addShake(0.06); }
+        else if (dd < 25) addShake(0.05 * m.scale * (1 - dd / 25));
+      }
+    }
+    // default arm pose
+    var lean = 0;
+    for (var i = 0; i < 2; i++) {
+      md.shoulders[i].rotation.set(-a * 0.7 * (i === 0 ? -1 : 1) * -1, 0, (i === 0 ? -1 : 1) * 0.1);
+      md.elbows[i].rotation.x = -0.5;
+    }
+    md.torso.rotation.set(0, 0, 0);
+    // punch
+    if (m.punchT >= 0) {
+      var t = m.punchT, hitT = m.punchHitT, dur = m.punchDur;
+      var e;
+      if (t < hitT * 0.7) e = -0.45 * (t / (hitT * 0.7));
+      else if (t < hitT) e = -0.45 + 1.45 * ((t - hitT * 0.7) / (hitT * 0.3));
+      else e = 1 - Math.pow((t - hitT) / (dur - hitT), 2);
+      var arms = m.punchArm === 2 ? [0, 1] : [m.punchArm];
+      for (var k = 0; k < arms.length; k++) {
+        var ai = arms[k];
+        if (m.punchArm === 2) {
+          // double-fisted hammer: arms go overhead then crash forward
+          var rx;
+          if (t < hitT * 0.7) rx = -2.9 * (t / (hitT * 0.7));
+          else if (t < hitT) rx = -2.9 + 1.55 * ((t - hitT * 0.7) / (hitT * 0.3));
+          else rx = -1.35 * e;
+          md.shoulders[ai].rotation.x = rx;
+          md.shoulders[ai].rotation.z = (ai === 0 ? 1 : -1) * 0.25 * Math.max(0, e);
+        } else {
+          md.shoulders[ai].rotation.x = -1.55 * Math.max(0, e) + 0.6 * Math.min(0, e) * -1;
+          md.shoulders[ai].rotation.z = (ai === 0 ? 1 : -1) * 0.18 * Math.max(0, e);
+        }
+        md.elbows[ai].rotation.x = -0.5 * (1 - Math.max(0, e)) - (e < 0 ? 0.9 * (-e / 0.45) : 0);
+      }
+      if (m.punchArm !== 2) md.torso.rotation.y = (m.punchArm === 0 ? 0.35 : -0.35) * e;
+      else lean = 0.25 * Math.max(0, e);
+    }
+    if (m.isPlayer && m.dashT > 0) lean = 0.45;
+    if (m.stagger > 0 && !m.isPlayer) lean = -0.3 * Math.min(1, m.stagger * 2);
+    if (m.smashing) {
+      var up = m.vy > 0;
+      for (var q = 0; q < 2; q++) {
+        md.shoulders[q].rotation.x = up ? -2.9 : -1.2;
+        md.elbows[q].rotation.x = up ? -0.2 : -0.1;
+      }
+      lean = up ? -0.1 : 0.35;
+      md.knees[0].rotation.x = md.knees[1].rotation.x = 0.8;
+      md.legs[0].rotation.x = md.legs[1].rotation.x = -0.5;
+    }
+    if (m.dropping) {
+      for (var q2 = 0; q2 < 2; q2++) md.shoulders[q2].rotation.z = (q2 === 0 ? -1 : 1) * 0.7;
+      md.knees[0].rotation.x = md.knees[1].rotation.x = 0.5;
+      md.legs[0].rotation.x = md.legs[1].rotation.x = -0.3;
+    }
+    md.body.rotation.x += (lean - md.body.rotation.x) * Math.min(1, dt * 14);
+    // thruster flames
+    var thrust = (m.isPlayer && m.dashT > 0) || m.smashing || m.dropping ? 1 : 0;
+    for (var fl = 0; fl < md.flames.length; fl++) {
+      var flame = md.flames[fl];
+      var target = thrust ? 1.2 + Math.random() * 0.6 : 0.18 + Math.random() * 0.08;
+      flame.scale.set(thrust ? 1.3 : 0.7, target, thrust ? 1.3 : 0.7);
+    }
+    // enemy windup telegraph: eyes blaze during windup
+    var eyeI = 4;
+    if (!m.isPlayer && m.punchT >= 0 && m.punchT < m.punchHitT) eyeI = 4 + 10 * (m.punchT / m.punchHitT);
+    md.mats.eye.emissiveIntensity = eyeI;
+    // hit flash
+    var fv = m.flashT > 0 ? m.flashT / 0.14 : 0;
+    md.mats.primary.emissive.setRGB(fv, fv, fv);
+    md.mats.secondary.emissive.setRGB(fv, fv, fv);
+    md.mats.dark.emissive.setRGB(fv * 0.8, fv * 0.8, fv * 0.8);
+
+    md.root.position.copy(m.pos);
+    md.root.rotation.y = m.yaw;
+  }
+
+  // ---------- Input ----------
+  var joy = { id: null, x: 0, y: 0 };
+  var look = { id: null, lx: 0, ly: 0 };
+  var keys = {};
+  var camYaw = 0.6, camPitch = 0.45, camDist = 23;
+  var joystickEl = document.getElementById("joystick");
+  var knobEl = document.getElementById("joystickKnob");
+  var lookPad = document.getElementById("lookPad");
+
+  function updateJoy(e) {
+    var r = joystickEl.getBoundingClientRect();
+    var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    var dx = e.clientX - cx, dy = e.clientY - cy;
+    var max = r.width / 2;
+    var d = Math.sqrt(dx * dx + dy * dy);
+    if (d > max) { dx *= max / d; dy *= max / d; }
+    joy.x = dx / max;
+    joy.y = dy / max;
+    knobEl.style.transform = "translate(" + dx + "px," + dy + "px)";
+  }
+  joystickEl.addEventListener("pointerdown", function (e) {
+    e.preventDefault();
+    joy.id = e.pointerId;
+    joystickEl.setPointerCapture(e.pointerId);
+    updateJoy(e);
+    ensureAudio();
+  });
+  joystickEl.addEventListener("pointermove", function (e) { if (e.pointerId === joy.id) updateJoy(e); });
+  function endJoy(e) {
+    if (e.pointerId !== joy.id) return;
+    joy.id = null; joy.x = 0; joy.y = 0;
+    knobEl.style.transform = "";
+  }
+  joystickEl.addEventListener("pointerup", endJoy);
+  joystickEl.addEventListener("pointercancel", endJoy);
+
+  lookPad.addEventListener("pointerdown", function (e) {
+    e.preventDefault();
+    look.id = e.pointerId;
+    look.lx = e.clientX; look.ly = e.clientY;
+    lookPad.setPointerCapture(e.pointerId);
+  });
+  lookPad.addEventListener("pointermove", function (e) {
+    if (e.pointerId !== look.id) return;
+    var dx = e.clientX - look.lx, dy = e.clientY - look.ly;
+    look.lx = e.clientX; look.ly = e.clientY;
+    camYaw -= dx * 0.0065;
+    camPitch = Math.max(0.12, Math.min(1.1, camPitch + dy * 0.004));
+  });
+  function endLook(e) { if (e.pointerId === look.id) look.id = null; }
+  lookPad.addEventListener("pointerup", endLook);
+  lookPad.addEventListener("pointercancel", endLook);
+
+  var punchHeld = false;
+  function bindBtn(id, onDown, onUp) {
+    var el = document.getElementById(id);
+    el.addEventListener("pointerdown", function (e) {
+      e.preventDefault();
+      el.setPointerCapture(e.pointerId);
+      el.classList.add("pressed");
+      ensureAudio();
+      onDown();
+    });
+    function up() { el.classList.remove("pressed"); if (onUp) onUp(); }
+    el.addEventListener("pointerup", up);
+    el.addEventListener("pointercancel", up);
+  }
+  bindBtn("punchBtn", function () { punchHeld = true; playerPunch(); }, function () { punchHeld = false; });
+  bindBtn("dashBtn", playerDash);
+  bindBtn("smashBtn", playerSmash);
+
+  window.addEventListener("keydown", function (e) {
+    var k = e.key.toLowerCase();
+    if (keys[k]) return;
+    keys[k] = true;
+    ensureAudio();
+    if (k === "j" || k === " ") { punchHeld = true; playerPunch(); e.preventDefault(); }
+    if (k === "k" || k === "shift") playerDash();
+    if (k === "l" || k === "e") playerSmash();
+  });
+  window.addEventListener("keyup", function (e) {
+    var k = e.key.toLowerCase();
+    keys[k] = false;
+    if (k === "j" || k === " ") punchHeld = false;
+  });
+  // mouse drag anywhere on the canvas rotates the camera on desktop
+  var mouseDrag = null;
+  renderer.domElement.addEventListener("mousedown", function (e) { mouseDrag = { x: e.clientX, y: e.clientY }; });
+  window.addEventListener("mousemove", function (e) {
+    if (!mouseDrag) return;
+    camYaw -= (e.clientX - mouseDrag.x) * 0.0065;
+    camPitch = Math.max(0.12, Math.min(1.1, camPitch + (e.clientY - mouseDrag.y) * 0.004));
+    mouseDrag.x = e.clientX; mouseDrag.y = e.clientY;
+  });
+  window.addEventListener("mouseup", function () { mouseDrag = null; });
+
+  function moveInputWorld() {
+    var ix = joy.x, iy = joy.y;
+    if (keys.a || keys.arrowleft) ix -= 1;
+    if (keys.d || keys.arrowright) ix += 1;
+    if (keys.w || keys.arrowup) iy -= 1;
+    if (keys.s || keys.arrowdown) iy += 1;
+    var len = Math.sqrt(ix * ix + iy * iy);
+    if (len > 1) { ix /= len; iy /= len; }
+    var fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
+    var rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
+    return new T.Vector3(rx * ix + fx * -iy, 0, rz * ix + fz * -iy);
+  }
+
+  // ---------- Update ----------
+  function updatePlayer(dt) {
+    var p = player;
+    if (!p || p.dead) return;
+    p.dashCd = Math.max(0, p.dashCd - dt);
+    comboStepTimer -= dt;
+    if (p.dashT > 0) {
+      p.dashT -= dt;
+      p.move.set(p.dashDir.x * DASH_SPEED, 0, p.dashDir.z * DASH_SPEED);
+      var tp = torsoPos(p);
+      for (var i = 0; i < 3; i++) {
+        glow.spawn(tp.x - p.dashDir.x * 1.8 + rnd(0.4), tp.y - 1 + rnd(0.4), tp.z - p.dashDir.z * 1.8 + rnd(0.4),
+          -p.dashDir.x * 12 + rnd(2), -3 + rnd(2), -p.dashDir.z * 12 + rnd(2),
+          0.4, 0.8, 1, 1, 1.6, 0.4, 0.3, 0, 2);
+      }
+      smoke.spawn(p.pos.x + rnd(1), 0.4, p.pos.z + rnd(1), rnd(2), 1, rnd(2), 0.5, 0.47, 0.45, 0.4, 2, 5, 0.8, 0, 1);
+      if (p.dashT <= 0) p.dashT = 0;
+    } else {
+      var dir = moveInputWorld();
+      var busy = p.punchT >= 0;
+      var spd = WALK_SPEED * (busy ? 0.25 : 1) * (p.smashing ? 0.6 : 1);
+      p.move.set(dir.x * spd, 0, dir.z * spd);
+      if (dir.lengthSq() > 0.01 && !busy) p.targetYaw = Math.atan2(dir.x, dir.z);
+      p.yaw += angleDiff(p.yaw, p.targetYaw) * Math.min(1, dt * 12);
+    }
+    if (p.punchT >= 0) {
+      p.punchT += dt;
+      if (!p.punchDone && p.punchT >= p.punchHitT) resolvePunch(p);
+      if (p.punchT >= p.punchDur) p.punchT = -1;
+    }
+    if (punchHeld && (p.punchT < 0 || p.punchT >= p.punchDur * 0.72)) playerPunch();
+    if (p.smashing && !p.slamming && p.vy < 0) {
+      p.slamming = true;
+      p.vy = -48;
+    }
+    if (p.smashing) {
+      var t2 = torsoPos(p);
+      glow.spawn(t2.x + rnd(0.5), t2.y - 1, t2.z + rnd(0.5), rnd(2), p.slamming ? 10 : -12, rnd(2), 1, 0.7, 0.3, 1, 1.8, 0.4, 0.3, 0, 1);
+    }
+  }
+
+  function updateEnemy(m, dt) {
+    m.move.set(0, 0, 0);
+    if (m.dropping) {
+      glow.spawn(m.pos.x + rnd(0.6), m.pos.y + 1, m.pos.z + rnd(0.6), rnd(2), 14, rnd(2), 1, 0.5, 0.15, 1, 2.4, 0.6, 0.35, 0, 1);
+      smoke.spawn(m.pos.x + rnd(0.6), m.pos.y + 3, m.pos.z + rnd(0.6), rnd(1), 6, rnd(1), 0.3, 0.28, 0.3, 0.5, 2, 5, 1.2, 0, 1);
+      if (m.marker) {
+        m.marker.material.opacity = 0.5 + 0.5 * Math.sin(performance.now() * 0.02);
+        m.marker.rotation.y += dt * 2;
+      }
+      return;
+    }
+    if (m.stagger > 0) { m.stagger -= dt; return; }
+    if (!player || player.dead || state !== "playing") return;
+    var dx = player.pos.x - m.pos.x, dz = player.pos.z - m.pos.z;
+    var dist = Math.sqrt(dx * dx + dz * dz);
+    var nx = dx / (dist || 1), nz = dz / (dist || 1);
+    m.atkCd -= dt;
+    if (m.punchT >= 0) {
+      m.punchT += dt;
+      if (m.punchT < m.punchHitT) {
+        // keep tracking the player during windup, but slowly
+        m.yaw += angleDiff(m.yaw, Math.atan2(dx, dz)) * Math.min(1, dt * 3);
+      }
+      if (!m.punchDone && m.punchT >= m.punchHitT) resolvePunch(m);
+      if (m.punchT >= m.punchDur) m.punchT = -1;
+      return;
+    }
+    var faceYaw = Math.atan2(dx, dz);
+    var speed = m.def.speed * (1 + Math.min(0.5, wave * 0.04));
+    if (m.type === "gunner") {
+      m.fireCd -= dt;
+      var mx = 0, mz = 0;
+      if (dist < 13) { mx = -nx; mz = -nz; }
+      else if (dist > 22) { mx = nx; mz = nz; }
+      mx += -nz * m.strafe * 0.7;
+      mz += nx * m.strafe * 0.7;
+      if (Math.random() < dt * 0.3) m.strafe *= -1;
+      var ml = Math.sqrt(mx * mx + mz * mz) || 1;
+      m.move.set(mx / ml * speed, 0, mz / ml * speed);
+      if (m.fireCd <= 0 && dist < 40) {
+        fireMissile(m, 0);
+        setTimeout(function () { if (!m.dead && state === "playing") fireMissile(m, 1); }, 180);
+        m.fireCd = Math.max(1.8, 3.4 - wave * 0.12) + Math.random();
+      }
+      if (dist < 5 && m.atkCd <= 0) { m.atkCd = 2; startPunch(m); }
+    } else {
+      var reach = 3.4 * m.scale + player.radius + 0.6;
+      if (dist > reach) {
+        m.move.set(nx * speed, 0, nz * speed);
+      } else if (m.atkCd <= 0) {
+        startPunch(m);
+        m.atkCd = (m.type === "brute" ? 2.2 : 1.5) + Math.random() * 0.8;
+      }
+      // stuck on a building: punch through it
+      if (m.blockedT > 0.4 && m.punchT < 0) {
+        var bx = cellX(m.blockedCell % GRID), bz = cellX(Math.floor(m.blockedCell / GRID));
+        faceYaw = Math.atan2(bx - m.pos.x, bz - m.pos.z);
+        m.yaw = faceYaw;
+        startPunch(m);
+        m.blockedT = 0;
+      }
+    }
+    m.yaw += angleDiff(m.yaw, faceYaw) * Math.min(1, dt * 6);
+  }
+
+  var camRight = new T.Vector3();
+  function updateBars() {
+    camRight.setFromMatrixColumn(camera.matrixWorld, 0);
+    for (var i = 0; i < mechs.length; i++) {
+      var m = mechs[i];
+      if (!m.bar) continue;
+      var y = m.pos.y + 7.4 * m.scale;
+      m.bar.bg.position.set(m.pos.x, y, m.pos.z);
+      var frac = Math.max(0, m.hp / m.maxHp);
+      m.bar.fill.scale.x = 3.1 * frac;
+      m.bar.fill.position.set(m.pos.x - camRight.x * 1.55, y - camRight.y * 1.55, m.pos.z - camRight.z * 1.55);
+      m.bar.fill.visible = !m.dropping;
+      m.bar.bg.visible = !m.dropping;
+    }
+  }
+
+  function updateHud() {
+    if (player) {
+      var hpPct = Math.max(0, player.hp / PLAYER_MAX_HP) * 100;
+      hpFill.style.width = hpPct + "%";
+      hpFill.classList.toggle("low", hpPct < 30);
+    }
+    enFill.style.width = energy + "%";
+    enFill.classList.toggle("full", energy >= 100);
+    smashBtn.classList.toggle("ready", energy >= 100);
+    dashBtn.classList.toggle("cooling", !!player && player.dashCd > 0);
+    scoreLine.textContent = score.toLocaleString();
+    destroyLine.textContent = "City blocks leveled: " + blocksDestroyed;
+    if (state === "playing") {
+      waveLine.textContent = "WAVE " + wave + "  ·  " + (enemiesAlive() + toSpawn.length) + " HOSTILES";
+    }
+  }
+
+  function update(dt, rdt, time) {
+    if (player && !player.dead) updatePlayer(dt);
+    for (var i = mechs.length - 1; i >= 0; i--) {
+      var m = mechs[i];
+      if (m.dead) continue;
+      if (!m.isPlayer) updateEnemy(m, dt);
+      m.flashT = Math.max(0, m.flashT - dt);
+      physics(m, dt);
+    }
+    separateMechs();
+    for (var j = 0; j < mechs.length; j++) {
+      if (!mechs[j].dead) animateMech(mechs[j], dt, time);
+    }
+    updateMissiles(dt);
+    updateOrbs(dt);
+
+    for (var c = pendingCollapses.length - 1; c >= 0; c--) {
+      var pc = pendingCollapses[c];
+      pc.t -= dt;
+      if (pc.t <= 0) {
+        pendingCollapses.splice(c, 1);
+        destroyColumn(pc.ci, pc.fx, pc.fz, 4);
+      }
+    }
+
+    if (state === "playing") {
+      comboTimer -= dt;
+      if (comboTimer <= 0 && comboCount > 0) {
+        comboCount = 0;
+        comboLine.style.opacity = 0;
+      }
+      if (toSpawn.length > 0) {
+        spawnTimer -= dt;
+        if (spawnTimer <= 0 && enemiesAlive() < 7) {
+          spawnEnemy(toSpawn.shift());
+          spawnTimer = 1.1;
+        }
+      } else if (enemiesAlive() === 0 && waveClearT < 0) {
+        waveClearT = 2.8;
+        banner("WAVE CLEAR", 1800);
+        if (player) player.hp = Math.min(PLAYER_MAX_HP, player.hp + 25);
+        score += 250 * wave;
+      }
+      if (waveClearT > 0) {
+        waveClearT -= dt;
+        if (waveClearT <= 0) startWave(wave + 1);
+      }
+    }
+    sweepDead();
+    if (state === "dying") {
+      deathT -= rdt;
+      if (deathT <= 0) gameOver();
+    }
+  }
+
+  // ---------- Camera ----------
+  var camTarget = new T.Vector3(0, 5, 0);
+  function updateCamera(rdt) {
+    var focus = player ? player.pos : new T.Vector3();
+    var ty = (player ? Math.max(0, player.pos.y) * 0.6 : 0) + 6.5;
+    camTarget.x += (focus.x - camTarget.x) * Math.min(1, rdt * 8);
+    camTarget.z += (focus.z - camTarget.z) * Math.min(1, rdt * 8);
+    camTarget.y += (ty - camTarget.y) * Math.min(1, rdt * 5);
+    var dist = camDist;
+    camera.position.set(
+      camTarget.x + Math.sin(camYaw) * Math.cos(camPitch) * dist,
+      camTarget.y + Math.sin(camPitch) * dist,
+      camTarget.z + Math.cos(camYaw) * Math.cos(camPitch) * dist
+    );
+    if (shake > 0.001) {
+      camera.position.x += rnd(shake);
+      camera.position.y += rnd(shake);
+      camera.position.z += rnd(shake);
+      shake *= Math.exp(-7 * rdt);
+    }
+    camera.lookAt(camTarget);
+    // keep the shadow frustum centred on the action
+    sun.position.set(camTarget.x + SUN_DIR.x * 100, SUN_DIR.y * 100, camTarget.z + SUN_DIR.z * 100);
+    sun.target.position.set(camTarget.x, 0, camTarget.z);
+    sky.position.copy(camera.position);
+  }
+
+  // ---------- Game flow ----------
+  var overlay = document.getElementById("overlay");
+  var overlayScore = document.getElementById("overlayScore");
+  var overlayBest = document.getElementById("overlayBest");
+  var startBtn = document.getElementById("startBtn");
+
+  function clearWorld() {
+    for (var k = 0; k < mechs.length; k++) removeMech(mechs[k]);
+    mechs.length = 0;
+    for (var i = 0; i < missiles.length; i++) scene.remove(missiles[i].mesh);
+    missiles.length = 0;
+    for (var j = 0; j < orbs.length; j++) scene.remove(orbs[j].mesh);
+    orbs.length = 0;
+    for (var r = 0; r < rings.length; r++) { scene.remove(rings[r].mesh); rings[r].mesh.material.dispose(); }
+    rings.length = 0;
+    blockDebris.clear();
+    metalDebris.clear();
+    glow.clear();
+    smoke.clear();
+  }
+
+  function startGame() {
+    ensureAudio();
+    clearWorld();
+    buildCity();
+    player = createMech("player", 0, 0);
+    player.yaw = Math.PI;
+    player.targetYaw = Math.PI;
+    camYaw = 0;
+    score = 0;
+    energy = 0;
+    comboCount = 0; comboStep = 0; comboStepTimer = 0;
+    comboLine.style.opacity = 0;
+    timeScale = 1; slowT = 0;
+    state = "playing";
+    overlay.style.display = "none";
+    startWave(1);
+  }
+
+  function gameOver() {
+    state = "over";
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) { /* storage unavailable */ }
+    }
+    overlay.querySelector("h1").textContent = "SYSTEMS CRITICAL";
+    overlay.querySelector(".sub").textContent = "YOUR TITAN HAS FALLEN";
+    overlayScore.textContent = "Score: " + score.toLocaleString() + "  ·  Wave " + wave;
+    overlayBest.textContent = "Best: " + best.toLocaleString() + "  ·  " + blocksDestroyed + " city blocks leveled";
+    startBtn.textContent = "REDEPLOY";
+    var intro = overlay.querySelectorAll("p");
+    for (var i = 0; i < intro.length; i++) intro[i].style.display = "none";
+    overlay.style.display = "flex";
+    waveLine.textContent = "";
+  }
+
+  startBtn.addEventListener("click", startGame);
+
+  function onResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    var h = renderer.getDrawingBufferSize(new T.Vector2()).y;
+    var scale = h / (2 * Math.tan(T.MathUtils.degToRad(camera.fov) / 2));
+    for (var i = 0; i < particleSystems.length; i++) particleSystems[i].mat.uniforms.uScale.value = scale;
+  }
+  window.addEventListener("resize", onResize);
+  onResize();
+
+  // attract mode: city + an idle titan in the plaza behind the title screen
+  buildCity();
+  player = createMech("player", 0, 0);
+  player.yaw = 0.4;
+  player.targetYaw = 0.4;
+  overlayBest.textContent = best > 0 ? "Best: " + best.toLocaleString() : "";
+
+  var last = performance.now();
+  var clockTime = 0;
+  function frame(now) {
+    requestAnimationFrame(frame);
+    var rdt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    clockTime += rdt;
+    if (slowT > 0) {
+      slowT -= rdt;
+      timeScale = 0.3;
+    } else {
+      timeScale = 1;
+    }
+    var dt = rdt * timeScale;
+    if (hitStop > 0) {
+      hitStop -= rdt;
+      dt = 0;
+    }
+    if (state === "menu" || state === "over") camYaw += rdt * 0.12;
+    if (player && player.dead && state === "playing") state = "dying";
+    update(dt, rdt, clockTime);
+    blockDebris.update(dt);
+    metalDebris.update(dt);
+    for (var i = 0; i < particleSystems.length; i++) particleSystems[i].update(dt);
+    updateRings(dt);
+    boomLevel *= Math.exp(-6 * rdt);
+    boomLight.intensity = boomLevel;
+    damageFlashLevel *= Math.exp(-4 * rdt);
+    whiteFlashLevel *= Math.exp(-6 * rdt);
+    damageFlash.style.opacity = damageFlashLevel;
+    whiteFlash.style.opacity = whiteFlashLevel;
+    updateCamera(rdt);
+    updateBars();
+    updateHud();
+    renderer.render(scene, camera);
+  }
+  document.getElementById("loading").style.display = "none";
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

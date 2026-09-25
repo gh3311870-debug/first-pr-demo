@@ -401,7 +401,37 @@ scrolling city skyline:
 Serve it the same way as the other demos and visit
 `http://localhost:8000/swinger.html`.
 
-All seven demos link to each other via the nav chips in the top-right corner.
+## Titan Clash: Mech Brawler demo
+
+`mech.html` is a mobile-friendly third-person giant-robot brawler, also built
+with Three.js. Pilot a blue titan in a sunset city made of destructible voxel
+buildings while enemy mechs drop in from orbit:
+
+- Left on-screen joystick: stomp around (movement is relative to the camera)
+- Drag the right side of the screen: orbit the camera
+- **PUNCH** button: a three-hit combo that auto-aims at the nearest enemy &mdash;
+  two jabs, then a double-fisted hammer blow that launches enemies. Hold it
+  to keep swinging. Fists also knock down any building they hit
+- **DASH** button: a rocket-thruster charge that plows straight through
+  buildings and rams enemies (you can't be hurt mid-dash)
+- **GROUND SMASH** button: fills up as you land hits and wreck the city; when
+  it glows, leap into the air and slam down to flatten everything nearby
+- Enemies arrive in waves: red grunts brawl up close, purple gunners keep
+  their distance and fire homing missiles, and big brutes hit hard. A red
+  ring on the ground marks where the next one will land. They punch through
+  buildings that are in their way
+- Knock an enemy hard enough and it flies through buildings and bowls over
+  other mechs. Destroyed mechs burst into scrap and sometimes drop green
+  repair orbs
+- Every building block crumbles into tumbling debris with dust, sparks,
+  shockwaves, screen shake and a brief hit-freeze on big impacts
+- Keyboard: WASD/arrows to move, J or Space to punch, K or Shift to dash,
+  L or E to smash, mouse drag to look. Your best score is saved locally
+
+Serve it the same way as the other demos and visit
+`http://localhost:8000/mech.html`.
+
+All eight demos link to each other via the nav chips in the top-right corner.
 
 ### Playing on your phone via GitHub Pages
 
@@ -410,7 +440,7 @@ To play without running a local server, enable GitHub Pages for this repo:
 1. Go to the repo's **Settings > Pages**.
 2. Under "Build and deployment", set **Source** to "Deploy from a branch".
 3. Pick branch `main`, folder `/ (root)`, then **Save**.
-4. After a minute, all seven demos will be live at
+4. After a minute, all eight demos will be live at
    `https://gh3311870-debug.github.io/first-pr-demo/index.html` (builder),
    `https://gh3311870-debug.github.io/first-pr-demo/fps.html` (shooter),
    `https://gh3311870-debug.github.io/first-pr-demo/powers.html` (flight),
@@ -419,9 +449,11 @@ To play without running a local server, enable GitHub Pages for this repo:
    `https://gh3311870-debug.github.io/first-pr-demo/netrunner.html`
    (twin-stick shooter),
    `https://gh3311870-debug.github.io/first-pr-demo/hero.html`
-   (superhero brawler), and
+   (superhero brawler),
    `https://gh3311870-debug.github.io/first-pr-demo/swinger.html`
-   (web-swinging runner) — open any of them on your phone.
+   (web-swinging runner), and
+   `https://gh3311870-debug.github.io/first-pr-demo/mech.html`
+   (mech brawler) — open any of them on your phone.
 
 Each merge to `main` kicks off a fresh Pages deployment automatically. It
 usually finishes in under a minute, but if a page seems to be missing a
